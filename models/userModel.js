@@ -17,14 +17,28 @@ const userSchema = new mongoose.Schema({
     required: [true, "Please enter email"],
     unique: true
   },
-  current_coordinates: { //TODO: Change to standard MongoDB Location Object
-    longitude: Number,
-    latitude: Number,
+  current_coordinates: {
+    type: {
+      type: String,
+      enum: ["Point"],
+      default: "Point",
+    },
+    coordinates: {
+      type: [Number],
+      default: [0, 0], // Default coordinates, update as needed
+    },
   },
-  local_coordinates: [  //TODO: Replace with Cities Array
+  cities: [
     {
-      longitude: Number,
-      latitude: Number,
+      type: {
+        type: String,
+        enum: ["Point"],
+        default: "Point",
+      },
+      coordinates: {
+        type: [Number],
+        default: [0, 0], 
+      },
     },
   ],
   groups: [
