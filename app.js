@@ -1,5 +1,6 @@
 const express = require("express");
 const userRoute = require("./routes/userRoute");
+const dummyRoute = require("./routes/dummyRoute");
 const dotenv = require("dotenv");
 const cookieParser = require("cookie-parser");
 const connectDatabase = require("./config/database");
@@ -23,6 +24,7 @@ app.use(cookieParser());
 // Routes
 app.use("/user", userRoute);
 app.use("/group", groupRoute);
+app.use("/dummy", dummyRoute);
 
 
 app.get("/", (req, res) => {
