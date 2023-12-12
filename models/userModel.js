@@ -17,14 +17,28 @@ const userSchema = new mongoose.Schema({
     required: [true, "Please enter email"],
     unique: true
   },
-  current_coordinates: { //TODO: Change to standard MongoDB Location Object
-    longitude: Number,
-    latitude: Number,
+  current_coordinates: {
+    type: {
+      type: String,
+      enum: ["Point"],
+      default: "Point",
+    },
+    coordinates: {
+      type: [Number,],
+      default: [0, 0], // Default coordinates, update as needed
+    },
   },
-  local_coordinates: [  //TODO: Replace with Cities Array
+  cities: [
     {
-      longitude: Number,
-      latitude: Number,
+      type: {
+        type: String,
+        enum: ["Point"],
+        default: "Point",
+      },
+      coordinates: {
+        type: [Number],
+        default: [0, 0], 
+      },
     },
   ],
   groups: [
@@ -53,4 +67,6 @@ userSchema.methods.comparePassword = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
 
+// Add 2dsphere index on current_coordinates
+userSchema.index({ current_coordinates: '2dsphere' });
 module.exports = mongoose.model("User", userSchema);
