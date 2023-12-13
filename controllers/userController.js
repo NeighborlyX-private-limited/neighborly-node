@@ -6,7 +6,9 @@ const crypto = require("crypto");
 
 exports.loggedInUser = async (req, res, next) => {
   const user = req.user;
-  res.status(200).json(user);
+  if(user){
+    sendToken(user, 200, res);
+  }
 };
 
 // User Login
@@ -40,7 +42,8 @@ exports.registerUser = async (req, res) => {
       current_coordinates: current_coordinates,
     });
 
-    res.status(201).json(user);
+    sendToken(user, 200, res);
+
   } catch (error) {
     if (error.code === 11000 || error.code === 11001) {
       return res.status(400).json({
@@ -51,4 +54,16 @@ exports.registerUser = async (req, res) => {
     return res.status(400).json(error);
   }
 };
+
+
+//Logout User
+
+exports.logoutUser = async (req, res, next) => {
+  res.clearCookie("token");
+  res.status(200).json({
+    success: true,
+    message: "You have been successfully logged out"
+  })
+
+}
 
