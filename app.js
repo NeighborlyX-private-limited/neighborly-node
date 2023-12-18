@@ -7,7 +7,6 @@ const connectDatabase = require("./config/database");
 const errorMiddleware = require("./middlewares/error");
 const groupRoute = require("./routes/groupRoute");
 
-
 dotenv.config({ path: "./config/config.env" });
 const app = express();
 const PORT = process.env.PORT;
@@ -33,9 +32,9 @@ app.get("/", (req, res) => {
   });
 });
 
+app.use(errorMiddleware)
+
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
-
-app.use(errorMiddleware)
 
