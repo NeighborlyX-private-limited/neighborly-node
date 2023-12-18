@@ -8,7 +8,6 @@ const errorMiddleware = require("./middlewares/error");
 const groupRoute = require("./routes/groupRoute");
 const cors = require("cors");
 
-
 dotenv.config({ path: "./config/config.env" });
 const app = express();
 const PORT = process.env.PORT;
@@ -36,9 +35,9 @@ app.use("/dummy", dummyRoute);
 
 
 
-app.use(errorMiddleware)
-
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
+
+app.use(errorMiddleware)
 
