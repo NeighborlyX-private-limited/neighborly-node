@@ -1,8 +1,10 @@
 const { generateToken } = require("../middlewares/auth");
 const User = require("../models/userModel");
+const Group = require("../models/groupModel");
 const ErrorHandler = require("../utils/errorHandler");
 const sendToken = require("../utils/jwtToken");
 const crypto = require("crypto");
+const {ObjectId } = require('mongodb');
 
 exports.loggedInUser = async (req, res, next) => {
   const user = req.user;
@@ -56,8 +58,27 @@ exports.registerUser = async (req, res) => {
 };
 
 
-//Logout User
+exports.validateUserGroup = async (req, res) => {
+  const {userID, groupID} = req.body;
+  try {
+    const group = await Group.findOne({ _id: new ObjectId(groupID) });
 
+    if (group) {
+      // Check if userID is present in the participants array
+      if (group.participants && group.participants.includes(userID)) {
+        return res.status(200).json({ message: 'User is present in the group.' });
+      } else {
+        return res.status(400).json({ message: 'User is not present in the group.' });
+      }
+    } else {
+        return res.status(400).json({ message: 'Group not found.' });
+    }
+  } catch (err) {
+    return res.status(400).json(err);
+
+  }
+};
+//Logout User
 exports.logoutUser = async (req, res, next) => {
   res.clearCookie("token");
   res.status(200).json({
@@ -66,4 +87,3 @@ exports.logoutUser = async (req, res, next) => {
   })
 
 }
-
