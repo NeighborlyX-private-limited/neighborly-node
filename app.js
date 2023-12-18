@@ -6,6 +6,8 @@ const cookieParser = require("cookie-parser");
 const connectDatabase = require("./config/database");
 const errorMiddleware = require("./middlewares/error");
 const groupRoute = require("./routes/groupRoute");
+const cors = require("cors");
+
 
 dotenv.config({ path: "./config/config.env" });
 const app = express();
@@ -18,7 +20,14 @@ connectDatabase();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
-
+// app.use(cors());
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "http://localhost:5173");
+  res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE");
+  res.header("Access-Control-Allow-Headers", "Content-Type");
+  res.header("Access-Control-Allow-Credentials", true);
+  next();
+});
 
 // Routes
 app.use("/user", userRoute);
@@ -26,11 +35,6 @@ app.use("/group", groupRoute);
 app.use("/dummy", dummyRoute);
 
 
-app.get("/", (req, res) => {
-  res.json({
-    message: "Hello World",
-  });
-});
 
 app.use(errorMiddleware)
 
