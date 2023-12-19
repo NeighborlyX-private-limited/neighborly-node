@@ -26,6 +26,17 @@ const groupSchema = new mongoose.Schema({
       ref: "User",
     },
   ],
+  
+  messages: [
+    {
+      username: String,
+      content: String,
+      sentAt: {
+        type: Date,
+        default: Date.now()
+      },
+    }
+  ]
 });
 
 // Auto-delete groups after 24 hours if not permanent
