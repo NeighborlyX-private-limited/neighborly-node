@@ -66,16 +66,27 @@ exports.validateUserGroup = async (req, res) => {
     if (group) {
       // Check if userID is present in the participants array
       if (group.participants && group.participants.includes(userID)) {
-        return res.status(200).json({ message: 'User is present in the group.' });
+        res.status(200).json({
+          success: true,
+          message: "User is present in group."
+        });      
       } else {
-        return res.status(400).json({ message: 'User is not present in the group.' });
+        res.status(200).json({
+          success: true,
+          message: "User is not present in group."
+        });      
       }
     } else {
-        return res.status(400).json({ message: 'Group not found.' });
+        res.status(200).json({
+          success: true,
+          message: "Group does not exist."
+        });
     }
-  } catch (err) {
-    return res.status(400).json(err);
-
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error
+    });
   }
 };
 //Logout User
