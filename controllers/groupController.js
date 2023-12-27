@@ -1,5 +1,38 @@
 const User = require('../models/userModel');
+const Group = require('../models/groupModel');
 const opencage = require('opencage-api-client');
+
+exports.removeUser = async (req, res) => {
+  try {
+    const { userId, groupId } = req.body;
+  
+    // Update the Group collection to remove the user from the group
+    const result1 = await Group.updateOne(
+      { _id: groupId },
+      { $pull: { participants: userId } }
+    );
+  
+    // Update the User collection to remove the group from the user's groups array
+    const result2 = await User.updateOne(
+      { _id: userId },
+      { $pull: { groups: groupId } }
+    );
+  
+    // Check if both updates were successful by inspecting modifiedCount
+    if (result1.modifiedCount > 0 && result2.modifiedCount > 0) {
+      // If both updates were successful, send a success response
+      res.status(200).json({ message: 'User removed from the group successfully.' });
+    } else {
+      // If no updates or only one update was successful, send a failure response
+      res.status(200).json({ message: 'Group not found or user not in the group.' });
+    }
+  } catch (error) {
+    // Handle unexpected errors, log them, and send an internal server error response
+    console.error('Unexpected error:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+  
+};
 
 exports.createGroup = async (req, res) => {
   try {
