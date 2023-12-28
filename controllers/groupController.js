@@ -35,6 +35,34 @@ exports.addUser = async (req, res) => {
   
 };
 
+exports.makeGroupPermanent = async (req, res) => {
+  try {
+    // Destructure groupId from the request body
+    const { groupId } = req.body;
+  
+    // Find the group by ID and update the permanentGroup field
+    const updatedGroup = await Group.findByIdAndUpdate(
+      groupId,
+      { $set: { permanentGroup: true } },
+      { new: true }
+    );
+  
+    // Check if the group was not found
+    if (!updatedGroup) {
+      // If the group is not found, send a 404 response
+      return res.status(404).json({ message: 'Group not found.' });
+    }
+  
+    // If the group was successfully updated, send a success response with the updated group
+    res.status(200).json({ message: 'Permanent group field updated successfully.', group: updatedGroup });
+  } catch (error) {
+    // Handle unexpected errors, log them, and send an internal server error response
+    console.error('Error updating permanent group field:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+  
+};
+
 exports.createGroup = async (req, res) => {
   try {
     const { latitude, longitude } = req.body;
