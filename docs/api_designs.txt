@@ -1,0 +1,34 @@
+1. Add a User to the Group
+HTTP Method: POST
+Endpoint: http://localhost:5000/group/add-user
+Request Body:
+{
+  "userId": "user_id_to_add"
+}
+Response:
+200 OK: User successfully added to the group.
+404 Not Found: Group or user not found.
+409 Conflict: User is already in the group.
+
+2. Remove a User from the Group
+HTTP Method: DELETE
+Endpoint: http://localhost:5000/group/delete-user
+Request Body:
+{
+  "userId": "user_id_to_delete"
+}
+Response:
+200 OK: User successfully removed from the group.
+404 Not Found: Group or user not found.
+404 Not Found: User is not a member of the group.
+
+3. Make the Group Permanent
+HTTP Method: PUT
+Endpoint: http://localhost:5000/group/permanent-group
+Request Body:
+{
+  "permanent": true
+}
+Response:
+200 OK: Group successfully set as permanent.
+404 Not Found: Group not found.
