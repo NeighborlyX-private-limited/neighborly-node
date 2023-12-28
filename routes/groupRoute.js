@@ -10,7 +10,6 @@ const router = express.Router();
 
 router.route("/create_group").post(createGroup);
 router.route("/remove-user").delete(removeUser);
-=======
 
 router.route("/make-group-permanent").put(makeGroupPermanent);
 
