@@ -119,6 +119,7 @@ exports.createGroup = async (req, res) => {
         },
       }
     });
+    console.log(nearbyUsers);
 
     var nearUsersList = nearbyUsers.map(user => ({
       username: user.username, 
@@ -131,6 +132,43 @@ exports.createGroup = async (req, res) => {
   }
   res.status(200).json({
     nearUser: nearUsersList
+  });
+};
+
+exports.nearestGroup = async (req, res) => {
+  try {
+    const { latitude, longitude } = req.body;
+
+    // Validate coordinates
+    if (!isValidCoordinate(latitude) || !isValidCoordinate(longitude)) {
+      return res.status(400).json({ message: 'Invalid coordinates' });
+    }
+
+    // Query the database for nearby groups based on current_coordinates
+    const nearbyGroups = await Group.find({
+      location: {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [parseFloat(longitude), parseFloat(latitude)],
+          },
+          $maxDistance: 30000, // Adjust this distance as needed (in meters)
+        },
+      }
+    });
+    
+
+    var nearGroupsList = nearbyGroups.map(group => ({
+      groupname: group.name, 
+      topic: group.topic
+    }));
+
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+  res.status(200).json({
+    nearGroup: nearGroupsList
   });
 };
 
