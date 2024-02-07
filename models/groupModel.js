@@ -6,24 +6,46 @@ const groupSchema = new mongoose.Schema({
     required: [true, "Please provide group name"],
     maxlength: 100,
   },
-  description: String,
-  lastActive: {
-    type: Date,
-    default: Date.now(),
+  topic: {
+    type: String
+  },
+  location: {
+    type: {
+      type: String,
+      enum: ["Point"],
+      default: "Point",
+    },
+    coordinates: {
+      type: [Number,],
+      default: [0, 0], // Default coordinates, update as needed
+    },
+  },
+  radius: {
+    type: Number,
   },
   admin: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
-  permanentGroup: {
-    type: Boolean,
-    default: false,
-  },
-  participants: [
-    {
+    userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      required: true,
+    },
+    username: String,
+  },
+  members: [
+    {
+      user: {
+        userId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          required: true,
+        },
+        username: String,
+      },
+      status: {
+        type: String,
+        enum: ["pending", "accepted"],
+        default: "pending",
+      },
     },
   ],
   id : {

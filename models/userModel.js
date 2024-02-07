@@ -24,7 +24,7 @@ const userSchema = new mongoose.Schema({
       default: "Point",
     },
     coordinates: {
-      type: [Number],
+      type: [Number,],
       default: [0, 0], // Default coordinates, update as needed
     },
   },
@@ -67,4 +67,6 @@ userSchema.methods.comparePassword = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
 
+// Add 2dsphere index on current_coordinates
+userSchema.index({ current_coordinates: '2dsphere' });
 module.exports = mongoose.model("User", userSchema);
