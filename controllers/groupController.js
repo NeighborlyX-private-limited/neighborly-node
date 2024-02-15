@@ -2,26 +2,31 @@ const opencage = require("opencage-api-client");
 const Message = require("../models/messageModel");
 const Group = require("../models/groupModel");
 const User = require('../models/userModel');
-
-const opencage = require('opencage-api-client');
+const mongoose = require("mongoose");
+const ObjectId = mongoose.Types.ObjectId;
 
 
 exports.addUser = async (req, res) => {
   try {
     // Destructure userId and groupId from the request body
     const { userId, groupId } = req.body;
+
+    // Update the User collection to add the group to the user's groups array
+    const result2 = await User.updateOne(
+      { _id: new ObjectId(userId) },
+      { $addToSet: { groups: new ObjectId(groupId) } }
+    );
+
+    const foundUser = await User.findById(
+      new ObjectId(userId)
+    );
   
     // Update the Group collection to add the user to the group
     const result1 = await Group.updateOne(
-      { _id: groupId },
-      { $addToSet: { participants: userId } }
+      { _id: new ObjectId(groupId) },
+      { $addToSet: { members:{user: {userId: new ObjectId(userId), username: foundUser.username}} } }
     );
-  
-    // Update the User collection to add the group to the user's groups array
-    const result2 = await User.updateOne(
-      { _id: userId },
-      { $addToSet: { groups: groupId } }
-    );
+
   
     // Check if both updates were successful by inspecting modifiedCount
     if (result1.modifiedCount > 0 && result2.modifiedCount > 0) {
@@ -70,17 +75,21 @@ exports.makeGroupPermanent = async (req, res) => {
 exports.removeUser = async (req, res) => {
   try {
     const { userId, groupId } = req.body;
-  
+
+    const foundUser = await User.findById(
+      new ObjectId(userId)
+    );
+
     // Update the Group collection to remove the user from the group
     const result1 = await Group.updateOne(
-      { _id: groupId },
-      { $pull: { participants: userId } }
+      { _id: new ObjectId(groupId) },
+      { $pull: { members: { user: { userId: new ObjectId(userId), username: foundUser.username }} } }
     );
   
     // Update the User collection to remove the group from the user's groups array
     const result2 = await User.updateOne(
-      { _id: userId },
-      { $pull: { groups: groupId } }
+      { _id: new ObjectId(userId) },
+      { $pull: { groups: new ObjectId(groupId) } }
     );
   
     // Check if both updates were successful by inspecting modifiedCount
