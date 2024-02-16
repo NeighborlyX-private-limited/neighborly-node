@@ -109,8 +109,9 @@ exports.removeUser = async (req, res) => {
 };
 
 exports.createGroup = async (req, res) => {
+  let group=null;
   try {
-    const { latitude, longitude } = req.body;
+    const { latitude, longitude, name, id, topic, radius } = req.body;
 
     // Validate coordinates
     if (!isValidCoordinate(latitude) || !isValidCoordinate(longitude)) {
@@ -125,23 +126,45 @@ exports.createGroup = async (req, res) => {
             type: 'Point',
             coordinates: [parseFloat(longitude), parseFloat(latitude)],
           },
-          $maxDistance: 30000, // Adjust this distance as needed (in meters)
+          $maxDistance: 10000000, // Adjust this distance as needed (in meters)
         },
       }
     });
     console.log(nearbyUsers);
+    let list = [];
 
-    var nearUsersList = nearbyUsers.map(user => ({
-      username: user.username, 
-      karma: user.karma 
-    }));
-
+    var nearUsersList = nearbyUsers.map(near_user => {
+      list.push({
+        user: {
+          userId: near_user._id,
+          username: near_user.username
+        }
+      })
+    });
+    group = await Group.create({
+      name: name,
+      topic: topic,
+      radius: radius,
+      admin: { userId: req.user._id },
+      members: list,
+      id: id
+    });
+    await User.updateOne(
+      { _id: req.user._id },
+      { $addToSet: { groups: group._id } }
+    );
+    nearbyUsers.forEach(async user => {
+      await User.updateOne(
+        { _id: user._id },
+        { $addToSet: { groups: group._id } }
+      );
+    });
   } catch (error) {
     console.error('Unexpected error:', error);
     res.status(500).json({ message: 'Internal Server Error' });
   }
   res.status(200).json({
-    nearUser: nearUsersList
+    group: group
   });
 };
 
