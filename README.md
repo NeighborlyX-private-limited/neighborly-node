@@ -2,7 +2,7 @@
 
 ### Steps to Run:
 1. Open **CMD/Powershell** in Root Directory.
-2. Make sure to get the config.env file from the drive link provided in the pinned chat on the WhatsApp group
+2. Make sure to get the config.env file from the drive link provided in the pinned chat on the WhatsApp group.
 3. Get the mongoDb creds from the Repo owner. Whitelist your IP after logging in
 4. Run command **```npm install```**
 5. Run command **```npm run dev```**
