@@ -8,5 +8,6 @@ router.route("/register").post(registerUser);
 router.route("/validate-user-group").post(validateUserGroup);
 router.route("/me").get(isAuthenticated, loggedInUser);
 router.route("/logout").get(isAuthenticated, logoutUser);
+router.route("/user-info").get(isAuthenticated,userinfo);
 
 module.exports = router;

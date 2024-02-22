@@ -98,3 +98,9 @@ exports.logoutUser = async (req, res, next) => {
   })
 
 }
+//Userinfo
+exports.userinfo = async(req,res) => {
+  const user =  req.user ;   
+   res.status(200).json(user)
+ 
+}
