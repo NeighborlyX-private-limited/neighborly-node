@@ -47,11 +47,7 @@ const groupSchema = new mongoose.Schema({
         default: "pending",
       },
     },
-  ],
-  id : {
-    type: String,
-    required: [true, "Please provide group id"],
-  }
+  ]
 });
 
 // Auto-delete groups after 24 hours if not permanent

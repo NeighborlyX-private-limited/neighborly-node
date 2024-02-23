@@ -21,9 +21,9 @@ const sendToken = (user, statusCode, res) => {
   //   token,
   //   user
   // })
-  res.status(statusCode)
-  res.setHeader("Authorization", token);
-  res.send();
+  // res.status(statusCode)
+  // res.setHeader("Authorization", token);
+  // res.send();
 };
 
 module.exports = sendToken;

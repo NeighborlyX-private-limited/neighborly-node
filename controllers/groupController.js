@@ -111,7 +111,7 @@ exports.removeUser = async (req, res) => {
 exports.createGroup = async (req, res) => {
   let group=null;
   try {
-    const { latitude, longitude, name, id, topic, radius } = req.body;
+    const { latitude, longitude, name, type, topic, radius, karma_need } = req.body;
 
     // Validate coordinates
     if (!isValidCoordinate(latitude) || !isValidCoordinate(longitude)) {
@@ -126,39 +126,53 @@ exports.createGroup = async (req, res) => {
             type: 'Point',
             coordinates: [parseFloat(longitude), parseFloat(latitude)],
           },
-          $maxDistance: 10000000, // Adjust this distance as needed (in meters)
+          $maxDistance: 100000000, // Adjust this distance as needed (in meters)
         },
       }
     });
-    console.log(nearbyUsers);
+    // console.log(nearbyUsers);
     let list = [];
 
-    var nearUsersList = nearbyUsers.map(near_user => {
-      list.push({
-        user: {
-          userId: near_user._id,
-          username: near_user.username
+    if (type === "open") {
+      nearbyUsers.map(near_user => {
+        list.push({
+          user: {
+            userId: near_user._id,
+            username: near_user.username
+          }
+        });
+      });
+    }
+    else {
+      nearbyUsers.map(near_user => {
+        if(near_user.karma >= karma_need) {
+          list.push({
+            user: {
+              userId: near_user._id,
+              username: near_user.username
+            }
+          });
         }
-      })
-    });
+      });
+    }
     group = await Group.create({
       name: name,
       topic: topic,
       radius: radius,
       admin: { userId: req.user._id },
-      members: list,
-      id: id
+      members: list
     });
+    list.forEach(async member_user => {
+      // console.log(typeof member_user.user.userId);
+      await User.updateOne(
+        { _id: member_user.user.userId },
+        { $addToSet: { groups: group._id } }
+      );
+    })
     await User.updateOne(
       { _id: req.user._id },
       { $addToSet: { groups: group._id } }
     );
-    nearbyUsers.forEach(async user => {
-      await User.updateOne(
-        { _id: user._id },
-        { $addToSet: { groups: group._id } }
-      );
-    });
   } catch (error) {
     console.error('Unexpected error:', error);
     res.status(500).json({ message: 'Internal Server Error' });
