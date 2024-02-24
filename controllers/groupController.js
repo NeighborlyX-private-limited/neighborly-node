@@ -111,59 +111,22 @@ exports.removeUser = async (req, res) => {
 exports.createGroup = async (req, res) => {
   let group=null;
   try {
-    const { latitude, longitude, name, type, topic, radius, karma_need } = req.body;
+    const { latitude, longitude, name, type, topic, radius, list } = req.body;
 
     // Validate coordinates
     if (!isValidCoordinate(latitude) || !isValidCoordinate(longitude)) {
       return res.status(400).json({ message: 'Invalid coordinates' });
     }
-
-    // Query the database for nearby users based on current_coordinates
-    const nearbyUsers = await User.find({
-      current_coordinates: {
-        $near: {
-          $geometry: {
-            type: 'Point',
-            coordinates: [parseFloat(longitude), parseFloat(latitude)],
-          },
-          $maxDistance: 100000000, // Adjust this distance as needed (in meters)
-        },
-      }
-    });
-    // console.log(nearbyUsers);
-    let list = [];
-
-    if (type === "open") {
-      nearbyUsers.map(near_user => {
-        list.push({
-          user: {
-            userId: near_user._id,
-            username: near_user.username
-          }
-        });
-      });
-    }
-    else {
-      nearbyUsers.map(near_user => {
-        if(near_user.karma >= karma_need) {
-          list.push({
-            user: {
-              userId: near_user._id,
-              username: near_user.username
-            }
-          });
-        }
-      });
-    }
+    
     group = await Group.create({
       name: name,
       topic: topic,
       radius: radius,
       admin: { userId: req.user._id },
-      members: list
+      members: list,
+      group_type: type
     });
     list.forEach(async member_user => {
-      // console.log(typeof member_user.user.userId);
       await User.updateOne(
         { _id: member_user.user.userId },
         { $addToSet: { groups: group._id } }
@@ -179,6 +142,49 @@ exports.createGroup = async (req, res) => {
   }
   res.status(200).json({
     group: group
+  });
+};
+
+exports.nearbyUsers = async(req, res) => {
+  const { latitude, longitude, type, karma_need } = req.body;
+  // Query the database for nearby users based on current_coordinates
+  const nearbyUsers = await User.find({
+    current_coordinates: {
+      $near: {
+        $geometry: {
+          type: 'Point',
+          coordinates: [parseFloat(longitude), parseFloat(latitude)],
+        },
+        $maxDistance: 100000000, // Adjust this distance as needed (in meters)
+      },
+    }
+  });
+  let list = [];
+
+  if (type === "open") {
+    nearbyUsers.map(near_user => {
+      list.push({
+        user: {
+          userId: near_user._id,
+          username: near_user.username
+        }
+      });
+    });
+  }
+  else {
+    nearbyUsers.map(near_user => {
+      if (near_user.karma >= karma_need) {
+        list.push({
+          user: {
+            userId: near_user._id,
+            username: near_user.username
+          }
+        });
+      }
+    });
+  }
+  res.status(200).json({
+    list: list
   });
 };
 

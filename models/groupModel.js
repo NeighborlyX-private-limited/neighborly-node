@@ -1,4 +1,6 @@
+const { type } = require("express/lib/response");
 const mongoose = require("mongoose");
+const { required } = require("nodemon/lib/config");
 
 const groupSchema = new mongoose.Schema({
   name: {
@@ -47,7 +49,11 @@ const groupSchema = new mongoose.Schema({
         default: "pending",
       },
     },
-  ]
+  ],
+  group_type: {
+    type: String,
+    required: true
+  }
 });
 
 // Auto-delete groups after 24 hours if not permanent
