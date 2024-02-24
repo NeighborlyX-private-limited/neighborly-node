@@ -49,7 +49,7 @@ const userSchema = new mongoose.Schema({
   ],
   karma: {
     type: Number,
-    default: 0,
+    default: 1000,
   },
 });
 

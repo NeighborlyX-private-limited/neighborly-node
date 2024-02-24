@@ -1,4 +1,6 @@
+const { type } = require("express/lib/response");
 const mongoose = require("mongoose");
+const { required } = require("nodemon/lib/config");
 
 const groupSchema = new mongoose.Schema({
   name: {
@@ -48,9 +50,9 @@ const groupSchema = new mongoose.Schema({
       },
     },
   ],
-  id : {
+  group_type: {
     type: String,
-    required: [true, "Please provide group id"],
+    required: true
   }
 });
 
