@@ -13,6 +13,22 @@ exports.loggedInUser = async (req, res, next) => {
   }
 };
 
+exports.getUserGroups = async(req, res, next) => {
+  const user = req.user;
+  const groups = await User.findById(user._id).populate("groups");
+  const list=[];
+  groups.groups.forEach(group => {
+    list.push({
+      group_name: group.name,
+      group_id: group._id
+    })
+  });
+  res.status(200).json({
+    success: true,
+    groups: list
+  });
+}
+
 // User Login
 exports.loginUser = async (req, res, next) => {
   const { email, password } = req.body;
