@@ -146,7 +146,7 @@ exports.createGroup = async (req, res) => {
 };
 
 exports.nearbyUsers = async(req, res) => {
-  const { latitude, longitude, type, karma_need } = req.body;
+  const { latitude, longitude, type, karma_need } = req.query;
   // Query the database for nearby users based on current_coordinates
   const nearbyUsers = await User.find({
     current_coordinates: {
@@ -190,8 +190,8 @@ exports.nearbyUsers = async(req, res) => {
 
 exports.nearestGroup = async (req, res) => {
   try {
-    const { latitude, longitude } = req.body;
-
+    const latitude = Number(req.query.latitude);
+    const longitude = Number(req.query.longitude);
     // Validate coordinates
     if (!isValidCoordinate(latitude) || !isValidCoordinate(longitude)) {
       return res.status(400).json({ message: 'Invalid coordinates' });
@@ -230,9 +230,9 @@ exports.fetchLastMessages = async (req, res) => {
   try {
     console.log('********************************')
     console.log('fetching last messages')
-    const groupId = req.body.groupId;
-    const page = parseInt(req.body.page) || 1; // Default page 1 
-    const limit = parseInt(req.body.limit) || 10; // Default 10 messages
+    const groupId = req.params["groupId"];
+    const page = parseInt(req.query.page) || 1; // Default page 1 
+    const limit = parseInt(req.query.limit) || 10; // Default 10 messages
 
     const skip = (page - 1) * limit;
 
@@ -250,9 +250,9 @@ exports.fetchLastMessages = async (req, res) => {
 
 exports.fetchGroupDetails = async (req, res) => {
   try{
-    const groupId = req.body.groupId;
+    const groupId = req.params["groupId"];
     console.log(`${groupId} Fetching group details..`)
-    const groupDetails = await Group.findOne({id: groupId})
+    const groupDetails = await Group.findOne({_id: groupId})
     if (!groupDetails) {
       return res.status(404).json({ error: "Group not found" });
     }
