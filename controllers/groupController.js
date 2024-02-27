@@ -228,8 +228,6 @@ exports.nearestGroup = async (req, res) => {
 //added paging to scroll in the messages
 exports.fetchLastMessages = async (req, res) => {
   try {
-    console.log('********************************')
-    console.log('fetching last messages')
     const groupId = req.params["groupId"];
     const page = parseInt(req.query.page) || 1; // Default page 1 
     const limit = parseInt(req.query.limit) || 10; // Default 10 messages
@@ -240,7 +238,6 @@ exports.fetchLastMessages = async (req, res) => {
       .sort({ sent_at: -1 }) // Sort by sent_at in descending order to get the latest messages first
       .skip(skip)
       .limit(limit);
-    console.log('Messages fetched successfully')
     res.status(200).json(messages);
   } catch (error) {
     console.error("Error fetching messages:", error);
@@ -251,12 +248,10 @@ exports.fetchLastMessages = async (req, res) => {
 exports.fetchGroupDetails = async (req, res) => {
   try{
     const groupId = req.params["groupId"];
-    console.log(`${groupId} Fetching group details..`)
     const groupDetails = await Group.findOne({_id: groupId})
     if (!groupDetails) {
       return res.status(404).json({ error: "Group not found" });
     }
-    console.log(groupDetails)
     res.status(200).json(groupDetails)
   }
   catch(error) {
