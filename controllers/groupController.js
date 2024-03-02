@@ -111,7 +111,7 @@ exports.removeUser = async (req, res) => {
 exports.createGroup = async (req, res) => {
   let group=null;
   try {
-    const { latitude, longitude, name, type, topic, radius, list } = req.body;
+    const { latitude, longitude, name, type, topic, description, radius, list } = req.body;
 
     // Validate coordinates
     if (!isValidCoordinate(latitude) || !isValidCoordinate(longitude)) {
@@ -121,6 +121,7 @@ exports.createGroup = async (req, res) => {
     group = await Group.create({
       name: name,
       topic: topic,
+      description: description,
       radius: radius,
       admin: { userId: req.user._id },
       members: list,
@@ -228,6 +229,8 @@ exports.nearestGroup = async (req, res) => {
 //added paging to scroll in the messages
 exports.fetchLastMessages = async (req, res) => {
   try {
+    console.log('********************************')
+    console.log('fetching last messages')
     const groupId = req.params["groupId"];
     const page = parseInt(req.query.page) || 1; // Default page 1 
     const limit = parseInt(req.query.limit) || 10; // Default 10 messages
@@ -238,6 +241,7 @@ exports.fetchLastMessages = async (req, res) => {
       .sort({ sent_at: -1 }) // Sort by sent_at in descending order to get the latest messages first
       .skip(skip)
       .limit(limit);
+    console.log('Messages fetched successfully')
     res.status(200).json(messages);
   } catch (error) {
     console.error("Error fetching messages:", error);
@@ -248,10 +252,12 @@ exports.fetchLastMessages = async (req, res) => {
 exports.fetchGroupDetails = async (req, res) => {
   try{
     const groupId = req.params["groupId"];
+    console.log(`${groupId} Fetching group details..`)
     const groupDetails = await Group.findOne({_id: groupId})
     if (!groupDetails) {
       return res.status(404).json({ error: "Group not found" });
     }
+    console.log(groupDetails)
     res.status(200).json(groupDetails)
   }
   catch(error) {
@@ -260,8 +266,31 @@ exports.fetchGroupDetails = async (req, res) => {
   }
 };
 
+exports.updateGroupDetails = async (req, res) => {
+  const { group_id, name, description, type } = req.body;
+  const group = await Group.findById(new ObjectId(group_id));
+  console.log(group.admin.userId);
+  console.log(req.user._id);
+  try {
+    if (group.admin.userId.toString() == req.user._id.toString()) {
+      const updated = await Group.updateOne({ _id: new ObjectId(group_id) }, { $set: { name: name, description: description, type: type } });
+      res.status(200).json(updated)
+    }
+    else {
+      throw new Error("Access denied");
+    }
+  }
+  catch (err) {
+    res.status(403).json({
+      msg: err.message
+    });
+  }
+};
+
 // Function to validate coordinates
 function isValidCoordinate(coord) {
   return typeof coord === 'number' && !isNaN(coord) && coord >= -180 && coord <= 180;
 }
+
+
 
