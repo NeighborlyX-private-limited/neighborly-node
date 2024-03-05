@@ -7,6 +7,7 @@ const connectDatabase = require("./config/database");
 const errorMiddleware = require("./middlewares/error");
 const groupRoute = require("./routes/groupRoute");
 const cors = require("cors");
+const console = require('./utils/Logger').console;
 
 
 dotenv.config({ path: "./config/config.env" });
