@@ -7,16 +7,9 @@ const messageSchema = new mongoose.Schema({
     ref: "Group",
     required: true
   },
-  sender: {
-    senderId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true
-    },
-    senderName: {
-      type: String,
-      required: true
-    }
+  senderName: {
+    type: String,
+    required: true
   },
   msg: {
     type: String,
@@ -27,10 +20,12 @@ const messageSchema = new mongoose.Schema({
     default: Date.now,
   },
   read_by: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-        required: true,
-      }],
+    type: String,
+    required: true,
+  }],
+  mediaLink: {
+    type: String
+  },
   votes: {
     type: Number,
     default: 0,
