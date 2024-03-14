@@ -122,7 +122,7 @@ exports.removeUser = async (req, res) => {
 exports.createGroup = async (req, res) => {
   let group=null;
   try {
-    const { latitude, longitude, name, type, topic, radius, list } = req.body;
+    const { latitude, longitude, name, type, topic, description, radius, list } = req.body;
 
     // Validate coordinates
     if (!isValidCoordinate(latitude) || !isValidCoordinate(longitude)) {
@@ -133,6 +133,7 @@ exports.createGroup = async (req, res) => {
     group = await Group.create({
       name: name,
       topic: topic,
+      description: description,
       radius: radius,
       admin: { userId: req.user._id },
       members: list,
@@ -279,8 +280,31 @@ exports.fetchGroupDetails = async (req, res) => {
   }
 };
 
+exports.updateGroupDetails = async (req, res) => {
+  const { group_id, name, description, type } = req.body;
+  const group = await Group.findById(new ObjectId(group_id));
+  console.log(group.admin.userId);
+  console.log(req.user._id);
+  try {
+    if (group.admin.userId.toString() == req.user._id.toString()) {
+      const updated = await Group.updateOne({ _id: new ObjectId(group_id) }, { $set: { name: name, description: description, type: type } });
+      res.status(200).json(updated)
+    }
+    else {
+      throw new Error("Access denied");
+    }
+  }
+  catch (err) {
+    res.status(403).json({
+      msg: err.message
+    });
+  }
+};
+
 // Function to validate coordinates
 function isValidCoordinate(coord) {
   return typeof coord === 'number' && !isNaN(coord) && coord >= -180 && coord <= 180;
 }
+
+
 
