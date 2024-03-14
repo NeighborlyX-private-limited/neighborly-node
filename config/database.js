@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const error = require("../middlewares/error");
 
 const connectDatabase = () => {
   mongoose.connect(process.env.DB_URI).then(() => {

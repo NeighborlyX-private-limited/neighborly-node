@@ -7,7 +7,7 @@ const connectDatabase = require("./config/database");
 const errorMiddleware = require("./middlewares/error");
 const groupRoute = require("./routes/groupRoute");
 const cors = require("cors");
-const console = require('./utils/Logger').console;
+const { activityLogger, errorLogger } = require('./utils/logger');
 
 
 dotenv.config({ path: "./config/config.env" });
@@ -43,3 +43,10 @@ app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
 
+
+try {
+  
+  throw new Error('Something went wrong');
+} catch (error) {
+  errorLogger.error('An error occurred:', error);
+}

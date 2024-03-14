@@ -5,11 +5,15 @@ const ErrorHandler = require("../utils/errorHandler");
 const sendToken = require("../utils/jwtToken");
 const crypto = require("crypto");
 const {ObjectId } = require('mongodb');
+const { activityLogger, errorLogger } = require('./utils/logger');
 
 exports.loggedInUser = async (req, res, next) => {
   const user = req.user;
   if(user){
     sendToken(user, 200, res);
+    activityLogger.info(req.user+" has logged in.")
+    
+
   }
 };
 
@@ -23,6 +27,7 @@ exports.getUserGroups = async(req, res, next) => {
       group_id: group._id
     })
   });
+  activityLogger.info(`${user} retrieved their groups.`);
   res.status(200).json({
     success: true,
     groups: list
@@ -32,17 +37,22 @@ exports.getUserGroups = async(req, res, next) => {
 // User Login
 exports.loginUser = async (req, res, next) => {
   const { email, password } = req.body;
+  activityLogger.info(`Login attempt for user with email ${email}.`);
 
   const user = await User.findOne({ email: email });
 
   if (!user) {
+    errorLogger.error(`Login failed: User with email ${email} not found.`);
     return next(new ErrorHandler("Invalid Email or Password", 401));
+    
   }
 
   const match = await user.comparePassword(password);
 
   if (!match) {
+    errorLogger.error('An unexpected error occurred during login:', error);
     return next(new ErrorHandler("Invalid Email or Password", 401));
+    
   }
 
   sendToken(user, 200, res);
@@ -53,6 +63,8 @@ exports.registerUser = async (req, res) => {
   const { username, password, email, current_coordinates } = req.body;
 
   try {
+    activityLogger.info(`Registration attempt for user with email ${email}.`);
+
     const user = await User.create({
       username: username,
       password: password,
@@ -63,6 +75,7 @@ exports.registerUser = async (req, res) => {
     sendToken(user, 200, res);
 
   } catch (error) {
+    errorLogger.error('An unexpected error occurred during user registration:', error);
     if (error.code === 11000 || error.code === 11001) {
       return res.status(400).json({
         error: "Duplicate Entry",
@@ -77,28 +90,33 @@ exports.registerUser = async (req, res) => {
 exports.validateUserGroup = async (req, res) => {
   const {userID, groupID} = req.body;
   try {
+    activityLogger.info(`Validation attempt for user with ID ${userID} in group with ID ${groupID}.`);
     const group = await Group.findOne({ _id: new ObjectId(groupID) });
 
     if (group) {
       // Check if userID is present in the participants array
       if (group.participants && group.participants.includes(userID)) {
         res.status(200).json({
+          activityLogger.info(`User with ID ${userID} is present in group with ID ${groupID}.`);
           success: true,
           message: "User is present in group."
         });      
       } else {
         res.status(200).json({
+          activityLogger.info(`User with ID ${userID} is NOT present in group with ID ${groupID}.`);
           success: true,
           message: "User is not present in group."
         });      
       }
     } else {
         res.status(200).json({
+          activityLogger.info(`Group with ID ${groupID} does not exist.`);
           success: true,
           message: "Group does not exist."
         });
     }
   } catch (error) {
+    errorLogger.error('An unexpected error occurred during user group validation:', error);
     res.status(400).json({
       success: false,
       message: error
@@ -109,6 +127,7 @@ exports.validateUserGroup = async (req, res) => {
 exports.logoutUser = async (req, res, next) => {
   res.clearCookie("token");
   res.status(200).json({
+    activityLogger.info(`User with ID ${userID} is logged out.`);
     success: true,
     message: "You have been successfully logged out"
   })
