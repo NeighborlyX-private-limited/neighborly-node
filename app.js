@@ -41,12 +41,8 @@ app.use(errorMiddleware)
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on http://localhost:${PORT}`);
+  activityLogger.info(`Server is running on http://localhost:${PORT}`);
 });
 
 
-try {
-  
-  throw new Error('Something went wrong');
-} catch (error) {
-  errorLogger.error('An error occurred:', error);
-}
+
