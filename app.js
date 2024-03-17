@@ -30,9 +30,9 @@ app.use((req, res, next) => {
 });
 
 // Routes
-app.use("/user", userRoute);
-app.use("/group", groupRoute);
-app.use("/dummy", dummyRoute);
+app.use("/api/user", userRoute);
+app.use("/api/group", groupRoute);
+app.use("/api/dummy", dummyRoute);
 
 
 
