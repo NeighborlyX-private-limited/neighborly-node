@@ -3,5 +3,5 @@ package.json
 package-lock.json
 .vscode/
 config/config.env
-.logs/activity.log
-.logs/error.log
+logs/activity.log
+logs/error.log
