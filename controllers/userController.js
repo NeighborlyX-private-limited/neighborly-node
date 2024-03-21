@@ -5,7 +5,7 @@ const ErrorHandler = require("../utils/errorHandler");
 const sendToken = require("../utils/jwtToken");
 const crypto = require("crypto");
 const {ObjectId } = require('mongodb');
-const { activityLogger, errorLogger } = require('./utils/logger');
+const { activityLogger, errorLogger } = require('../utils/logger');
 
 exports.loggedInUser = async (req, res, next) => {
   const user = req.user;
@@ -96,21 +96,21 @@ exports.validateUserGroup = async (req, res) => {
     if (group) {
       // Check if userID is present in the participants array
       if (group.participants && group.participants.includes(userID)) {
+        activityLogger.info(`User with ID ${userID} is present in group with ID ${groupID}.`);
         res.status(200).json({
-          activityLogger.info(`User with ID ${userID} is present in group with ID ${groupID}.`);
           success: true,
           message: "User is present in group."
         });      
       } else {
+        activityLogger.info(`User with ID ${userID} is NOT present in group with ID ${groupID}.`);
         res.status(200).json({
-          activityLogger.info(`User with ID ${userID} is NOT present in group with ID ${groupID}.`);
           success: true,
           message: "User is not present in group."
         });      
       }
     } else {
+      activityLogger.info(`Group with ID ${groupID} does not exist.`);
         res.status(200).json({
-          activityLogger.info(`Group with ID ${groupID} does not exist.`);
           success: true,
           message: "Group does not exist."
         });
@@ -126,8 +126,8 @@ exports.validateUserGroup = async (req, res) => {
 //Logout User
 exports.logoutUser = async (req, res, next) => {
   res.clearCookie("token");
+  activityLogger.info(`User with ID ${userID} is logged out.`);
   res.status(200).json({
-    activityLogger.info(`User with ID ${userID} is logged out.`);
     success: true,
     message: "You have been successfully logged out"
   })

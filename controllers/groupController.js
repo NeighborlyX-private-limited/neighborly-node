@@ -3,7 +3,7 @@ const Message = require("../models/messageModel");
 const Group = require("../models/groupModel");
 const User = require('../models/userModel');
 const mongoose = require("mongoose");
-const { activityLogger, errorLogger } = require('./utils/logger');
+const { activityLogger, errorLogger } = require("../utils/logger");
 const ObjectId = mongoose.Types.ObjectId;
 
 
@@ -154,8 +154,9 @@ exports.createGroup = async (req, res) => {
     console.error('Unexpected error:', error);
     res.status(500).json({ message: 'Internal Server Error' });
   }
+
+  activityLogger.info(`Group ${group.name} created successfully.`);
   res.status(200).json({
-    activityLogger.info(`Group ${group.name} created successfully.`);
     group: group
   });
 };
