@@ -111,7 +111,7 @@ exports.removeUser = async (req, res) => {
 exports.createGroup = async (req, res) => {
   let group=null;
   try {
-    const { latitude, longitude, name, type, topic, description, radius, list } = req.body;
+    const { latitude, longitude, name, type, icon, description, radius, list } = req.body;
 
     // Validate coordinates
     if (!isValidCoordinate(latitude) || !isValidCoordinate(longitude)) {
@@ -120,7 +120,7 @@ exports.createGroup = async (req, res) => {
     
     group = await Group.create({
       name: name,
-      topic: topic,
+      icon: icon,
       description: description,
       radius: radius,
       admin: { userId: req.user._id },
@@ -269,10 +269,19 @@ exports.fetchGroupDetails = async (req, res) => {
 exports.updateGroupDetails = async (req, res) => {
   const { group_id, name, description, type } = req.body;
   const group = await Group.findById(new ObjectId(group_id));
+  const user = req.user;
   console.log(group.admin.userId);
-  console.log(req.user._id);
+  console.log(user._id);
+  let flag = false;
   try {
-    if (group.admin.userId.toString() == req.user._id.toString()) {
+    const admin_count = group.admin.length;
+    for( let i=0;i<admin_count;++i ) {
+      if(group.admin[i].userId.toString() == user._id.toString()) {
+        flag = true;
+        break;
+      }
+    }
+    if (flag) {
       const updated = await Group.updateOne({ _id: new ObjectId(group_id) }, { $set: { name: name, description: description, type: type } });
       res.status(200).json(updated)
     }
@@ -286,6 +295,36 @@ exports.updateGroupDetails = async (req, res) => {
     });
   }
 };
+
+exports.updateIcon = async(req,res) => {
+  const {group_id, icon} = req.body;
+  const group = await Group.findById(new ObjectId(group_id));
+  const user = req.user;
+  console.log(group.admin.userId);
+  console.log(user._id);
+  let flag = false;
+  try {
+    const admin_count = group.admin.length;
+    for( let i=0;i<admin_count;++i ) {
+      if(group.admin[i].userId.toString() == user._id.toString()) {
+        flag = true;
+        break;
+      }
+    }
+    if (flag) {
+      const updated = await Group.updateOne({ _id: new ObjectId(group_id) }, { $set: { icon: icon } });
+      res.status(200).json(updated)
+    }
+    else {
+      throw new Error("Access denied");
+    }
+  }
+  catch (err) {
+    res.status(403).json({
+      msg: err.message
+    });
+  }
+}
 
 // Function to validate coordinates
 function isValidCoordinate(coord) {
