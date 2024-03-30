@@ -138,3 +138,8 @@ exports.userinfo = async(req,res) => {
   const user =  req.user ;   
   res.status(200).json(user);
 }
+
+exports.deleteUser = async(req,res) => {
+  await User.findByIdAndRemove(req.user._id, () => console.log("User account deleted successfully"));
+  this.logoutUser(req, res);
+}
