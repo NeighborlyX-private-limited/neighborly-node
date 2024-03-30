@@ -7,6 +7,7 @@ const connectDatabase = require("./config/database");
 const errorMiddleware = require("./middlewares/error");
 const groupRoute = require("./routes/groupRoute");
 const cors = require("cors");
+const { activityLogger, errorLogger } = require('./utils/logger');
 
 
 dotenv.config({ path: "./config/config.env" });
@@ -40,5 +41,8 @@ app.use(errorMiddleware)
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on http://localhost:${PORT}`);
+  activityLogger.info(`Server is running on http://localhost:${PORT}`);
 });
+
+
 
