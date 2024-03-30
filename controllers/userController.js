@@ -36,22 +36,22 @@ exports.getUserGroups = async(req, res, next) => {
 
 // User Login
 exports.loginUser = async (req, res, next) => {
-  const { userId , password } = req.body;
+  const { userId, password } = req.json();
   let email = "";
   let username = "";
-  let user  ;
+  let user;
+
+  console.log(userId, password)
 
   const emailRegex = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;
 
-  if(emailRegex.test(userId)){
+  if (emailRegex.test(userId)) {
     email = userId;
     user = await User.findOne({ email: email });
-  }else{
+  } else {
     username = userId;
-    user = await User.findOne({ username : username });
+    user = await User.findOne({ username: username });
   }
-
-
 
   if (!user) {
     errorLogger.error(`Login failed: User with email ${email} not found.`);
@@ -72,7 +72,7 @@ exports.loginUser = async (req, res, next) => {
 
 // User Register
 exports.registerUser = async (req, res) => {
-  const { username, password, email, current_coordinates } = req.body;
+  const { username, password, email, pic, current_coordinates } = req.body;
 
   try {
     activityLogger.info(`Registration attempt for user with email ${email}.`);
@@ -80,6 +80,7 @@ exports.registerUser = async (req, res) => {
     const user = await User.create({
       username: username,
       password: password,
+      pic: pic,
       email: email,
       current_coordinates: current_coordinates,
     });
@@ -143,7 +144,12 @@ exports.logoutUser = async (req, res, next) => {
     success: true,
     message: "You have been successfully logged out"
   })
+}
 
+exports.updatePic = async(req,res) => {
+  const {user_id, pic} = req.body;
+  const update = await User.update({_id: user_id}, {$set: {pic:pic}});
+  res.status(200).json(update);
 }
 //Userinfo
 exports.userinfo = async(req,res) => {

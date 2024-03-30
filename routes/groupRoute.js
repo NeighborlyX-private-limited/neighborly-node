@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { isAuthenticated } = require("../middlewares/auth");
 
-const { createGroup, addUser, makeGroupPermanent, removeUser, nearestGroup, fetchLastMessages, fetchGroupDetails, nearbyUsers, updateGroupDetails } = require("../controllers/groupController");
+const { createGroup, addUser, makeGroupPermanent, removeUser, nearestGroup, fetchLastMessages, fetchGroupDetails, nearbyUsers, updateGroupDetails, updateIcon } = require("../controllers/groupController");
 
 
 router.route("/remove-user").post(isAuthenticated, removeUser);
@@ -14,5 +14,6 @@ router.route("/create").post(isAuthenticated,createGroup);
 router.route("/fetch-group-messages/:groupId").get(isAuthenticated, fetchLastMessages);
 router.route("/fetch-group-details/:groupId").get(isAuthenticated, fetchGroupDetails);
 router.route("/update-group-details").put(isAuthenticated, updateGroupDetails);
+router.route("/update-group-icon").put(isAuthenticated, updateIcon);
 
 module.exports = router;

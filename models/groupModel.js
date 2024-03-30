@@ -6,7 +6,7 @@ const groupSchema = new mongoose.Schema({
     required: [true, "Please provide group name"],
     maxlength: 100,
   },
-  topic: {
+  icon: {
     type: String
   },
   description: {
@@ -26,14 +26,14 @@ const groupSchema = new mongoose.Schema({
   radius: {
     type: Number,
   },
-  admin: {
-    userId: {
+  admin: [
+    {userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    username: String,
-  },
+    username: String,}
+  ],
   members: [
     {
       user: {
