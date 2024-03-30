@@ -3,6 +3,7 @@ const Message = require("../models/messageModel");
 const Group = require("../models/groupModel");
 const User = require('../models/userModel');
 const mongoose = require("mongoose");
+const { activityLogger, errorLogger } = require("../utils/logger");
 const ObjectId = mongoose.Types.ObjectId;
 
 
@@ -10,6 +11,7 @@ exports.addUser = async (req, res) => {
   try {
     // Destructure userId and groupId from the request body
     const { userId, groupId } = req.body;
+    activityLogger.info(`Adding user with ID ${userId} to group with ID ${groupId}.`);
 
     // Update the User collection to add the group to the user's groups array
     const result2 = await User.updateOne(
@@ -38,6 +40,7 @@ exports.addUser = async (req, res) => {
     }
   } catch (error) {
     // Handle unexpected errors, log them, and send an internal server error response
+    errorLogger.error('An unexpected error occurred during adding user to group:', error);
     console.error('Unexpected error:', error);
     res.status(500).json({ message: 'Internal Server Error' });
   }
@@ -48,6 +51,7 @@ exports.makeGroupPermanent = async (req, res) => {
   try {
     // Destructure groupId from the request body
     const { groupId } = req.body;
+    activityLogger.info(`Making group with ID ${groupId} permanent.`);
   
     // Find the group by ID and update the permanentGroup field
     const updatedGroup = await Group.findByIdAndUpdate(
@@ -59,13 +63,16 @@ exports.makeGroupPermanent = async (req, res) => {
     // Check if the group was not found
     if (!updatedGroup) {
       // If the group is not found, send a 404 response
+      activityLogger.error(`Group with ID ${groupId} not found.`);
       return res.status(404).json({ message: 'Group not found.' });
     }
   
     // If the group was successfully updated, send a success response with the updated group
+    activityLogger.info(`Permanent group field updated successfully for group with ID ${groupId}.`);
     res.status(200).json({ message: 'Permanent group field updated successfully.', group: updatedGroup });
   } catch (error) {
     // Handle unexpected errors, log them, and send an internal server error response
+    errorLogger.error('An unexpected error occurred during updating permanent group field:', error);
     console.error('Error updating permanent group field:', error);
     res.status(500).json({ message: 'Internal Server Error' });
   }
@@ -75,6 +82,7 @@ exports.makeGroupPermanent = async (req, res) => {
 exports.removeUser = async (req, res) => {
   try {
     const { userId, groupId } = req.body;
+    activityLogger.info(`Removing user with ID ${userId} from group with ID ${groupId}.`);
 
     const foundUser = await User.findById(
       new ObjectId(userId)
@@ -95,14 +103,17 @@ exports.removeUser = async (req, res) => {
     // Check if both updates were successful by inspecting modifiedCount
     if (result1.modifiedCount > 0 && result2.modifiedCount > 0) {
       // If both updates were successful, send a success response
+      activityLogger.info(`User with ID ${userId} removed from group with ID ${groupId} successfully.`);
       res.status(200).json({ message: 'User removed from the group successfully.' });
     } else {
       // If no updates or only one update was successful, send a failure response
+      activityLogger.info(`Group not found or user not in the group: User ID ${userId}, Group ID ${groupId}.`);
       res.status(200).json({ message: 'Group not found or user not in the group.' });
     }
   } catch (error) {
     // Handle unexpected errors, log them, and send an internal server error response
     console.error('Unexpected error:', error);
+    errorLogger.error('An unexpected error occurred during removing user from group:', error);
     res.status(500).json({ message: 'Internal Server Error' });
   }
   
@@ -115,6 +126,7 @@ exports.createGroup = async (req, res) => {
 
     // Validate coordinates
     if (!isValidCoordinate(latitude) || !isValidCoordinate(longitude)) {
+      activityLogger.error('Invalid coordinates provided during group creation.');
       return res.status(400).json({ message: 'Invalid coordinates' });
     }
     
@@ -138,9 +150,12 @@ exports.createGroup = async (req, res) => {
       { $addToSet: { groups: group._id } }
     );
   } catch (error) {
+    errorLogger.error('An unexpected error occurred during group creation:', error);
     console.error('Unexpected error:', error);
     res.status(500).json({ message: 'Internal Server Error' });
   }
+
+  activityLogger.info(`Group ${group.name} created successfully.`);
   res.status(200).json({
     group: group
   });
@@ -229,8 +244,6 @@ exports.nearestGroup = async (req, res) => {
 //added paging to scroll in the messages
 exports.fetchLastMessages = async (req, res) => {
   try {
-    console.log('********************************')
-    console.log('fetching last messages')
     const groupId = req.params["groupId"];
     const page = parseInt(req.query.page) || 1; // Default page 1 
     const limit = parseInt(req.query.limit) || 10; // Default 10 messages
@@ -241,7 +254,6 @@ exports.fetchLastMessages = async (req, res) => {
       .sort({ sent_at: -1 }) // Sort by sent_at in descending order to get the latest messages first
       .skip(skip)
       .limit(limit);
-    console.log('Messages fetched successfully')
     res.status(200).json(messages);
   } catch (error) {
     console.error("Error fetching messages:", error);
@@ -252,12 +264,10 @@ exports.fetchLastMessages = async (req, res) => {
 exports.fetchGroupDetails = async (req, res) => {
   try{
     const groupId = req.params["groupId"];
-    console.log(`${groupId} Fetching group details..`)
     const groupDetails = await Group.findOne({_id: groupId})
     if (!groupDetails) {
       return res.status(404).json({ error: "Group not found" });
     }
-    console.log(groupDetails)
     res.status(200).json(groupDetails)
   }
   catch(error) {
