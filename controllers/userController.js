@@ -63,12 +63,13 @@ exports.loginUser = async (req, res, next) => {
 
 // User Register
 exports.registerUser = async (req, res) => {
-  const { username, password, email, current_coordinates } = req.body;
+  const { username, password, email, pic, current_coordinates } = req.body;
 
   try {
     const user = await User.create({
       username: username,
       password: password,
+      pic: pic,
       email: email,
       current_coordinates: current_coordinates,
     });
@@ -125,7 +126,12 @@ exports.logoutUser = async (req, res, next) => {
     success: true,
     message: "You have been successfully logged out"
   })
+}
 
+exports.updatePic = async(req,res) => {
+  const {user_id, pic} = req.body;
+  const update = await User.update({_id: user_id}, {$set: {pic:pic}});
+  res.status(200).json(update);
 }
 //Userinfo
 exports.userinfo = async(req,res) => {

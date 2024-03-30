@@ -12,6 +12,9 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, "Please enter password"],
   },
+  pic: {
+    type: String
+  },
   email: {
     type: String,
     required: [true, "Please enter email"],
