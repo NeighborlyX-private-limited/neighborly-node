@@ -139,6 +139,7 @@ exports.validateUserGroup = async (req, res) => {
 //Logout User
 exports.logoutUser = async (req, res, next) => {
   res.clearCookie("token");
+  res.end()
   activityLogger.info(`User with ID ${userID} is logged out.`);
   res.status(200).json({
     success: true,
