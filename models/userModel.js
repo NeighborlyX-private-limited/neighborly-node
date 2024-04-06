@@ -6,19 +6,19 @@ const userSchema = new mongoose.Schema({
   username: {
     type: String,
     required: [true, "Please enter username"],
-    unique: true
+    unique: true,
   },
   password: {
     type: String,
     required: [true, "Please enter password"],
   },
   pic: {
-    type: String
+    type: String,
   },
   email: {
     type: String,
     required: [true, "Please enter email"],
-    unique: true
+    unique: true,
   },
   current_coordinates: {
     type: {
@@ -27,23 +27,21 @@ const userSchema = new mongoose.Schema({
       default: "Point",
     },
     coordinates: {
-      type: [Number,],
+      type: [Number],
       default: [0, 0], // Default coordinates, update as needed
     },
   },
-  cities: [
-    {
-      type: {
-        type: String,
-        enum: ["Point"],
-        default: "Point",
-      },
-      coordinates: {
-        type: [Number],
-        default: [0, 0], 
-      },
+  city: {
+    type: {
+      type: String,
+      enum: ["Point"],
+      default: "Point",
     },
-  ],
+    coordinates: {
+      type: [Number],
+      default: [0, 0],
+    },
+  },
   groups: [
     {
       type: mongoose.Schema.Types.ObjectId,
@@ -71,5 +69,5 @@ userSchema.methods.comparePassword = async function (password) {
 };
 
 // Add 2dsphere index on current_coordinates
-userSchema.index({ current_coordinates: '2dsphere' });
+userSchema.index({ current_coordinates: "2dsphere" });
 module.exports = mongoose.model("User", userSchema);
