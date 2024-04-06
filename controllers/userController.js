@@ -1,4 +1,5 @@
 const { generateToken } = require("../middlewares/auth");
+const { generateFromEmail, generateUsername } = require("unique-username-generator");
 const User = require("../models/userModel");
 const Group = require("../models/groupModel");
 const ErrorHandler = require("../utils/errorHandler");
@@ -72,17 +73,20 @@ exports.loginUser = async (req, res, next) => {
 
 // User Register
 exports.registerUser = async (req, res) => {
-  const { username, password, email, pic, current_coordinates } = req.body;
-
+  const { password, email, pic, current_coordinates } = req.body;
+  let username = "lyadav"//generateUsername()+ Math.floor(Math.random() * 10000);
+  while(await User.findOne({username})){
+    username = generateUsername()+ Math.floor(Math.random() * 10000);
+    activityLogger.info(`Registration attempt for user with username ${username}.`); 
+  }
   try {
-    activityLogger.info(`Registration attempt for user with email ${email}.`);
+    
+    activityLogger.info(`Registration attempt for user with email ${email}.`);  
 
     const user = await User.create({
       username: username,
       password: password,
-      pic: pic,
       email: email,
-      current_coordinates: current_coordinates,
     });
 
     sendToken(user, 200, res);
