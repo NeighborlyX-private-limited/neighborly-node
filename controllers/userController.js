@@ -36,7 +36,7 @@ exports.getUserGroups = async(req, res, next) => {
 
 // User Login
 exports.loginUser = async (req, res, next) => {
-  const { userId, password } = req.json();
+  const { userId, password } = req.body;
   let email = "";
   let username = "";
   let user;
