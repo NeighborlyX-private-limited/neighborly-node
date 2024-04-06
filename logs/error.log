@@ -1,9 +1,0 @@
-10-03-2024 22:58:54 - ERROR: An error occurred: Something went wrong
-Error: Something went wrong
-    at Object.<anonymous> (C:\Users\aryan\OneDrive\Documents\BYTE project\neighborly-node\app.js:49:9)
-    at Module._compile (node:internal/modules/cjs/loader:1376:14)
-    at Module._extensions..js (node:internal/modules/cjs/loader:1435:10)
-    at Module.load (node:internal/modules/cjs/loader:1207:32)
-    at Module._load (node:internal/modules/cjs/loader:1023:12)
-    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:135:12)
-    at node:internal/main/run_main_module:28:49
