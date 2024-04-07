@@ -47,7 +47,7 @@ exports.updateLocation = async (req, res, next) => {
       updatedCoordinates = coordinates;
       await User.findByIdAndUpdate(user._id, {
         $set: {
-          "city.coordinates": [coordinates.lat, coordinates.lng],
+          "city.coordinates": coordinates,
         },
       });
     } else {
@@ -121,7 +121,9 @@ exports.loginUser = async (req, res, next) => {
     errorLogger.error("An unexpected error occurred during login:", error);
     return next(new ErrorHandler("Invalid Email or Password", 401));
   }
-
+  activityLogger.info(
+    `User ${user.username}(${user._id}) has logged in successfully`
+  );
   sendToken(user, 200, res);
 };
 
@@ -160,63 +162,19 @@ exports.registerUser = async (req, res) => {
   }
 };
 
-exports.validateUserGroup = async (req, res) => {
-  const { userID, groupID } = req.body;
-  try {
-    activityLogger.info(
-      `Validation attempt for user with ID ${userID} in group with ID ${groupID}.`
-    );
-    const group = await Group.findOne({ _id: new ObjectId(groupID) });
-
-    if (group) {
-      // Check if userID is present in the participants array
-      if (group.participants && group.participants.includes(userID)) {
-        activityLogger.info(
-          `User with ID ${userID} is present in group with ID ${groupID}.`
-        );
-        res.status(200).json({
-          success: true,
-          message: "User is present in group.",
-        });
-      } else {
-        activityLogger.info(
-          `User with ID ${userID} is NOT present in group with ID ${groupID}.`
-        );
-        res.status(200).json({
-          success: true,
-          message: "User is not present in group.",
-        });
-      }
-    } else {
-      activityLogger.info(`Group with ID ${groupID} does not exist.`);
-      res.status(200).json({
-        success: true,
-        message: "Group does not exist.",
-      });
-    }
-  } catch (error) {
-    errorLogger.error(
-      "An unexpected error occurred during user group validation:",
-      error
-    );
-    res.status(400).json({
-      success: false,
-      message: error,
-    });
-  }
-};
-
 //Logout User
 exports.logoutUser = async (req, res, next) => {
   res.clearCookie("token");
   res.end();
 };
 
+// update user display pictures
 exports.updatePic = async (req, res) => {
   const { user_id, pic } = req.body;
   const update = await User.update({ _id: user_id }, { $set: { pic: pic } });
   res.status(200).json(update);
 };
+
 //Userinfo
 exports.userinfo = async (req, res) => {
   const user = req.user;
