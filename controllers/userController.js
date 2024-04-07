@@ -10,7 +10,15 @@ const sendToken = require("../utils/jwtToken");
 const crypto = require("crypto");
 const { ObjectId } = require("mongodb");
 const { activityLogger, errorLogger } = require("../utils/logger");
-const { CITY_TO_COORDINATE } = require("../utils/constants");
+const { CITY_TO_COORDINATE, AVAILABLE_CITIES } = require("../utils/constants");
+
+exports.fetchCities = async (req, res, next) => {
+  activityLogger.info("Cities fetched:" + AVAILABLE_CITIES);
+  res.status(200).json({
+    success: true,
+    cities: AVAILABLE_CITIES,
+  });
+};
 
 exports.updateLocation = async (req, res, next) => {
   const { body, user } = req;
@@ -18,12 +26,13 @@ exports.updateLocation = async (req, res, next) => {
   try {
     const userLocation = body?.userLocation;
     const cityLocation = body?.cityLocation;
-
+    let updatedCoordinates;
     if (userLocation) {
       // If userLocation is provided, it should be an array with [lat, lng]
       activityLogger.info(
         "Updating user's location based on coordinates: " + userLocation
       );
+      updatedCoordinates = userLocation;
       await User.findByIdAndUpdate(user._id, {
         $set: {
           "current_coordinates.coordinates": userLocation,
@@ -35,6 +44,7 @@ exports.updateLocation = async (req, res, next) => {
         "Updating user's location based on city: " + cityLocation
       );
       const coordinates = CITY_TO_COORDINATE[cityLocation.toLowerCase()];
+      updatedCoordinates = coordinates;
       await User.findByIdAndUpdate(user._id, {
         $set: {
           "city.coordinates": [coordinates.lat, coordinates.lng],
@@ -46,6 +56,7 @@ exports.updateLocation = async (req, res, next) => {
     activityLogger.info("User location update successful");
     res.status(200).json({
       success: true,
+      user_coordinates: updatedCoordinates,
       message: "Location updated successfully",
     });
   } catch (error) {
