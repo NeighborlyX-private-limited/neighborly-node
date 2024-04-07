@@ -7,10 +7,10 @@ const groupSchema = new mongoose.Schema({
     maxlength: 100,
   },
   icon: {
-    type: String
+    type: String,
   },
   description: {
-    type: String
+    type: String,
   },
   location: {
     type: {
@@ -19,20 +19,25 @@ const groupSchema = new mongoose.Schema({
       default: "Point",
     },
     coordinates: {
-      type: [Number,],
+      type: [Number],
       default: [0, 0], // Default coordinates, update as needed
     },
   },
   radius: {
     type: Number,
   },
+  karma: {
+    type: Number,
+  },
   admin: [
-    {userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
+    {
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+      },
+      username: String,
     },
-    username: String,}
   ],
   members: [
     {
@@ -44,17 +49,12 @@ const groupSchema = new mongoose.Schema({
         },
         username: String,
       },
-      status: {
-        type: String,
-        enum: ["pending", "accepted"],
-        default: "pending",
-      },
     },
   ],
   group_type: {
     type: String,
-    required: true
-  }
+    required: true,
+  },
 });
 
 // Auto-delete groups after 24 hours if not permanent

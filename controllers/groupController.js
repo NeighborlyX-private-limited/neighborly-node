@@ -14,43 +14,48 @@ exports.addUser = async (req, res) => {
       `Adding user with ID ${userId} to group with ID ${groupId}.`
     );
 
+    const group = await Group.findById(new ObjectId(groupId));
+    if (!group) {
+      return res.status(404).json({ message: "Group not found." });
+    }
+
+    const requiredKarma = group.karma;
+
+    const user = await User.findById(new ObjectId(userId));
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    if (user.karma < requiredKarma) {
+      return res.status(403).json({ message: "Insufficient karma." });
+    }
+
     // Update the User collection to add the group to the user's groups array
-    const result2 = await User.updateOne(
+    const groupAddedInUser = await User.updateOne(
       { _id: new ObjectId(userId) },
       { $addToSet: { groups: new ObjectId(groupId) } }
     );
 
-    const foundUser = await User.findById(new ObjectId(userId));
-
-    // Update the Group collection to add the user to the group
-    const result1 = await Group.updateOne(
+    //Updating 'members' field that is an array of ObjectId references to User documents
+    const userAddedToGroup = await Group.updateOne(
       { _id: new ObjectId(groupId) },
-      {
-        $addToSet: {
-          members: {
-            user: {
-              userId: new ObjectId(userId),
-              username: foundUser.username,
-            },
-          },
-        },
-      }
+      { $addToSet: { members: new ObjectId(userId) } }
     );
 
     // Check if both updates were successful by inspecting modifiedCount
-    if (result1.modifiedCount > 0 && result2.modifiedCount > 0) {
-      // If both updates were successful, send a success response
+    if (
+      userAddedToGroup.modifiedCount > 0 &&
+      groupAddedInUser.modifiedCount > 0
+    ) {
       res
         .status(200)
         .json({ message: "User added to the group successfully." });
     } else {
-      // If no updates or only one update was successful, send a failure response
       res
-        .status(200)
+        .status(400)
         .json({ message: "Group not found or user already in the group." });
     }
   } catch (error) {
-    // Handle unexpected errors, log them, and send an internal server error response
     errorLogger.error(
       "An unexpected error occurred during adding user to group:",
       error
@@ -84,12 +89,10 @@ exports.makeGroupPermanent = async (req, res) => {
     activityLogger.info(
       `Permanent group field updated successfully for group with ID ${groupId}.`
     );
-    res
-      .status(200)
-      .json({
-        message: "Permanent group field updated successfully.",
-        group: updatedGroup,
-      });
+    res.status(200).json({
+      message: "Permanent group field updated successfully.",
+      group: updatedGroup,
+    });
   } catch (error) {
     // Handle unexpected errors, log them, and send an internal server error response
     errorLogger.error(
@@ -163,8 +166,17 @@ exports.removeUser = async (req, res) => {
 exports.createGroup = async (req, res) => {
   let group = null;
   try {
-    const { latitude, longitude, name, type, icon, description, radius, list } =
-      req.body;
+    const {
+      latitude,
+      longitude,
+      name,
+      type,
+      icon,
+      description,
+      radius,
+      list,
+      isOpen,
+    } = req.body;
 
     // Validate coordinates
     if (!isValidCoordinate(latitude) || !isValidCoordinate(longitude)) {
@@ -180,6 +192,7 @@ exports.createGroup = async (req, res) => {
       description: description,
       radius: radius,
       admin: { userId: req.user._id },
+      isOpen: isOpen,
       members: list,
       group_type: type,
     });
