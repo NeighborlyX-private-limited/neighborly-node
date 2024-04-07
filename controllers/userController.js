@@ -78,19 +78,26 @@ exports.loggedInUser = async (req, res, next) => {
 
 exports.getUserGroups = async (req, res, next) => {
   const user = req.user;
-  const groups = await User.findById(user._id).populate("groups");
-  const list = [];
-  groups.groups.forEach((group) => {
-    list.push({
-      group_name: group.name,
-      group_id: group._id,
+  activityLogger.info(`fetching groups for ${user.username}`);
+  try {
+    const groups = await User.findById(user._id).populate("groups");
+    const list = [];
+    groups.groups.forEach((group) => {
+      list.push({
+        group_name: group.name,
+        group_id: group._id,
+      });
     });
-  });
-  activityLogger.info(`${user} retrieved their groups.`);
-  res.status(200).json({
-    success: true,
-    groups: list,
-  });
+    activityLogger.info(`Retrieved groups for ${user.username}`);
+    res.status(200).json({
+      success: true,
+      groups: list,
+    });
+  } catch (error) {
+    errorLogger.error(
+      `Error in getUserGroups for ${user.username}. Error: ${error}`
+    );
+  }
 };
 
 // User Login
