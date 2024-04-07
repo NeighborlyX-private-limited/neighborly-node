@@ -13,6 +13,7 @@ const {
   nearbyUsers,
   updateGroupDetails,
   updateIcon,
+  checkGroupNameUnique,
 } = require("../controllers/groupController");
 
 router.route("/remove-user").post(isAuthenticated, removeUser);
@@ -28,6 +29,7 @@ router
   .route("/fetch-group-details/:groupId")
   .get(isAuthenticated, fetchGroupDetails);
 router.route("/update-group-details").put(isAuthenticated, updateGroupDetails);
+router.route("/is-group-unique").get(checkGroupNameUnique);
 router.route("/update-group-icon").put(isAuthenticated, updateIcon);
 
 module.exports = router;

@@ -170,31 +170,39 @@ exports.createGroup = async (req, res) => {
       latitude,
       longitude,
       name,
-      type,
       icon,
       description,
       radius,
       list,
       isOpen,
+      karma,
     } = req.body;
-
+    const user = req.user;
+    const admin = [
+      {
+        userId: user._id,
+        username: user.username,
+        karma: user.karma,
+        pic: user.pic,
+      },
+    ];
     // Validate coordinates
-    if (!isValidCoordinate(latitude) || !isValidCoordinate(longitude)) {
+    if (!isValidCoordinate(latitude, longitude)) {
       activityLogger.error(
         "Invalid coordinates provided during group creation."
       );
       return res.status(400).json({ message: "Invalid coordinates" });
     }
-
     group = await Group.create({
       name: name,
       icon: icon,
       description: description,
       radius: radius,
-      admin: { userId: req.user._id },
+      admin: admin,
       isOpen: isOpen,
+      admin: admin,
       members: list,
-      group_type: type,
+      karma: karma,
     });
     list.forEach(async (member_user) => {
       await User.updateOne(
@@ -390,6 +398,31 @@ exports.updateIcon = async (req, res) => {
   } catch (err) {
     res.status(403).json({
       msg: err.message,
+    });
+  }
+};
+
+exports.checkGroupNameUnique = async (req, res) => {
+  const groupName = req.body.name;
+
+  try {
+    const existingGroup = await Group.findOne({ name: groupName });
+    if (existingGroup) {
+      return res.status(400).json({
+        success: false,
+        message: "Group name already exists. Please choose a different name.",
+      });
+    } else if (!existingGroup) {
+      return res.status(200).json({
+        success: true,
+        message: "Unique group name.",
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "An error occurred while checking the group name.",
+      error: error.message,
     });
   }
 };

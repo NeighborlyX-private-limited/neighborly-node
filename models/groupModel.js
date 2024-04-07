@@ -23,6 +23,9 @@ const groupSchema = new mongoose.Schema({
       default: [0, 0], // Default coordinates, update as needed
     },
   },
+  isOpen: {
+    type: Boolean,
+  },
   radius: {
     type: Number,
   },
@@ -51,10 +54,6 @@ const groupSchema = new mongoose.Schema({
       },
     },
   ],
-  group_type: {
-    type: String,
-    required: true,
-  },
 });
 
 // Auto-delete groups after 24 hours if not permanent
