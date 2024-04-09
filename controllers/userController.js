@@ -4,7 +4,6 @@ const {
   generateUsername,
 } = require("unique-username-generator");
 const User = require("../models/userModel");
-const Group = require("../models/groupModel");
 const ErrorHandler = require("../utils/errorHandler");
 const sendToken = require("../utils/jwtToken");
 const crypto = require("crypto");
@@ -146,7 +145,6 @@ exports.loginUser = async (req, res, next) => {
   }
 
   if (!user) {
-    errorLogger.error(`Login failed: User with email ${email} not found.`);
     return next(new ErrorHandler("Invalid Email or Password", 401));
   }
 
@@ -173,8 +171,6 @@ exports.registerUser = async (req, res) => {
     );
   }
   try {
-    activityLogger.info(`Registration attempt for user with email ${email}.`);
-
     const user = await User.create({
       username: username,
       password: password,
@@ -198,6 +194,7 @@ exports.registerUser = async (req, res) => {
 };
 
 //Logout User
+
 exports.logoutUser = async (req, res, next) => {
   res.clearCookie("token");
   res.end();

@@ -12,6 +12,7 @@ const {
   fetchPreSignedURL,
 } = require("../controllers/userController");
 const { isAuthenticated } = require("../middlewares/auth");
+
 const router = express.Router();
 
 router.route("/login").post(loginUser);
