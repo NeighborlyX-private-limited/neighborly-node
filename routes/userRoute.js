@@ -9,8 +9,10 @@ const {
   updatePic,
   updateLocation,
   fetchCities,
+  fetchPreSignedURL,
 } = require("../controllers/userController");
 const { isAuthenticated } = require("../middlewares/auth");
+
 const router = express.Router();
 
 router.route("/login").post(loginUser);
@@ -22,5 +24,6 @@ router.route("/get-user-groups").get(isAuthenticated, getUserGroups);
 router.route("/update-user-pic").put(isAuthenticated, updatePic);
 router.route("/update-user-location").put(isAuthenticated, updateLocation);
 router.route("/fetch-cities").get(fetchCities);
+router.route("/get-presigned-url").get(fetchPreSignedURL);
 
 module.exports = router;

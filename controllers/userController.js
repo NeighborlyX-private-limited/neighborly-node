@@ -4,13 +4,40 @@ const {
   generateUsername,
 } = require("unique-username-generator");
 const User = require("../models/userModel");
-const Group = require("../models/groupModel");
 const ErrorHandler = require("../utils/errorHandler");
 const sendToken = require("../utils/jwtToken");
 const crypto = require("crypto");
 const { ObjectId } = require("mongodb");
 const { activityLogger, errorLogger } = require("../utils/logger");
-const { CITY_TO_COORDINATE, AVAILABLE_CITIES } = require("../utils/constants");
+const {
+  CITY_TO_COORDINATE,
+  AVAILABLE_CITIES,
+  S3,
+  S3_BUCKET_NAME,
+} = require("../utils/constants");
+
+exports.fetchPreSignedURL = async (req, res, next) => {
+  const params = {
+    Bucket: S3_BUCKET_NAME,
+    Key: req.query.fileName,
+    Expires: 120, //seconds
+    ContentType: "image/jpeg",
+  };
+
+  S3.getSignedUrl("putObject", params, (error, url) => {
+    if (error) {
+      errorLogger.error(
+        "An error occurred while fetching presigned URL." + error
+      );
+      res.status(500).json({
+        success: false,
+        message: "An error occurred while fetching presigned URL.",
+      });
+    } else {
+      res.status(200).json({ success: true, url });
+    }
+  });
+};
 
 exports.fetchCities = async (req, res, next) => {
   activityLogger.info("Cities fetched:" + AVAILABLE_CITIES);
@@ -19,7 +46,6 @@ exports.fetchCities = async (req, res, next) => {
     cities: AVAILABLE_CITIES,
   });
 };
-
 
 exports.updateLocation = async (req, res, next) => {
   const { body, user } = req;
@@ -33,7 +59,6 @@ exports.updateLocation = async (req, res, next) => {
       activityLogger.info(
         "Updating user's location based on coordinates: " + userLocation
       );
-
       updatedCoordinates = userLocation;
       await User.findByIdAndUpdate(user._id, {
         $set: {
@@ -100,7 +125,6 @@ exports.getUserGroups = async (req, res, next) => {
       `Error in getUserGroups for ${user.username}. Error: ${error}`
     );
   }
-
 };
 
 // User Login
@@ -121,7 +145,6 @@ exports.loginUser = async (req, res, next) => {
   }
 
   if (!user) {
-    errorLogger.error(`Login failed: User with email ${email} not found.`);
     return next(new ErrorHandler("Invalid Email or Password", 401));
   }
 
@@ -148,8 +171,6 @@ exports.registerUser = async (req, res) => {
     );
   }
   try {
-    activityLogger.info(`Registration attempt for user with email ${email}.`);
-
     const user = await User.create({
       username: username,
       password: password,
@@ -172,13 +193,12 @@ exports.registerUser = async (req, res) => {
   }
 };
 
-
 //Logout User
+
 exports.logoutUser = async (req, res, next) => {
   res.clearCookie("token");
   res.end();
 };
-
 
 // update user display pictures
 exports.updatePic = async (req, res) => {
@@ -186,8 +206,6 @@ exports.updatePic = async (req, res) => {
   const update = await User.update({ _id: user_id }, { $set: { pic: pic } });
   res.status(200).json(update);
 };
-
-
 
 //Userinfo
 exports.userinfo = async (req, res) => {

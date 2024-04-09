@@ -4,6 +4,7 @@ const Group = require("../models/groupModel");
 const User = require("../models/userModel");
 const mongoose = require("mongoose");
 const { activityLogger, errorLogger } = require("../utils/logger");
+const { error } = require("winston");
 const ObjectId = mongoose.Types.ObjectId;
 
 exports.addUser = async (req, res) => {
@@ -186,6 +187,7 @@ exports.createGroup = async (req, res) => {
         pic: user.pic,
       },
     ];
+    activityLogger.info("Creating group for user " + user.username);
     // Validate coordinates
     if (!isValidCoordinate(latitude, longitude)) {
       activityLogger.error(
@@ -193,23 +195,39 @@ exports.createGroup = async (req, res) => {
       );
       return res.status(400).json({ message: "Invalid coordinates" });
     }
+    duplicateName = await Group.findOne({ name });
+    if (duplicateName) {
+      activityLogger.error(name + "Group name already exists.");
+      return res.status(200).json({
+        message: "Group name already exists. Chooses a different name",
+        error: true,
+      });
+    }
     group = await Group.create({
       name: name,
       icon: icon,
       description: description,
+      location: {
+        type: "Point",
+        coordinates: [latitude, longitude],
+      },
       radius: radius,
-      admin: admin,
       isOpen: isOpen,
       admin: admin,
       members: list,
       karma: karma,
     });
-    list.forEach(async (member_user) => {
-      await User.updateOne(
-        { _id: member_user.user.userId },
-        { $addToSet: { groups: group._id } }
+    if (list && list.length > 0) {
+      activityLogger.info("Adding members...");
+      await Promise.all(
+        list.map((member_user) =>
+          User.updateOne(
+            { _id: member_user.user.userId },
+            { $addToSet: { groups: group._id } }
+          )
+        )
       );
-    });
+    }
     await User.updateOne(
       { _id: req.user._id },
       { $addToSet: { groups: group._id } }
@@ -230,42 +248,31 @@ exports.createGroup = async (req, res) => {
 };
 
 exports.nearbyUsers = async (req, res) => {
-  const { latitude, longitude, type, karma_need } = req.query;
+  const { latitude, longitude, karma_need } = req.query;
   // Query the database for nearby users based on current_coordinates
   const nearbyUsers = await User.find({
     current_coordinates: {
       $near: {
         $geometry: {
           type: "Point",
-          coordinates: [parseFloat(longitude), parseFloat(latitude)],
+          coordinates: [parseFloat(latitude), parseFloat(longitude)],
         },
-        $maxDistance: 100000000, // Adjust this distance as needed (in meters)
+        $maxDistance: 3000, // Adjust this distance as needed (in meters)
       },
     },
   });
   let list = [];
 
-  if (type === "open") {
-    nearbyUsers.map((near_user) => {
+  nearbyUsers.map((near_user) => {
+    if (near_user.karma >= karma_need) {
       list.push({
         user: {
           userId: near_user._id,
           username: near_user.username,
         },
       });
-    });
-  } else {
-    nearbyUsers.map((near_user) => {
-      if (near_user.karma >= karma_need) {
-        list.push({
-          user: {
-            userId: near_user._id,
-            username: near_user.username,
-          },
-        });
-      }
-    });
-  }
+    }
+  });
   res.status(200).json({
     list: list,
   });
@@ -273,28 +280,32 @@ exports.nearbyUsers = async (req, res) => {
 
 exports.nearestGroup = async (req, res) => {
   try {
+    const userId = req.user._id;
     const latitude = Number(req.query.latitude);
     const longitude = Number(req.query.longitude);
     // Validate coordinates
     if (!isValidCoordinate(latitude, longitude)) {
       return res.status(400).json({ message: "Invalid coordinates" });
     }
-
+    console.log(userId);
     // Query the database for nearby groups based on current_coordinates
     const nearbyGroups = await Group.find({
       location: {
         $near: {
           $geometry: {
             type: "Point",
-            coordinates: [parseFloat(longitude), parseFloat(latitude)],
+            coordinates: [parseFloat(latitude), parseFloat(longitude)],
           },
           $maxDistance: 300000, // Adjust this distance as needed (in meters)
         },
       },
+      members: { $ne: userId },
+      "admin.userId": { $ne: userId },
     });
 
     var nearGroupsList = nearbyGroups.map((group) => ({
-      groupname: group.name,
+      groupName: group.name,
+      groupId: group._id,
       topic: group.topic,
     }));
   } catch (error) {
