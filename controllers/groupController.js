@@ -284,7 +284,7 @@ exports.nearestGroup = async (req, res) => {
     if (!isValidCoordinate(latitude, longitude)) {
       return res.status(400).json({ message: "Invalid coordinates" });
     }
-
+    console.log(userId);
     // Query the database for nearby groups based on current_coordinates
     const nearbyGroups = await Group.find({
       location: {
@@ -297,6 +297,7 @@ exports.nearestGroup = async (req, res) => {
         },
       },
       members: { $ne: userId },
+      "admin.userId": { $ne: userId },
     });
 
     var nearGroupsList = nearbyGroups.map((group) => ({
