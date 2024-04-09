@@ -1,8 +1,10 @@
 const CITY_TO_COORDINATE = {
-  delhi: { lat: 28.5643, lng: 77.2442 },
-  noida: { lat: 28.5747, lng: 77.356 },
-  gurugram: { lat: 28.4732, lng: 77.0189 },
+  delhi: [28.5643, 77.2442],
+  noida: [28.5747, 77.356],
+  gurugram: [28.4732, 77.0189],
 };
+const AVAILABLE_CITIES = ["delhi", "noida", "gurugram"];
+
 
 const COORDINATE_TO_CITY = {
   "28.5643,77.2442": "delhi",
@@ -20,4 +22,5 @@ module.exports = {
   CITY_TO_COORDINATE,
   COORDINATE_TO_CITY,
   CITY_RADIUS,
+  AVAILABLE_CITIES,
 };

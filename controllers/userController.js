@@ -10,7 +10,16 @@ const sendToken = require("../utils/jwtToken");
 const crypto = require("crypto");
 const { ObjectId } = require("mongodb");
 const { activityLogger, errorLogger } = require("../utils/logger");
-const { CITY_TO_COORDINATE } = require("../utils/constants");
+const { CITY_TO_COORDINATE, AVAILABLE_CITIES } = require("../utils/constants");
+
+exports.fetchCities = async (req, res, next) => {
+  activityLogger.info("Cities fetched:" + AVAILABLE_CITIES);
+  res.status(200).json({
+    success: true,
+    cities: AVAILABLE_CITIES,
+  });
+};
+
 
 exports.updateLocation = async (req, res, next) => {
   const { body, user } = req;
@@ -18,12 +27,14 @@ exports.updateLocation = async (req, res, next) => {
   try {
     const userLocation = body?.userLocation;
     const cityLocation = body?.cityLocation;
-
+    let updatedCoordinates;
     if (userLocation) {
       // If userLocation is provided, it should be an array with [lat, lng]
       activityLogger.info(
         "Updating user's location based on coordinates: " + userLocation
       );
+
+      updatedCoordinates = userLocation;
       await User.findByIdAndUpdate(user._id, {
         $set: {
           "current_coordinates.coordinates": userLocation,
@@ -35,9 +46,10 @@ exports.updateLocation = async (req, res, next) => {
         "Updating user's location based on city: " + cityLocation
       );
       const coordinates = CITY_TO_COORDINATE[cityLocation.toLowerCase()];
+      updatedCoordinates = coordinates;
       await User.findByIdAndUpdate(user._id, {
         $set: {
-          "city.coordinates": [coordinates.lat, coordinates.lng],
+          "city.coordinates": coordinates,
         },
       });
     } else {
@@ -46,6 +58,7 @@ exports.updateLocation = async (req, res, next) => {
     activityLogger.info("User location update successful");
     res.status(200).json({
       success: true,
+      user_coordinates: updatedCoordinates,
       message: "Location updated successfully",
     });
   } catch (error) {
@@ -67,19 +80,27 @@ exports.loggedInUser = async (req, res, next) => {
 
 exports.getUserGroups = async (req, res, next) => {
   const user = req.user;
-  const groups = await User.findById(user._id).populate("groups");
-  const list = [];
-  groups.groups.forEach((group) => {
-    list.push({
-      group_name: group.name,
-      group_id: group._id,
+  activityLogger.info(`fetching groups for ${user.username}`);
+  try {
+    const groups = await User.findById(user._id).populate("groups");
+    const list = [];
+    groups.groups.forEach((group) => {
+      list.push({
+        group_name: group.name,
+        group_id: group._id,
+      });
     });
-  });
-  activityLogger.info(`${user} retrieved their groups.`);
-  res.status(200).json({
-    success: true,
-    groups: list,
-  });
+    activityLogger.info(`Retrieved groups for ${user.username}`);
+    res.status(200).json({
+      success: true,
+      groups: list,
+    });
+  } catch (error) {
+    errorLogger.error(
+      `Error in getUserGroups for ${user.username}. Error: ${error}`
+    );
+  }
+
 };
 
 // User Login
@@ -110,7 +131,9 @@ exports.loginUser = async (req, res, next) => {
     errorLogger.error("An unexpected error occurred during login:", error);
     return next(new ErrorHandler("Invalid Email or Password", 401));
   }
-
+  activityLogger.info(
+    `User ${user.username}(${user._id}) has logged in successfully`
+  );
   sendToken(user, 200, res);
 };
 
@@ -149,51 +172,6 @@ exports.registerUser = async (req, res) => {
   }
 };
 
-exports.validateUserGroup = async (req, res) => {
-  const { userID, groupID } = req.body;
-  try {
-    activityLogger.info(
-      `Validation attempt for user with ID ${userID} in group with ID ${groupID}.`
-    );
-    const group = await Group.findOne({ _id: new ObjectId(groupID) });
-
-    if (group) {
-      // Check if userID is present in the participants array
-      if (group.participants && group.participants.includes(userID)) {
-        activityLogger.info(
-          `User with ID ${userID} is present in group with ID ${groupID}.`
-        );
-        res.status(200).json({
-          success: true,
-          message: "User is present in group.",
-        });
-      } else {
-        activityLogger.info(
-          `User with ID ${userID} is NOT present in group with ID ${groupID}.`
-        );
-        res.status(200).json({
-          success: true,
-          message: "User is not present in group.",
-        });
-      }
-    } else {
-      activityLogger.info(`Group with ID ${groupID} does not exist.`);
-      res.status(200).json({
-        success: true,
-        message: "Group does not exist.",
-      });
-    }
-  } catch (error) {
-    errorLogger.error(
-      "An unexpected error occurred during user group validation:",
-      error
-    );
-    res.status(400).json({
-      success: false,
-      message: error,
-    });
-  }
-};
 
 //Logout User
 exports.logoutUser = async (req, res, next) => {
@@ -201,11 +179,16 @@ exports.logoutUser = async (req, res, next) => {
   res.end();
 };
 
+
+// update user display pictures
 exports.updatePic = async (req, res) => {
   const { user_id, pic } = req.body;
   const update = await User.update({ _id: user_id }, { $set: { pic: pic } });
   res.status(200).json(update);
 };
+
+
+
 //Userinfo
 exports.userinfo = async (req, res) => {
   const user = req.user;
