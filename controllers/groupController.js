@@ -4,6 +4,7 @@ const Group = require("../models/groupModel");
 const User = require("../models/userModel");
 const mongoose = require("mongoose");
 const { activityLogger, errorLogger } = require("../utils/logger");
+const { error } = require("winston");
 const ObjectId = mongoose.Types.ObjectId;
 
 exports.addUser = async (req, res) => {
@@ -193,6 +194,13 @@ exports.createGroup = async (req, res) => {
       );
       return res.status(400).json({ message: "Invalid coordinates" });
     }
+    duplicateName = await Group.findOne({ name });
+    if (duplicateName) {
+      return res.status(200).json({
+        message: "Group name already exists. Chooses a different name",
+        error: true,
+      });
+    }
     group = await Group.create({
       name: name,
       icon: icon,
@@ -237,14 +245,14 @@ exports.createGroup = async (req, res) => {
 };
 
 exports.nearbyUsers = async (req, res) => {
-  const { latitude, longitude, type, karma_need } = req.query;
+  const { latitude, longitude, karma_need } = req.query;
   // Query the database for nearby users based on current_coordinates
   const nearbyUsers = await User.find({
     current_coordinates: {
       $near: {
         $geometry: {
           type: "Point",
-          coordinates: [parseFloat(longitude), parseFloat(latitude)],
+          coordinates: [parseFloat(latitude), parseFloat(longitude)],
         },
         $maxDistance: 3000, // Adjust this distance as needed (in meters)
       },
@@ -282,7 +290,7 @@ exports.nearestGroup = async (req, res) => {
         $near: {
           $geometry: {
             type: "Point",
-            coordinates: [parseFloat(longitude), parseFloat(latitude)],
+            coordinates: [parseFloat(latitude), parseFloat(longitude)],
           },
           $maxDistance: 300000, // Adjust this distance as needed (in meters)
         },
