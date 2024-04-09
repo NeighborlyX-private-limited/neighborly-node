@@ -288,7 +288,7 @@ exports.nearestGroup = async (req, res) => {
             type: "Point",
             coordinates: [parseFloat(longitude), parseFloat(latitude)],
           },
-          $maxDistance: 30000, // Adjust this distance as needed (in meters)
+          $maxDistance: 300000, // Adjust this distance as needed (in meters)
         },
       },
     });

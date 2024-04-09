@@ -65,5 +65,7 @@ groupSchema.index(
   }
 );
 
+// This is very important so that we can query the coordinates DO NOT REMOVE
+groupSchema.index({ location: "2dsphere" });
 const Group = mongoose.model("Group", groupSchema);
 module.exports = Group;
