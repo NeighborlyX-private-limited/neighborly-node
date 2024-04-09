@@ -298,7 +298,8 @@ exports.nearestGroup = async (req, res) => {
     });
 
     var nearGroupsList = nearbyGroups.map((group) => ({
-      groupname: group.name,
+      groupName: group.name,
+      groupId: group._id,
       topic: group.topic,
     }));
   } catch (error) {
