@@ -277,6 +277,7 @@ exports.nearbyUsers = async (req, res) => {
 
 exports.nearestGroup = async (req, res) => {
   try {
+    const userId = req.user._id;
     const latitude = Number(req.query.latitude);
     const longitude = Number(req.query.longitude);
     // Validate coordinates
@@ -295,6 +296,7 @@ exports.nearestGroup = async (req, res) => {
           $maxDistance: 300000, // Adjust this distance as needed (in meters)
         },
       },
+      members: { $ne: userId },
     });
 
     var nearGroupsList = nearbyGroups.map((group) => ({
