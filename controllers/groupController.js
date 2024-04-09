@@ -204,12 +204,16 @@ exports.createGroup = async (req, res) => {
       members: list,
       karma: karma,
     });
-    list.forEach(async (member_user) => {
-      await User.updateOne(
-        { _id: member_user.user.userId },
-        { $addToSet: { groups: group._id } }
+    if (list && list.length > 0) {
+      await Promise.all(
+        list.map((member_user) =>
+          User.updateOne(
+            { _id: member_user.user.userId },
+            { $addToSet: { groups: group._id } }
+          )
+        )
       );
-    });
+    }
     await User.updateOne(
       { _id: req.user._id },
       { $addToSet: { groups: group._id } }
@@ -239,33 +243,22 @@ exports.nearbyUsers = async (req, res) => {
           type: "Point",
           coordinates: [parseFloat(longitude), parseFloat(latitude)],
         },
-        $maxDistance: 100000000, // Adjust this distance as needed (in meters)
+        $maxDistance: 3000, // Adjust this distance as needed (in meters)
       },
     },
   });
   let list = [];
 
-  if (type === "open") {
-    nearbyUsers.map((near_user) => {
+  nearbyUsers.map((near_user) => {
+    if (near_user.karma >= karma_need) {
       list.push({
         user: {
           userId: near_user._id,
           username: near_user.username,
         },
       });
-    });
-  } else {
-    nearbyUsers.map((near_user) => {
-      if (near_user.karma >= karma_need) {
-        list.push({
-          user: {
-            userId: near_user._id,
-            username: near_user.username,
-          },
-        });
-      }
-    });
-  }
+    }
+  });
   res.status(200).json({
     list: list,
   });
