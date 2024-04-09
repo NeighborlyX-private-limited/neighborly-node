@@ -10,7 +10,35 @@ const sendToken = require("../utils/jwtToken");
 const crypto = require("crypto");
 const { ObjectId } = require("mongodb");
 const { activityLogger, errorLogger } = require("../utils/logger");
-const { CITY_TO_COORDINATE, AVAILABLE_CITIES } = require("../utils/constants");
+const {
+  CITY_TO_COORDINATE,
+  AVAILABLE_CITIES,
+  S3,
+  S3_BUCKET_NAME,
+} = require("../utils/constants");
+
+exports.fetchPreSignedURL = async (req, res, next) => {
+  const params = {
+    Bucket: S3_BUCKET_NAME,
+    Key: req.query.fileName,
+    Expires: 120, //seconds
+    ContentType: "image/jpeg",
+  };
+
+  S3.getSignedUrl("putObject", params, (error, url) => {
+    if (error) {
+      errorLogger.error(
+        "An error occurred while fetching presigned URL." + error
+      );
+      res.status(500).json({
+        success: false,
+        message: "An error occurred while fetching presigned URL.",
+      });
+    } else {
+      res.status(200).json({ success: true, url });
+    }
+  });
+};
 
 exports.fetchCities = async (req, res, next) => {
   activityLogger.info("Cities fetched:" + AVAILABLE_CITIES);

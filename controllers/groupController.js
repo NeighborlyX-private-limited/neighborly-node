@@ -187,6 +187,7 @@ exports.createGroup = async (req, res) => {
         pic: user.pic,
       },
     ];
+    activityLogger.info("Creating group for user " + user.username);
     // Validate coordinates
     if (!isValidCoordinate(latitude, longitude)) {
       activityLogger.error(
@@ -196,6 +197,7 @@ exports.createGroup = async (req, res) => {
     }
     duplicateName = await Group.findOne({ name });
     if (duplicateName) {
+      activityLogger.error(name + "Group name already exists.");
       return res.status(200).json({
         message: "Group name already exists. Chooses a different name",
         error: true,
@@ -216,6 +218,7 @@ exports.createGroup = async (req, res) => {
       karma: karma,
     });
     if (list && list.length > 0) {
+      activityLogger.info("Adding members...");
       await Promise.all(
         list.map((member_user) =>
           User.updateOne(
