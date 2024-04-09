@@ -197,8 +197,11 @@ exports.createGroup = async (req, res) => {
       name: name,
       icon: icon,
       description: description,
+      location: {
+        type: "Point",
+        coordinates: [latitude, longitude],
+      },
       radius: radius,
-      admin: admin,
       isOpen: isOpen,
       admin: admin,
       members: list,
