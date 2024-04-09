@@ -5,6 +5,7 @@ const CITY_TO_COORDINATE = {
 };
 const AVAILABLE_CITIES = ["delhi", "noida", "gurugram"];
 
+
 const COORDINATE_TO_CITY = {
   "28.5643,77.2442": "delhi",
   "28.5747,77.3560": "noida",

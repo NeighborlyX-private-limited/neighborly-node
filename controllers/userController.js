@@ -20,6 +20,7 @@ exports.fetchCities = async (req, res, next) => {
   });
 };
 
+
 exports.updateLocation = async (req, res, next) => {
   const { body, user } = req;
 
@@ -32,6 +33,7 @@ exports.updateLocation = async (req, res, next) => {
       activityLogger.info(
         "Updating user's location based on coordinates: " + userLocation
       );
+
       updatedCoordinates = userLocation;
       await User.findByIdAndUpdate(user._id, {
         $set: {
@@ -98,6 +100,7 @@ exports.getUserGroups = async (req, res, next) => {
       `Error in getUserGroups for ${user.username}. Error: ${error}`
     );
   }
+
 };
 
 // User Login
@@ -169,11 +172,13 @@ exports.registerUser = async (req, res) => {
   }
 };
 
+
 //Logout User
 exports.logoutUser = async (req, res, next) => {
   res.clearCookie("token");
   res.end();
 };
+
 
 // update user display pictures
 exports.updatePic = async (req, res) => {
@@ -181,6 +186,8 @@ exports.updatePic = async (req, res) => {
   const update = await User.update({ _id: user_id }, { $set: { pic: pic } });
   res.status(200).json(update);
 };
+
+
 
 //Userinfo
 exports.userinfo = async (req, res) => {
