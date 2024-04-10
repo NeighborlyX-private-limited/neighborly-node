@@ -262,7 +262,7 @@ exports.nearbyUsers = async (req, res) => {
         },
       },
       karma: { $gte: karmaThreshold },
-      $ne: { _id: req.user._id },
+      _id: { $ne: req.user._id },
     });
 
     // Then query for users based on city coordinates
@@ -274,7 +274,7 @@ exports.nearbyUsers = async (req, res) => {
         },
       },
       karma: { $gte: karmaThreshold },
-      $ne: { _id: req.user._id },
+      _id: { $ne: req.user._id },
     });
 
     // Combine and deduplicate users from both queries
