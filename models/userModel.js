@@ -70,4 +70,5 @@ userSchema.methods.comparePassword = async function (password) {
 
 // Add 2dsphere index on current_coordinates
 userSchema.index({ current_coordinates: "2dsphere" });
+userSchema.index({ city: "2dsphere" });
 module.exports = mongoose.model("User", userSchema);

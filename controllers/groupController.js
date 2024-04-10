@@ -249,33 +249,54 @@ exports.createGroup = async (req, res) => {
 
 exports.nearbyUsers = async (req, res) => {
   const { latitude, longitude, karma_need } = req.query;
-  // Query the database for nearby users based on current_coordinates
-  const nearbyUsers = await User.find({
-    current_coordinates: {
-      $near: {
-        $geometry: {
-          type: "Point",
-          coordinates: [parseFloat(latitude), parseFloat(longitude)],
-        },
-        $maxDistance: 3000, // Adjust this distance as needed (in meters)
-      },
-    },
-  });
-  let list = [];
+  const karmaThreshold = parseInt(karma_need, 10);
+  const coordinates = [parseFloat(latitude), parseFloat(longitude)];
 
-  nearbyUsers.map((near_user) => {
-    if (near_user.karma >= karma_need) {
-      list.push({
-        user: {
-          userId: near_user._id,
-          username: near_user.username,
+  try {
+    // First query for users based on current_coordinates
+    const currentCoordinatesUsers = await User.find({
+      current_coordinates: {
+        $near: {
+          $geometry: { type: "Point", coordinates },
+          $maxDistance: 3000,
         },
-      });
-    }
-  });
-  res.status(200).json({
-    list: list,
-  });
+      },
+      karma: { $gte: karmaThreshold },
+    });
+
+    // Then query for users based on city coordinates
+    const cityCoordinatesUsers = await User.find({
+      city: {
+        $near: {
+          $geometry: { type: "Point", coordinates },
+          $maxDistance: 3000,
+        },
+      },
+      karma: { $gte: karmaThreshold },
+    });
+
+    // Combine and deduplicate users from both queries
+    const combinedUsersMap = new Map();
+    [...currentCoordinatesUsers, ...cityCoordinatesUsers].forEach((user) => {
+      combinedUsersMap.set(user._id.toString(), user);
+    });
+    const combinedUsers = Array.from(combinedUsersMap.values());
+
+    // Transform the combined users for response
+    const list = combinedUsers.map((near_user) => ({
+      user: {
+        userId: near_user._id,
+        username: near_user.username,
+      },
+    }));
+
+    res.status(200).json({ list });
+  } catch (error) {
+    console.error("Unexpected error:", error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
 };
 
 exports.nearestGroup = async (req, res) => {
