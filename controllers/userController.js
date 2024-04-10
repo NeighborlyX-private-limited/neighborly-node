@@ -1,14 +1,13 @@
 const { generateToken } = require("../middlewares/auth");
-const {
-  generateFromEmail,
-  generateUsername,
-} = require("unique-username-generator");
+const { generateUsername } = require("unique-username-generator");
 const User = require("../models/userModel");
 const ErrorHandler = require("../utils/errorHandler");
 const sendToken = require("../utils/jwtToken");
 const crypto = require("crypto");
 const { ObjectId } = require("mongodb");
 const { activityLogger, errorLogger } = require("../utils/logger");
+import { createAvatar } from "@dicebear/core";
+import { personas } from "@dicebear/collection";
 const {
   CITY_TO_COORDINATE,
   AVAILABLE_CITIES,
@@ -171,10 +170,13 @@ exports.registerUser = async (req, res) => {
     );
   }
   try {
+    const avatar = createAvatar(personas);
+    const svg = avatar.toString(); //random display avatars
     const user = await User.create({
       username: username,
       password: password,
       email: email,
+      picture: svg,
     });
 
     sendToken(user, 200, res);
@@ -201,9 +203,20 @@ exports.logoutUser = async (req, res, next) => {
 };
 
 // update user display pictures
-exports.updatePic = async (req, res) => {
-  const { user_id, pic } = req.body;
-  const update = await User.update({ _id: user_id }, { $set: { pic: pic } });
+exports.updatePicture = async (req, res) => {
+  const { userId, picture, randomize } = req.body;
+  if (!randomize) {
+    const update = await User.update(
+      { _id: userId },
+      { $set: { picture: picture } }
+    );
+  } else {
+    randomAvatarURL = createRandomAvatar();
+    const update = await User.update(
+      { _id: userId },
+      { $set: { picture: randomAvatarURL } }
+    );
+  }
   res.status(200).json(update);
 };
 
