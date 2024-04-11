@@ -291,6 +291,7 @@ exports.nearbyUsers = async (req, res) => {
         userId: near_user._id,
         userName: near_user.username,
         karma: near_user.karma,
+        picture: near_user.picture,
       },
     }));
 
