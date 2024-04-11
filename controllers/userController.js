@@ -168,7 +168,7 @@ exports.registerUser = async (req, res) => {
     );
   }
   try {
-    const picture = "https://avatar.iran.liara.run/public";
+    const picture = `https://api.multiavatar.com/${username}.png`;
     const user = await User.create({
       username: username,
       password: password,
@@ -193,7 +193,6 @@ exports.registerUser = async (req, res) => {
 };
 
 //Logout User
-
 exports.logoutUser = async (req, res, next) => {
   res.clearCookie("token");
   res.end();
