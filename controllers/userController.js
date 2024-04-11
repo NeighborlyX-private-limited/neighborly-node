@@ -1,5 +1,4 @@
 const { generateToken } = require("../middlewares/auth");
-const { AvatarGenerator } = require("random-avatar-generator");
 const { generateUsername } = require("unique-username-generator");
 const User = require("../models/userModel");
 const ErrorHandler = require("../utils/errorHandler");
