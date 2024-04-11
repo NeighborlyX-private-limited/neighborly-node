@@ -332,13 +332,13 @@ exports.nearestGroup = async (req, res) => {
       groupId: group._id,
       topic: group.topic,
     }));
+    res.status(200).json({
+      nearGroup: nearGroupsList,
+    });
   } catch (error) {
     console.error("Unexpected error:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
-  res.status(200).json({
-    nearGroup: nearGroupsList,
-  });
 };
 
 //added paging to scroll in the messages
