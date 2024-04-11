@@ -40,7 +40,14 @@ exports.addUser = async (req, res) => {
     //Updating 'members' field that is an array of ObjectId references to User documents
     const userAddedToGroup = await Group.updateOne(
       { _id: new ObjectId(groupId) },
-      { $addToSet: { members: new ObjectId(userId) } }
+      { $addToSet: { members: {
+        user: {
+          userId: new ObjectId(userId),
+          username: user.username,
+          userPic: user.picture,
+          karma: user.karma
+        }
+      }  } }
     );
 
     // Check if both updates were successful by inspecting modifiedCount
@@ -324,20 +331,11 @@ exports.nearestGroup = async (req, res) => {
           $maxDistance: 300000, // Adjust this distance as needed (in meters)
         },
       },
-      members: {
-        user: {
-          userId: {
-            $ne: _id
-          }
-        }
-      },
+      "members.user.userId": { $ne: _id },
       // "admin.userId": { $ne: _id },
-      admin: {
-        userId: { 
+      "admin.userId": {
           $ne: _id 
-        }
-      },
-    });
+        }});
 
     var nearGroupsList = nearbyGroups.map((group) => ({
       groupName: group.name,

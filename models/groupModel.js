@@ -51,6 +51,8 @@ const groupSchema = new mongoose.Schema({
           required: true,
         },
         username: String,
+        userPic: String,
+        karma: Number
       },
     },
   ],
