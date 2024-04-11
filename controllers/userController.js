@@ -1,8 +1,5 @@
 const { generateToken } = require("../middlewares/auth");
-const {
-  generateFromEmail,
-  generateUsername,
-} = require("unique-username-generator");
+const { generateUsername } = require("unique-username-generator");
 const User = require("../models/userModel");
 const ErrorHandler = require("../utils/errorHandler");
 const sendToken = require("../utils/jwtToken");
@@ -171,10 +168,12 @@ exports.registerUser = async (req, res) => {
     );
   }
   try {
+    const picture = `https://api.multiavatar.com/${username}.png`;
     const user = await User.create({
       username: username,
       password: password,
       email: email,
+      picture: picture,
     });
 
     sendToken(user, 200, res);
@@ -194,16 +193,26 @@ exports.registerUser = async (req, res) => {
 };
 
 //Logout User
-
 exports.logoutUser = async (req, res, next) => {
   res.clearCookie("token");
   res.end();
 };
 
 // update user display pictures
-exports.updatePic = async (req, res) => {
-  const { user_id, pic } = req.body;
-  const update = await User.update({ _id: user_id }, { $set: { pic: pic } });
+exports.updatePicture = async (req, res) => {
+  const { userId, picture, randomize } = req.body;
+  if (!randomize) {
+    const update = await User.update(
+      { _id: userId },
+      { $set: { picture: picture } }
+    );
+  } else {
+    randomAvatarURL = createRandomAvatar();
+    const update = await User.update(
+      { _id: userId },
+      { $set: { picture: randomAvatarURL } }
+    );
+  }
   res.status(200).json(update);
 };
 

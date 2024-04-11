@@ -262,6 +262,8 @@ exports.nearbyUsers = async (req, res) => {
         },
       },
       karma: { $gte: karmaThreshold },
+      _id: { $ne: req.user._id },
+      findMe: { $eq: true },
     });
 
     // Then query for users based on city coordinates
@@ -273,6 +275,7 @@ exports.nearbyUsers = async (req, res) => {
         },
       },
       karma: { $gte: karmaThreshold },
+      _id: { $ne: req.user._id },
     });
 
     // Combine and deduplicate users from both queries
@@ -286,7 +289,9 @@ exports.nearbyUsers = async (req, res) => {
     const list = combinedUsers.map((near_user) => ({
       user: {
         userId: near_user._id,
-        username: near_user.username,
+        userName: near_user.username,
+        karma: near_user.karma,
+        picture: near_user.picture,
       },
     }));
 
@@ -301,14 +306,13 @@ exports.nearbyUsers = async (req, res) => {
 
 exports.nearestGroup = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const _id = req.user._id;
     const latitude = Number(req.query.latitude);
     const longitude = Number(req.query.longitude);
     // Validate coordinates
     if (!isValidCoordinate(latitude, longitude)) {
       return res.status(400).json({ message: "Invalid coordinates" });
     }
-    console.log(userId);
     // Query the database for nearby groups based on current_coordinates
     const nearbyGroups = await Group.find({
       location: {
@@ -320,8 +324,19 @@ exports.nearestGroup = async (req, res) => {
           $maxDistance: 300000, // Adjust this distance as needed (in meters)
         },
       },
-      members: { $ne: userId },
-      "admin.userId": { $ne: userId },
+      members: {
+        user: {
+          userId: {
+            $ne: _id
+          }
+        }
+      },
+      // "admin.userId": { $ne: _id },
+      admin: {
+        userId: { 
+          $ne: _id 
+        }
+      },
     });
 
     var nearGroupsList = nearbyGroups.map((group) => ({
@@ -329,13 +344,13 @@ exports.nearestGroup = async (req, res) => {
       groupId: group._id,
       topic: group.topic,
     }));
+    res.status(200).json({
+      nearGroup: nearGroupsList,
+    });
   } catch (error) {
     console.error("Unexpected error:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
-  res.status(200).json({
-    nearGroup: nearGroupsList,
-  });
 };
 
 //added paging to scroll in the messages
@@ -435,12 +450,12 @@ exports.updateIcon = async (req, res) => {
 };
 
 exports.checkGroupNameUnique = async (req, res) => {
-  const groupName = req.body.name;
+  const groupName = req.query.name;
 
   try {
     const existingGroup = await Group.findOne({ name: groupName });
     if (existingGroup) {
-      return res.status(400).json({
+      return res.status(200).json({
         success: false,
         message: "Group name already exists. Please choose a different name.",
       });

@@ -12,7 +12,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, "Please enter password"],
   },
-  pic: {
+  picture: {
     type: String,
   },
   email: {
@@ -41,6 +41,10 @@ const userSchema = new mongoose.Schema({
       type: [Number],
       default: [0, 0],
     },
+  },
+  findMe: {
+    type: Boolean,
+    default: true,
   },
   groups: [
     {
