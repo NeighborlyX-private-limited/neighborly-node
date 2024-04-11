@@ -324,8 +324,19 @@ exports.nearestGroup = async (req, res) => {
           $maxDistance: 300000, // Adjust this distance as needed (in meters)
         },
       },
-      "members._id": { $ne: _id },
-      "admin._id": { $ne: _id },
+      members: {
+        user: {
+          userId: {
+            $ne: _id
+          }
+        }
+      },
+      // "admin.userId": { $ne: _id },
+      admin: {
+        userId: { 
+          $ne: _id 
+        }
+      },
     });
 
     var nearGroupsList = nearbyGroups.map((group) => ({
