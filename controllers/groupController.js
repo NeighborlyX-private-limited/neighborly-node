@@ -337,6 +337,7 @@ exports.nearestGroup = async (req, res) => {
           $ne: _id 
         }});
 
+
     var nearGroupsList = nearbyGroups.map((group) => ({
       groupName: group.name,
       groupId: group._id,

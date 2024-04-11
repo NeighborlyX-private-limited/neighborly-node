@@ -11,5 +11,3 @@
 
 NOTE: Please configure prettier on your VScode for JS project.
 
-Endpoints:
-dummy user creations: [POST] http://localhost:5000/dummy/create | requires: {"numUsers": <integer_value>}
