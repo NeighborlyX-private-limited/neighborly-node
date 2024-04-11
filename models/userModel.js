@@ -42,6 +42,10 @@ const userSchema = new mongoose.Schema({
       default: [0, 0],
     },
   },
+  findMe: {
+    type: Boolean,
+    default: true,
+  },
   groups: [
     {
       type: mongoose.Schema.Types.ObjectId,

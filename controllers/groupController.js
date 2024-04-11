@@ -263,6 +263,7 @@ exports.nearbyUsers = async (req, res) => {
       },
       karma: { $gte: karmaThreshold },
       _id: { $ne: req.user._id },
+      findMe: { $eq: true },
     });
 
     // Then query for users based on city coordinates
