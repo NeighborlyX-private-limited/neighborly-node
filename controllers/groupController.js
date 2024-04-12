@@ -130,6 +130,8 @@ exports.removeUser = async (req, res) => {
             user: {
               userId: new ObjectId(userId),
               username: foundUser.username,
+              userPic: foundUser.picture,
+              karma: foundUser.karma
             },
           },
         },
@@ -472,6 +474,49 @@ exports.checkGroupNameUnique = async (req, res) => {
     });
   }
 };
+
+exports.deleteGroup = async(req,res) => {
+  try {
+    const user = req.user;
+    const groupId = req.params["groupId"];
+    const grp = await Group.findById({ _id: new ObjectId(groupId) });
+    let flag=false;
+    for (let i = 0; i < grp.admin.length;++i) {
+      if(grp.admin[i].userId.toString() === user._id.toString()) {
+        flag=true;
+        break;
+      }
+    }
+    if(flag)
+    {
+  grp.members.forEach(async member => {
+    await User.updateOne(
+      {_id: member.userId},
+      {$pull: {
+        groups: grp._id
+      }}
+    );
+  });
+  grp.admin.forEach(async member => {
+    await User.updateOne(
+      { _id: member.userId },
+      {
+        $pull: {
+          groups: grp._id
+        }
+      }
+    );
+  });
+      const changedData = await Group.deleteOne({ _id: grp._id } );
+  res.status(200).json(changedData);
+}
+else
+res.status(403);
+}
+  catch(error) {
+    res.status(500)
+  }
+}
 
 // Function to validate coordinates
 function isValidCoordinate(latitude, longitude) {

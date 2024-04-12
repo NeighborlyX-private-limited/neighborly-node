@@ -12,6 +12,7 @@ const {
   S3,
   S3_BUCKET_NAME,
 } = require("../utils/constants");
+const Group = require("../models/groupModel");
 
 exports.fetchPreSignedURL = async (req, res, next) => {
   const params = {
@@ -221,3 +222,42 @@ exports.userinfo = async (req, res) => {
   const user = req.user;
   res.status(200).json(user);
 };
+
+exports.deleteUser = async(req,res) => {
+  try {const user = req.user;
+  user.groups?.forEach( async grp => {
+    await Group.updateOne(
+      { _id: grp },
+      {
+        $pull: {
+          members: {
+            user: {
+              userId: user._id,
+              username: user.username,
+              userPic: user.picture,
+              karma: user.karma
+            },
+          },
+        },
+      }
+    );
+    await Group.updateOne(
+      { _id: grp },
+      {
+        $pull: {
+          admin: {
+            userId: user._id,
+            username: user.username
+          },
+        },
+      }
+    );
+  });
+  const newData = await User.deleteOne(
+    {_id: user._id}
+  );
+    res.status(200).json(newData);
+} catch(error) {
+    res.status(500);
+  }
+}
