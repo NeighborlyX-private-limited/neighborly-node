@@ -137,6 +137,17 @@ exports.removeUser = async (req, res) => {
         },
       }
     );
+    await Group.updateOne(
+      { _id: new ObjectId(groupId) },
+      {
+        $pull: {
+          admin: {
+              userId: new ObjectId(userId),
+              username: foundUser.username,
+            },
+          },
+        }
+      );
 
     // Update the User collection to remove the group from the user's groups array
     const result2 = await User.updateOne(
