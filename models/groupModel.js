@@ -39,7 +39,9 @@ const groupSchema = new mongoose.Schema({
         ref: "User",
         required: true,
       },
-      username: String,
+      userName: String,
+      picture: String,
+      karma: Number,
     },
   ],
   members: [
@@ -50,9 +52,9 @@ const groupSchema = new mongoose.Schema({
           ref: "User",
           required: true,
         },
-        username: String,
-        userPic: String,
-        karma: Number
+        userName: String,
+        picture: String,
+        karma: Number,
       },
     },
   ],
