@@ -223,41 +223,42 @@ exports.userinfo = async (req, res) => {
   res.status(200).json(user);
 };
 
-exports.deleteUser = async(req,res) => {
-  try {const user = req.user;
-  user.groups?.forEach( async grp => {
-    await Group.updateOne(
-      { _id: grp },
-      {
-        $pull: {
-          members: {
-            user: {
-              userId: user._id,
-              username: user.username,
-              userPic: user.picture,
-              karma: user.karma
+exports.deleteUser = async (req, res) => {
+  try {
+    const user = req.user;
+    user.groups?.forEach(async group => {
+      await Group.updateOne(
+        { _id: group },
+        {
+          $pull: {
+            members: {
+              user: {
+                userId: user._id,
+                username: user.username,
+                userPic: user.picture,
+                karma: user.karma
+              },
             },
           },
-        },
-      }
-    );
-    await Group.updateOne(
-      { _id: grp },
-      {
-        $pull: {
-          admin: {
-            userId: user._id,
-            username: user.username
+        }
+      );
+      await Group.updateOne(
+        { _id: group },
+        {
+          $pull: {
+            admin: {
+              userId: user._id,
+              username: user.username
+            },
           },
-        },
-      }
+        }
+      );
+    });
+    const newData = await User.deleteOne(
+      { _id: user._id }
     );
-  });
-  const newData = await User.deleteOne(
-    {_id: user._id}
-  );
     res.status(200).json(newData);
-} catch(error) {
+  } catch (error) {
     res.status(500);
   }
 }

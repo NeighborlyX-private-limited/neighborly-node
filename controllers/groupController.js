@@ -40,14 +40,18 @@ exports.addUser = async (req, res) => {
     //Updating 'members' field that is an array of ObjectId references to User documents
     const userAddedToGroup = await Group.updateOne(
       { _id: new ObjectId(groupId) },
-      { $addToSet: { members: {
-        user: {
-          userId: new ObjectId(userId),
-          username: user.username,
-          userPic: user.picture,
-          karma: user.karma
+      {
+        $addToSet: {
+          members: {
+            user: {
+              userId: new ObjectId(userId),
+              username: user.username,
+              userPic: user.picture,
+              karma: user.karma
+            }
+          }
         }
-      }  } }
+      }
     );
 
     // Check if both updates were successful by inspecting modifiedCount
@@ -142,12 +146,12 @@ exports.removeUser = async (req, res) => {
       {
         $pull: {
           admin: {
-              userId: new ObjectId(userId),
-              username: foundUser.username,
-            },
+            userId: new ObjectId(userId),
+            username: foundUser.username,
           },
-        }
-      );
+        },
+      }
+    );
 
     // Update the User collection to remove the group from the user's groups array
     const result2 = await User.updateOne(
@@ -347,8 +351,9 @@ exports.nearestGroup = async (req, res) => {
       "members.user.userId": { $ne: _id },
       // "admin.userId": { $ne: _id },
       "admin.userId": {
-          $ne: _id 
-        }});
+        $ne: _id
+      }
+    });
 
 
     var nearGroupsList = nearbyGroups.map((group) => ({
@@ -486,45 +491,46 @@ exports.checkGroupNameUnique = async (req, res) => {
   }
 };
 
-exports.deleteGroup = async(req,res) => {
+exports.deleteGroup = async (req, res) => {
   try {
     const user = req.user;
     const groupId = req.params["groupId"];
-    const grp = await Group.findById({ _id: new ObjectId(groupId) });
-    let flag=false;
-    for (let i = 0; i < grp.admin.length;++i) {
-      if(grp.admin[i].userId.toString() === user._id.toString()) {
-        flag=true;
+    const group = await Group.findById({ _id: new ObjectId(groupId) });
+    let flag = false;
+    for (let i = 0; i < group.admin.length; ++i) {
+      if (group.admin[i].userId.toString() === user._id.toString()) {
+        flag = true;
         break;
       }
     }
-    if(flag)
-    {
-  grp.members.forEach(async member => {
-    await User.updateOne(
-      {_id: member.userId},
-      {$pull: {
-        groups: grp._id
-      }}
-    );
-  });
-  grp.admin.forEach(async member => {
-    await User.updateOne(
-      { _id: member.userId },
-      {
-        $pull: {
-          groups: grp._id
-        }
-      }
-    );
-  });
-      const changedData = await Group.deleteOne({ _id: grp._id } );
-  res.status(200).json(changedData);
-}
-else
-res.status(403);
-}
-  catch(error) {
+    if (flag) {
+      group.members.forEach(async member => {
+        await User.updateOne(
+          { _id: member.userId },
+          {
+            $pull: {
+              groups: group._id
+            }
+          }
+        );
+      });
+      group.admin.forEach(async member => {
+        await User.updateOne(
+          { _id: member.userId },
+          {
+            $pull: {
+              groups: group._id
+            }
+          }
+        );
+      });
+      const changedData = await Group.deleteOne({ _id: group._id });
+      res.status(200).json(changedData);
+    }
+    else
+      res.status(403);
+  }
+  catch (error) {
     res.status(500)
   }
 }
