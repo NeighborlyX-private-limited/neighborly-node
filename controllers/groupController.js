@@ -45,8 +45,8 @@ exports.addUser = async (req, res) => {
           members: {
             user: {
               userId: new ObjectId(userId),
-              username: user.username,
-              userPic: user.picture,
+              userName: user.username,
+              picture: user.picture,
               karma: user.karma
             }
           }
