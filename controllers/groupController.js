@@ -432,7 +432,7 @@ exports.fetchLastMessages = async (req, res) => {
 
     const skip = (page - 1) * limit;
 
-    const messages = await Message.find({ group_id: groupId })
+    const messages = await Message.find({ group_id: groupId }) 
       .sort({ sent_at: -1 }) // Sort by sent_at in descending order to get the latest messages first
       .skip(skip)
       .limit(limit);
@@ -465,7 +465,7 @@ exports.fetchGroupDetails = async (req, res) => {
 };
 
 exports.updateGroupDetails = async (req, res) => {
-  const { group_id, name, description, type } = req.body;
+  const { groupId, name, description, type } = req.body;
   const group = await Group.findById(new ObjectId(groupId));
   const user = req.user;
   console.log(group.admin.userId);
