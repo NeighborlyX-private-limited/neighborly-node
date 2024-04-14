@@ -40,14 +40,18 @@ exports.addUser = async (req, res) => {
     //Updating 'members' field that is an array of ObjectId references to User documents
     const userAddedToGroup = await Group.updateOne(
       { _id: new ObjectId(groupId) },
-      { $addToSet: { members: {
-        user: {
-          userId: new ObjectId(userId),
-          username: user.username,
-          userPic: user.picture,
-          karma: user.karma
+      {
+        $addToSet: {
+          members: {
+            user: {
+              userId: new ObjectId(userId),
+              userName: user.username,
+              picture: user.picture,
+              karma: user.karma
+            }
+          }
         }
-      }  } }
+      }
     );
 
     // Check if both updates were successful by inspecting modifiedCount
@@ -121,44 +125,106 @@ exports.removeUser = async (req, res) => {
 
     const foundUser = await User.findById(new ObjectId(userId));
 
+    const group = await Group.findById(new ObjectId(groupId));
+    let flag = false;
+    let result1, result2;
+
+    for (let i = 0; i < group.members.length; ++i) {
+      if (group.members[i].user.userId.toString() === userId) {
+        flag = true;
+        break;
+      }
+    }
+
     // Update the Group collection to remove the user from the group
-    const result1 = await Group.updateOne(
-      { _id: new ObjectId(groupId) },
-      {
-        $pull: {
-          members: {
-            user: {
-              userId: new ObjectId(userId),
-              username: foundUser.username,
+    if (flag) {
+      result1 = await Group.updateOne(
+        { _id: new ObjectId(groupId) },
+        {
+          $pull: {
+            members: {
+              user: {
+                userId: new ObjectId(userId),
+                userName: foundUser.username,
+                picture: foundUser.picture,
+                karma: foundUser.karma
+              },
             },
           },
-        },
+        }
+      );
+      // Update the User collection to remove the group from the user's groups array
+      result2 = await User.updateOne(
+        { _id: new ObjectId(userId) },
+        { $pull: { groups: new ObjectId(groupId) } }
+      );
+      // Check if both updates were successful by inspecting modifiedCount
+      if (result1.modifiedCount > 0 && result2.modifiedCount > 0) {
+        // If both updates were successful, send a success response
+        activityLogger.info(
+          `User with ID ${userId} removed from group with ID ${groupId} successfully.`
+        );
+        res
+          .status(200)
+          .json({ message: "User removed from the group successfully." });
+      } else {
+        // If no updates or only one update was successful, send a failure response
+        activityLogger.info(
+          `Group not found or user not in the group: User ID ${userId}, Group ID ${groupId}.`
+        );
+        res
+          .status(200)
+          .json({ message: "Group not found or user not in the group." });
       }
-    );
-
-    // Update the User collection to remove the group from the user's groups array
-    const result2 = await User.updateOne(
-      { _id: new ObjectId(userId) },
-      { $pull: { groups: new ObjectId(groupId) } }
-    );
-
-    // Check if both updates were successful by inspecting modifiedCount
-    if (result1.modifiedCount > 0 && result2.modifiedCount > 0) {
-      // If both updates were successful, send a success response
-      activityLogger.info(
-        `User with ID ${userId} removed from group with ID ${groupId} successfully.`
+      return;
+    }
+    flag=false;
+    for (let i = 0; i < group.admin.length; ++i) {
+      if (group.admin[i].userId.toString() === userId) {
+        flag = true;
+        break;
+      }
+    }
+    if (flag && group.admin.length > 1) {
+      result1 = await Group.updateOne(
+        { _id: new ObjectId(groupId) },
+        {
+          $pull: {
+            admin: {
+              userId: new ObjectId(userId),
+              userName: foundUser.username,
+              picture: foundUser.picture,
+              karma: foundUser.karma
+            },
+          },
+        }
       );
-      res
-        .status(200)
-        .json({ message: "User removed from the group successfully." });
-    } else {
-      // If no updates or only one update was successful, send a failure response
-      activityLogger.info(
-        `Group not found or user not in the group: User ID ${userId}, Group ID ${groupId}.`
+      // Update the User collection to remove the group from the user's groups array
+      result2 = await User.updateOne(
+        { _id: new ObjectId(userId) },
+        { $pull: { groups: new ObjectId(groupId) } }
       );
-      res
-        .status(200)
-        .json({ message: "Group not found or user not in the group." });
+      // Check if both updates were successful by inspecting modifiedCount
+      if (result1.modifiedCount > 0 && result2.modifiedCount > 0) {
+        // If both updates were successful, send a success response
+        activityLogger.info(
+          `User with ID ${userId} removed from group with ID ${groupId} successfully.`
+        );
+        res
+          .status(200)
+          .json({ message: "User removed from the group successfully." });
+      } else {
+        // If no updates or only one update was successful, send a failure response
+        activityLogger.info(
+          `Group not found or user not in the group: User ID ${userId}, Group ID ${groupId}.`
+        );
+        res
+          .status(200)
+          .json({ message: "Group not found or user not in the group." });
+      }
+    }
+    else {
+      res.status(502).json({ message: "Last admin cannot be removed. Please select another user to be admin" })
     }
   } catch (error) {
     // Handle unexpected errors, log them, and send an internal server error response
@@ -189,9 +255,9 @@ exports.createGroup = async (req, res) => {
     const admin = [
       {
         userId: user._id,
-        username: user.username,
+        userName: user.username,
         karma: user.karma,
-        pic: user.pic,
+        picture: user.picture,
       },
     ];
     activityLogger.info("Creating group for user " + user.username);
@@ -334,8 +400,9 @@ exports.nearestGroup = async (req, res) => {
       "members.user.userId": { $ne: _id },
       // "admin.userId": { $ne: _id },
       "admin.userId": {
-          $ne: _id 
-        }});
+        $ne: _id
+      }
+    });
 
 
     var nearGroupsList = nearbyGroups.map((group) => ({
@@ -472,6 +539,50 @@ exports.checkGroupNameUnique = async (req, res) => {
     });
   }
 };
+
+exports.deleteGroup = async (req, res) => {
+  try {
+    const user = req.user;
+    const groupId = req.params["groupId"];
+    const group = await Group.findById({ _id: new ObjectId(groupId) });
+    let flag = false;
+    for (let i = 0; i < group.admin.length; ++i) {
+      if (group.admin[i].userId.toString() === user._id.toString()) {
+        flag = true;
+        break;
+      }
+    }
+    if (flag) {
+      group.members.forEach(async member => {
+        await User.updateOne(
+          { _id: member.userId },
+          {
+            $pull: {
+              groups: group._id
+            }
+          }
+        );
+      });
+      group.admin.forEach(async member => {
+        await User.updateOne(
+          { _id: member.userId },
+          {
+            $pull: {
+              groups: group._id
+            }
+          }
+        );
+      });
+      const changedData = await Group.deleteOne({ _id: group._id });
+      res.status(200).json(changedData);
+    }
+    else
+      res.status(403);
+  }
+  catch (error) {
+    res.status(500)
+  }
+}
 
 // Function to validate coordinates
 function isValidCoordinate(latitude, longitude) {
