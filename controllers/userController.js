@@ -61,6 +61,7 @@ exports.updateLocation = async (req, res, next) => {
       await User.findByIdAndUpdate(user._id, {
         $set: {
           "current_coordinates.coordinates": userLocation,
+          "city.coordinates": null,
         },
       });
     } else if (cityLocation && CITY_TO_COORDINATE[cityLocation.toLowerCase()]) {
@@ -73,6 +74,7 @@ exports.updateLocation = async (req, res, next) => {
       await User.findByIdAndUpdate(user._id, {
         $set: {
           "city.coordinates": coordinates,
+          "current_coordinates.coordinates": null,
         },
       });
     } else {
@@ -230,7 +232,7 @@ exports.userinfo = async (req, res) => {
 exports.deleteUser = async (req, res) => {
   try {
     const user = req.user;
-    user.groups?.forEach(async group => {
+    user.groups?.forEach(async (group) => {
       await Group.updateOne(
         { _id: group },
         {
@@ -240,7 +242,7 @@ exports.deleteUser = async (req, res) => {
                 userId: user._id,
                 username: user.username,
                 userPic: user.picture,
-                karma: user.karma
+                karma: user.karma,
               },
             },
           },
@@ -252,17 +254,15 @@ exports.deleteUser = async (req, res) => {
           $pull: {
             admin: {
               userId: user._id,
-              username: user.username
+              username: user.username,
             },
           },
         }
       );
     });
-    const newData = await User.deleteOne(
-      { _id: user._id }
-    );
+    const newData = await User.deleteOne({ _id: user._id });
     res.status(200).json(newData);
   } catch (error) {
     res.status(500);
   }
-}
+};
