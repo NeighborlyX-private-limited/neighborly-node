@@ -204,11 +204,13 @@ exports.logoutUser = async (req, res, next) => {
 exports.updatePic = async (req, res) => {
   const { user_id, pic } = req.body;
   const update = await User.update({ _id: user_id }, { $set: { pic: pic } });
+  activityLogger.info(`Pic updated for user: ${userId}`);
   res.status(200).json(update);
 };
 
 //Userinfo
 exports.userinfo = async (req, res) => {
   const user = req.user;
+  activityLogger.info(`info fetched for USer: ${userId}`);
   res.status(200).json(user);
 };

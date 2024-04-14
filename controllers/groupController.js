@@ -48,6 +48,7 @@ exports.addUser = async (req, res) => {
       userAddedToGroup.modifiedCount > 0 &&
       groupAddedInUser.modifiedCount > 0
     ) {
+      activityLogger.info("User added.");
       res
         .status(200)
         .json({ message: "User added to the group successfully." });
@@ -190,14 +191,14 @@ exports.createGroup = async (req, res) => {
     activityLogger.info("Creating group for user " + user.username);
     // Validate coordinates
     if (!isValidCoordinate(latitude, longitude)) {
-      activityLogger.error(
+      errorLogger.error(
         "Invalid coordinates provided during group creation."
       );
       return res.status(400).json({ message: "Invalid coordinates" });
     }
     duplicateName = await Group.findOne({ name });
     if (duplicateName) {
-      activityLogger.error(name + "Group name already exists.");
+      errorLogger.error(name + "Group name already exists.");
       return res.status(200).json({
         message: "Group name already exists. Chooses a different name",
         error: true,
@@ -310,6 +311,9 @@ exports.nearestGroup = async (req, res) => {
     }));
   } catch (error) {
     console.error("Unexpected error:", error);
+    errorLogger.eror("An error occured:",
+     error
+      );
     res.status(500).json({ message: "Internal Server Error" });
   }
   res.status(200).json({
@@ -333,6 +337,9 @@ exports.fetchLastMessages = async (req, res) => {
     res.status(200).json(messages);
   } catch (error) {
     console.error("Error fetching messages:", error);
+    errorLogger.error("An error occured while fetching messages:",
+    error
+    );
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
@@ -347,13 +354,17 @@ exports.fetchGroupDetails = async (req, res) => {
     res.status(200).json(groupDetails);
   } catch (error) {
     console.error("Error fetching messages:", error);
+    errorLogger.error(`An error occurred while fetching group details for ${groupId}`,
+     error
+     );
+
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
 exports.updateGroupDetails = async (req, res) => {
   const { group_id, name, description, type } = req.body;
-  const group = await Group.findById(new ObjectId(group_id));
+  const group = await Group.findById(new ObjectId(groupId));
   const user = req.user;
   console.log(group.admin.userId);
   console.log(user._id);
@@ -368,9 +379,10 @@ exports.updateGroupDetails = async (req, res) => {
     }
     if (flag) {
       const updated = await Group.updateOne(
-        { _id: new ObjectId(group_id) },
+        { _id: new ObjectId(groupId) },
         { $set: { name: name, description: description, type: type } }
       );
+      activityLogger.info(`Group Details updated for group ${groupId}.`);
       res.status(200).json(updated);
     } else {
       throw new Error("Access denied");
@@ -383,8 +395,8 @@ exports.updateGroupDetails = async (req, res) => {
 };
 
 exports.updateIcon = async (req, res) => {
-  const { group_id, icon } = req.body;
-  const group = await Group.findById(new ObjectId(group_id));
+  const { groupId, icon } = req.body;
+  const group = await Group.findById(new ObjectId(groupId));
   const user = req.user;
   console.log(group.admin.userId);
   console.log(user._id);
@@ -399,11 +411,15 @@ exports.updateIcon = async (req, res) => {
     }
     if (flag) {
       const updated = await Group.updateOne(
-        { _id: new ObjectId(group_id) },
+        { _id: new ObjectId(groupId) },
         { $set: { icon: icon } }
       );
+      activityLogger.info(`Icon updated for ${groupId}`);
       res.status(200).json(updated);
     } else {
+      errorLogger.error(`An error occured while updating icon for ${groupId}:`,
+      error
+      );
       throw new Error("Access denied");
     }
   } catch (err) {
@@ -424,12 +440,16 @@ exports.checkGroupNameUnique = async (req, res) => {
         message: "Group name already exists. Please choose a different name.",
       });
     } else if (!existingGroup) {
+      activityLogger.info(`${groupName} is unique and implemented.`);
       return res.status(200).json({
         success: true,
         message: "Unique group name.",
       });
     }
   } catch (error) {
+    errorLogger.error("An error occured while checking group name",
+    error
+    );
     res.status(500).json({
       success: false,
       message: "An error occurred while checking the group name.",
