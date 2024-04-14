@@ -200,9 +200,11 @@ exports.logoutUser = async (req, res, next) => {
 };
 
 // update user display pictures
+
 exports.updatePicture = async (req, res) => {
   const { userId, picture, randomize } = req.body;
   if (!randomize) {
+    activityLogger.info(`Pic updated for user: ${userId}`);
     const update = await User.update(
       { _id: userId },
       { $set: { picture: picture } }
@@ -214,12 +216,14 @@ exports.updatePicture = async (req, res) => {
       { $set: { picture: randomAvatarURL } }
     );
   }
+
   res.status(200).json(update);
 };
 
 //Userinfo
 exports.userinfo = async (req, res) => {
   const user = req.user;
+  activityLogger.info(`info fetched for USer: ${userId}`);
   res.status(200).json(user);
 };
 
