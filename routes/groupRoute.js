@@ -13,6 +13,7 @@ const {
   nearbyUsers,
   updateGroupDetails,
   updateIcon,
+  deleteGroup,
   checkGroupNameUnique,
 } = require("../controllers/groupController");
 
@@ -21,6 +22,7 @@ router.route("/make-group-permanent").put(isAuthenticated, makeGroupPermanent);
 router.route("/fetch-nearby-users").get(isAuthenticated, nearbyUsers);
 router.route("/add-user").post(isAuthenticated, addUser);
 router.route("/nearest-group").get(isAuthenticated, nearestGroup);
+router.route("/delete-group/:groupId").delete(isAuthenticated, deleteGroup);
 router.route("/create").post(isAuthenticated, createGroup);
 router
   .route("/fetch-group-messages/:groupId")

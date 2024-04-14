@@ -1,8 +1,5 @@
 const { generateToken } = require("../middlewares/auth");
-const {
-  generateFromEmail,
-  generateUsername,
-} = require("unique-username-generator");
+const { generateUsername } = require("unique-username-generator");
 const User = require("../models/userModel");
 const ErrorHandler = require("../utils/errorHandler");
 const sendToken = require("../utils/jwtToken");
@@ -15,6 +12,7 @@ const {
   S3,
   S3_BUCKET_NAME,
 } = require("../utils/constants");
+const Group = require("../models/groupModel");
 
 exports.fetchPreSignedURL = async (req, res, next) => {
   const params = {
@@ -171,10 +169,12 @@ exports.registerUser = async (req, res) => {
     );
   }
   try {
+    const picture = `https://api.multiavatar.com/${username}.png`;
     const user = await User.create({
       username: username,
       password: password,
       email: email,
+      picture: picture,
     });
 
     sendToken(user, 200, res);
@@ -194,17 +194,29 @@ exports.registerUser = async (req, res) => {
 };
 
 //Logout User
-
 exports.logoutUser = async (req, res, next) => {
   res.clearCookie("token");
   res.end();
 };
 
 // update user display pictures
-exports.updatePic = async (req, res) => {
-  const { user_id, pic } = req.body;
-  const update = await User.update({ _id: user_id }, { $set: { pic: pic } });
-  activityLogger.info(`Pic updated for user: ${userId}`);
+
+exports.updatePicture = async (req, res) => {
+  const { userId, picture, randomize } = req.body;
+  if (!randomize) {
+    activityLogger.info(`Pic updated for user: ${userId}`);
+    const update = await User.update(
+      { _id: userId },
+      { $set: { picture: picture } }
+    );
+  } else {
+    randomAvatarURL = createRandomAvatar();
+    const update = await User.update(
+      { _id: userId },
+      { $set: { picture: randomAvatarURL } }
+    );
+  }
+
   res.status(200).json(update);
 };
 
@@ -214,3 +226,43 @@ exports.userinfo = async (req, res) => {
   activityLogger.info(`info fetched for USer: ${userId}`);
   res.status(200).json(user);
 };
+
+exports.deleteUser = async (req, res) => {
+  try {
+    const user = req.user;
+    user.groups?.forEach(async group => {
+      await Group.updateOne(
+        { _id: group },
+        {
+          $pull: {
+            members: {
+              user: {
+                userId: user._id,
+                username: user.username,
+                userPic: user.picture,
+                karma: user.karma
+              },
+            },
+          },
+        }
+      );
+      await Group.updateOne(
+        { _id: group },
+        {
+          $pull: {
+            admin: {
+              userId: user._id,
+              username: user.username
+            },
+          },
+        }
+      );
+    });
+    const newData = await User.deleteOne(
+      { _id: user._id }
+    );
+    res.status(200).json(newData);
+  } catch (error) {
+    res.status(500);
+  }
+}

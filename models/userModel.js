@@ -12,7 +12,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, "Please enter password"],
   },
-  pic: {
+  picture: {
     type: String,
   },
   email: {
@@ -42,6 +42,10 @@ const userSchema = new mongoose.Schema({
       default: [0, 0],
     },
   },
+  findMe: {
+    type: Boolean,
+    default: true,
+  },
   groups: [
     {
       type: mongoose.Schema.Types.ObjectId,
@@ -70,4 +74,5 @@ userSchema.methods.comparePassword = async function (password) {
 
 // Add 2dsphere index on current_coordinates
 userSchema.index({ current_coordinates: "2dsphere" });
+userSchema.index({ city: "2dsphere" });
 module.exports = mongoose.model("User", userSchema);

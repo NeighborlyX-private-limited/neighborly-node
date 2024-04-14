@@ -6,10 +6,11 @@ const {
   logoutUser,
   userinfo,
   getUserGroups,
-  updatePic,
+  updatePicture,
   updateLocation,
   fetchCities,
   fetchPreSignedURL,
+  deleteUser
 } = require("../controllers/userController");
 const { isAuthenticated } = require("../middlewares/auth");
 
@@ -21,8 +22,9 @@ router.route("/me").get(isAuthenticated, loggedInUser);
 router.route("/logout").get(isAuthenticated, logoutUser);
 router.route("/user-info").get(isAuthenticated, userinfo);
 router.route("/get-user-groups").get(isAuthenticated, getUserGroups);
-router.route("/update-user-pic").put(isAuthenticated, updatePic);
+router.route("/update-user-picture").put(isAuthenticated, updatePicture);
 router.route("/update-user-location").put(isAuthenticated, updateLocation);
+router.route("/delete-user").delete(isAuthenticated, deleteUser);
 router.route("/fetch-cities").get(fetchCities);
 router.route("/get-presigned-url").get(fetchPreSignedURL);
 
