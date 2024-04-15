@@ -7,12 +7,12 @@ const connectDatabase = require("./config/database");
 const errorMiddleware = require("./middlewares/error");
 const groupRoute = require("./routes/groupRoute");
 const cors = require("cors");
-const { activityLogger, errorLogger } = require('./utils/logger');
-
+const { activityLogger, errorLogger } = require("./utils/logger");
 
 dotenv.config({ path: "./config/config.env" });
 const app = express();
 const PORT = process.env.PORT;
+const API_PREFIX = process.env.API_PREFIX || "";
 
 //Connecting Database
 connectDatabase();
@@ -31,18 +31,13 @@ app.use((req, res, next) => {
 });
 
 // Routes
-app.use("/user", userRoute);
-app.use("/group", groupRoute);
-app.use("/dummy", dummyRoute);
+app.use(`${API_PREFIX}/user`, userRoute);
+app.use(`${API_PREFIX}/group`, groupRoute);
+app.use(`${API_PREFIX}/dummy`, dummyRoute);
 
+app.use(errorMiddleware);
 
-
-app.use(errorMiddleware)
-
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server is running on http://localhost:${PORT}`);
   activityLogger.info(`Server is running on http://localhost:${PORT}`);
 });
-
-
-
