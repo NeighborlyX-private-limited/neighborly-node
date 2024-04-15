@@ -36,7 +36,6 @@ exports.addUser = async (req, res) => {
       { _id: new ObjectId(userId) },
       { $addToSet: { groups: new ObjectId(groupId) } }
     );
-
     //Updating 'members' field that is an array of ObjectId references to User documents
     const userAddedToGroup = await Group.updateOne(
       { _id: new ObjectId(groupId) },
@@ -179,7 +178,7 @@ exports.removeUser = async (req, res) => {
       }
       return;
     }
-    flag=false;
+    flag = false;
     for (let i = 0; i < group.admin.length; ++i) {
       if (group.admin[i].userId.toString() === userId) {
         flag = true;
@@ -417,8 +416,8 @@ exports.nearestGroup = async (req, res) => {
   } catch (error) {
     console.error("Unexpected error:", error);
     errorLogger.eror("An error occured:",
-     error
-      );
+      error
+    );
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
@@ -432,7 +431,7 @@ exports.fetchLastMessages = async (req, res) => {
 
     const skip = (page - 1) * limit;
 
-    const messages = await Message.find({ group_id: groupId }) 
+    const messages = await Message.find({ group_id: groupId })
       .sort({ sent_at: -1 }) // Sort by sent_at in descending order to get the latest messages first
       .skip(skip)
       .limit(limit);
@@ -440,7 +439,7 @@ exports.fetchLastMessages = async (req, res) => {
   } catch (error) {
     console.error("Error fetching messages:", error);
     errorLogger.error("An error occured while fetching messages:",
-    error
+      error
     );
     res.status(500).json({ error: "Internal Server Error" });
   }
@@ -457,8 +456,8 @@ exports.fetchGroupDetails = async (req, res) => {
   } catch (error) {
     console.error("Error fetching messages:", error);
     errorLogger.error(`An error occurred while fetching group details for ${groupId}`,
-     error
-     );
+      error
+    );
 
     res.status(500).json({ error: "Internal Server Error" });
   }
@@ -520,7 +519,7 @@ exports.updateIcon = async (req, res) => {
       res.status(200).json(updated);
     } else {
       errorLogger.error(`An error occured while updating icon for ${groupId}:`,
-      error
+        error
       );
       throw new Error("Access denied");
     }
@@ -550,7 +549,7 @@ exports.checkGroupNameUnique = async (req, res) => {
     }
   } catch (error) {
     errorLogger.error("An error occured while checking group name",
-    error
+      error
     );
     res.status(500).json({
       success: false,
@@ -601,6 +600,78 @@ exports.deleteGroup = async (req, res) => {
   }
   catch (error) {
     res.status(500)
+  }
+}
+
+exports.addAdmin = async (req, res) => {
+  const user = req.user;
+  const { groupId, userId } = req.body;
+  try {
+    const foundUser = await User.findById({ _id: new ObjectId(userId) });
+    const group = await Group.findById({ _id: new ObjectId(groupId) });
+    let flag = false;
+    for (let i = 0; i < group.admin.length; ++i) {
+      if (group.admin[i].userId.toString() === user._id.toString()) {
+        flag = true;
+        break;
+      }
+    }
+    if (flag) {
+      let memberFound = false;
+      for (let i = 0; i < group.members.length; ++i) {
+        if (group.members[i].user.userId.toString() === userId) {
+          memberFound = true;
+          break;
+        }
+      }
+      if (memberFound) {
+        await Group.updateOne(
+          { _id: new ObjectId(groupId) },
+          {
+            $pull: {
+              members: {
+                user: {
+                  userId: new ObjectId(userId),
+                  userName: foundUser.username,
+                  picture: foundUser.picture,
+                  karma: foundUser.karma
+                },
+              },
+            },
+          }
+        );
+        await Group.updateOne(
+          { _id: new ObjectId(groupId) },
+          {
+            $addToSet: {
+              admin: {
+                userId: new ObjectId(userId),
+                userName: foundUser.username,
+                picture: foundUser.picture,
+                karma: foundUser.karma
+              }
+            }
+          }
+        );
+        activityLogger.info("new admin added in admin-list of the group")
+        res.status(200).json({ message: "added a new admin" })
+      }
+      else {
+        activityLogger.error("new admin is not member of group");
+        res.status(502).json({message: "new admin is not member of group"})
+      }
+    }
+    else {
+      activityLogger.error("only admin can add new admin");
+      res.status(403).json({ message: "only admin can add new admin" });
+    }
+  } catch (error) {
+    errorLogger.error("An error occured while adding group admin", error);
+    res.status(500).json({
+      success: false,
+      message: "An error occured while adding group admin.",
+      error: error.message,
+    });
   }
 }
 
