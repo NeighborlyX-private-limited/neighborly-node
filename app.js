@@ -13,6 +13,7 @@ dotenv.config({ path: "./config/config.env" });
 const app = express();
 const PORT = process.env.PORT;
 const API_PREFIX = process.env.API_PREFIX || "";
+const CORS_URL = process.env.CORS_URL || "http://localhost:5173";
 
 //Connecting Database
 connectDatabase();
@@ -23,7 +24,7 @@ app.use(express.json());
 app.use(cookieParser());
 // app.use(cors());
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "http://localhost:5173");
+  res.header("Access-Control-Allow-Origin", CORS_URL);
   res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE");
   res.header("Access-Control-Allow-Headers", "Content-Type");
   res.header("Access-Control-Allow-Credentials", true);
