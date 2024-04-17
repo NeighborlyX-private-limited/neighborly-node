@@ -61,7 +61,7 @@ exports.updateLocation = async (req, res, next) => {
       await User.findByIdAndUpdate(user._id, {
         $set: {
           "current_coordinates.coordinates": userLocation,
-          "city.coordinates": null,
+          "city.coordinates": [0,0],
         },
       });
     } else if (cityLocation && CITY_TO_COORDINATE[cityLocation.toLowerCase()]) {
@@ -74,7 +74,7 @@ exports.updateLocation = async (req, res, next) => {
       await User.findByIdAndUpdate(user._id, {
         $set: {
           "city.coordinates": coordinates,
-          "current_coordinates.coordinates": null,
+          "current_coordinates.coordinates": [0,0],
         },
       });
     } else {
