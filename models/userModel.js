@@ -28,7 +28,7 @@ const userSchema = new mongoose.Schema({
     },
     coordinates: {
       type: [Number],
-      default: null,
+      default: [0,0],
     },
   },
   city: {
@@ -39,7 +39,7 @@ const userSchema = new mongoose.Schema({
     },
     coordinates: {
       type: [Number],
-      default: null,
+      default: [0,0],
     },
   },
   findMe: {
