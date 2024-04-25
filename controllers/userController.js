@@ -3,6 +3,7 @@ const { generateUsername } = require("unique-username-generator");
 const User = require("../models/userModel");
 const ErrorHandler = require("../utils/errorHandler");
 const sendToken = require("../utils/jwtToken");
+const dotenv = require("dotenv");
 const crypto = require("crypto");
 const { ObjectId } = require("mongodb");
 const { activityLogger, errorLogger } = require("../utils/logger");
@@ -13,6 +14,7 @@ const {
   S3_BUCKET_NAME,
 } = require("../utils/constants");
 const Group = require("../models/groupModel");
+const AVATAR_KEY = process.env.MULTI_AVATAR_API_KEY;
 
 exports.fetchPreSignedURL = async (req, res, next) => {
   const params = {
@@ -61,7 +63,7 @@ exports.updateLocation = async (req, res, next) => {
       await User.findByIdAndUpdate(user._id, {
         $set: {
           "current_coordinates.coordinates": userLocation,
-          "city.coordinates": [0,0],
+          "city.coordinates": [0, 0],
         },
       });
     } else if (cityLocation && CITY_TO_COORDINATE[cityLocation.toLowerCase()]) {
@@ -74,7 +76,7 @@ exports.updateLocation = async (req, res, next) => {
       await User.findByIdAndUpdate(user._id, {
         $set: {
           "city.coordinates": coordinates,
-          "current_coordinates.coordinates": [0,0],
+          "current_coordinates.coordinates": [0, 0],
         },
       });
     } else {
@@ -171,7 +173,7 @@ exports.registerUser = async (req, res) => {
     );
   }
   try {
-    const picture = `https://api.multiavatar.com/${username}.png`;
+    const picture = `https://api.multiavatar.com/${username}.png?apikey=${AVATAR_KEY}`;
     const user = await User.create({
       username: username,
       password: password,
