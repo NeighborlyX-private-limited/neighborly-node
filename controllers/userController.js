@@ -147,6 +147,7 @@ exports.loginUser = async (req, res, next) => {
   }
 
   if (!user) {
+    errorLogger.error(`Invalid email or password for ${user}` )
     return next(new ErrorHandler("Invalid Email or Password", 401));
   }
 
@@ -199,6 +200,7 @@ exports.registerUser = async (req, res) => {
 
 //Logout User
 exports.logoutUser = async (req, res, next) => {
+  activityLogger.info(`${user} logged out`);
   res.clearCookie("token");
   res.end();
 };
@@ -265,6 +267,7 @@ exports.deleteUser = async (req, res) => {
     const newData = await User.deleteOne({ _id: user._id });
     res.status(200).json(newData);
   } catch (error) {
+    errorLogger.error(`An error occured :`,error);
     res.status(500);
   }
 };
