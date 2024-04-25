@@ -46,10 +46,10 @@ exports.addUser = async (req, res) => {
               userId: new ObjectId(userId),
               userName: user.username,
               picture: user.picture,
-              karma: user.karma
-            }
-          }
-        }
+              karma: user.karma,
+            },
+          },
+        },
       }
     );
 
@@ -147,7 +147,7 @@ exports.removeUser = async (req, res) => {
                 userId: new ObjectId(userId),
                 userName: foundUser.username,
                 picture: foundUser.picture,
-                karma: foundUser.karma
+                karma: foundUser.karma,
               },
             },
           },
@@ -194,7 +194,7 @@ exports.removeUser = async (req, res) => {
               userId: new ObjectId(userId),
               userName: foundUser.username,
               picture: foundUser.picture,
-              karma: foundUser.karma
+              karma: foundUser.karma,
             },
           },
         }
@@ -222,9 +222,11 @@ exports.removeUser = async (req, res) => {
           .status(200)
           .json({ message: "Group not found or user not in the group." });
       }
-    }
-    else {
-      res.status(502).json({ message: "Last admin cannot be removed. Please select another user to be admin" })
+    } else {
+      res.status(502).json({
+        message:
+          "Last admin cannot be removed. Please select another user to be admin",
+      });
     }
   } catch (error) {
     // Handle unexpected errors, log them, and send an internal server error response
@@ -263,9 +265,7 @@ exports.createGroup = async (req, res) => {
     activityLogger.info("Creating group for user " + user.username);
     // Validate coordinates
     if (!isValidCoordinate(latitude, longitude)) {
-      errorLogger.error(
-        "Invalid coordinates provided during group creation."
-      );
+      errorLogger.error("Invalid coordinates provided during group creation.");
       return res.status(400).json({ message: "Invalid coordinates" });
     }
     duplicateName = await Group.findOne({ name });
@@ -290,6 +290,7 @@ exports.createGroup = async (req, res) => {
       members: list,
       karma: karma,
     });
+    // updating each user's information
     if (list && list.length > 0) {
       activityLogger.info("Adding members...");
       await Promise.all(
@@ -301,6 +302,7 @@ exports.createGroup = async (req, res) => {
         )
       );
     }
+    // updating admin information
     await User.updateOne(
       { _id: req.user._id },
       { $addToSet: { groups: group._id } }
@@ -327,6 +329,7 @@ exports.nearbyUsers = async (req, res) => {
 
   try {
     // First query for users based on current_coordinates
+    // TODO: this logic needs to be changed, we need not check coordinates for both user and city
     const currentCoordinatesUsers = await User.find({
       current_coordinates: {
         $near: {
@@ -360,12 +363,10 @@ exports.nearbyUsers = async (req, res) => {
 
     // Transform the combined users for response
     const list = combinedUsers.map((near_user) => ({
-      user: {
-        userId: near_user._id,
-        userName: near_user.username,
-        karma: near_user.karma,
-        picture: near_user.picture,
-      },
+      userId: near_user._id,
+      userName: near_user.username,
+      karma: near_user.karma,
+      picture: near_user.picture,
     }));
 
     res.status(200).json({ list });
@@ -400,10 +401,9 @@ exports.nearestGroup = async (req, res) => {
       "members.user.userId": { $ne: _id },
       // "admin.userId": { $ne: _id },
       "admin.userId": {
-        $ne: _id
-      }
+        $ne: _id,
+      },
     });
-
 
     var nearGroupsList = nearbyGroups.map((group) => ({
       groupName: group.name,
@@ -415,9 +415,7 @@ exports.nearestGroup = async (req, res) => {
     });
   } catch (error) {
     console.error("Unexpected error:", error);
-    errorLogger.eror("An error occured:",
-      error
-    );
+    errorLogger.eror("An error occured:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
@@ -438,9 +436,7 @@ exports.fetchLastMessages = async (req, res) => {
     res.status(200).json(messages);
   } catch (error) {
     console.error("Error fetching messages:", error);
-    errorLogger.error("An error occured while fetching messages:",
-      error
-    );
+    errorLogger.error("An error occured while fetching messages:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
@@ -455,7 +451,8 @@ exports.fetchGroupDetails = async (req, res) => {
     res.status(200).json(groupDetails);
   } catch (error) {
     console.error("Error fetching messages:", error);
-    errorLogger.error(`An error occurred while fetching group details for ${groupId}`,
+    errorLogger.error(
+      `An error occurred while fetching group details for ${groupId}`,
       error
     );
 
@@ -518,7 +515,8 @@ exports.updateIcon = async (req, res) => {
       activityLogger.info(`Icon updated for ${groupId}`);
       res.status(200).json(updated);
     } else {
-      errorLogger.error(`An error occured while updating icon for ${groupId}:`,
+      errorLogger.error(
+        `An error occured while updating icon for ${groupId}:`,
         error
       );
       throw new Error("Access denied");
@@ -548,9 +546,7 @@ exports.checkGroupNameUnique = async (req, res) => {
       });
     }
   } catch (error) {
-    errorLogger.error("An error occured while checking group name",
-      error
-    );
+    errorLogger.error("An error occured while checking group name", error);
     res.status(500).json({
       success: false,
       message: "An error occurred while checking the group name.",
@@ -572,36 +568,33 @@ exports.deleteGroup = async (req, res) => {
       }
     }
     if (flag) {
-      group.members.forEach(async member => {
+      group.members.forEach(async (member) => {
         await User.updateOne(
           { _id: member.userId },
           {
             $pull: {
-              groups: group._id
-            }
+              groups: group._id,
+            },
           }
         );
       });
-      group.admin.forEach(async member => {
+      group.admin.forEach(async (member) => {
         await User.updateOne(
           { _id: member.userId },
           {
             $pull: {
-              groups: group._id
-            }
+              groups: group._id,
+            },
           }
         );
       });
       const changedData = await Group.deleteOne({ _id: group._id });
       res.status(200).json(changedData);
-    }
-    else
-      res.status(403);
+    } else res.status(403);
+  } catch (error) {
+    res.status(500);
   }
-  catch (error) {
-    res.status(500)
-  }
-}
+};
 
 exports.addAdmin = async (req, res) => {
   const user = req.user;
@@ -634,7 +627,7 @@ exports.addAdmin = async (req, res) => {
                   userId: new ObjectId(userId),
                   userName: foundUser.username,
                   picture: foundUser.picture,
-                  karma: foundUser.karma
+                  karma: foundUser.karma,
                 },
               },
             },
@@ -648,20 +641,18 @@ exports.addAdmin = async (req, res) => {
                 userId: new ObjectId(userId),
                 userName: foundUser.username,
                 picture: foundUser.picture,
-                karma: foundUser.karma
-              }
-            }
+                karma: foundUser.karma,
+              },
+            },
           }
         );
-        activityLogger.info("new admin added in admin-list of the group")
-        res.status(200).json({ message: "added a new admin" })
-      }
-      else {
+        activityLogger.info("new admin added in admin-list of the group");
+        res.status(200).json({ message: "added a new admin" });
+      } else {
         activityLogger.error("new admin is not member of group");
-        res.status(502).json({message: "new admin is not member of group"})
+        res.status(502).json({ message: "new admin is not member of group" });
       }
-    }
-    else {
+    } else {
       activityLogger.error("only admin can add new admin");
       res.status(403).json({ message: "only admin can add new admin" });
     }
@@ -673,7 +664,7 @@ exports.addAdmin = async (req, res) => {
       error: error.message,
     });
   }
-}
+};
 
 // Function to validate coordinates
 function isValidCoordinate(latitude, longitude) {
