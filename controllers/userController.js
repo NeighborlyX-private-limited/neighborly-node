@@ -139,7 +139,8 @@ exports.loginUser = async (req, res, next) => {
   const emailRegex = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;
 
   if (emailRegex.test(userId)) {
-    email = userId;
+    email = userId.toLowerCase();
+    console.log(email);
     user = await User.findOne({ email: email });
   } else {
     username = userId;
@@ -178,7 +179,7 @@ exports.registerUser = async (req, res) => {
     const user = await User.create({
       username: username,
       password: password,
-      email: email,
+      email: email.toLowerCase(),
       picture: picture,
     });
 
@@ -200,6 +201,7 @@ exports.registerUser = async (req, res) => {
 
 //Logout User
 exports.logoutUser = async (req, res, next) => {
+  const user = req.user.username;
   activityLogger.info(`${user} logged out`);
   res.clearCookie("token");
   res.end();
