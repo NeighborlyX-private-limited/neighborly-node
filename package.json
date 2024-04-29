@@ -11,6 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@multiavatar/multiavatar": "^1.0.7",
     "aws-sdk": "^2.1596.0",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",

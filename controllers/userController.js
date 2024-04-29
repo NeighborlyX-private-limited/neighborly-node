@@ -7,6 +7,8 @@ const dotenv = require("dotenv");
 const crypto = require("crypto");
 const { ObjectId } = require("mongodb");
 const { activityLogger, errorLogger } = require("../utils/logger");
+const bcrypt = require("bcryptjs");
+const multiavatar = require('@multiavatar/multiavatar');
 const {
   CITY_TO_COORDINATE,
   AVAILABLE_CITIES,
@@ -155,7 +157,7 @@ exports.loginUser = async (req, res, next) => {
   const match = await user.comparePassword(password);
 
   if (!match) {
-    errorLogger.error("An unexpected error occurred during login:", error);
+    errorLogger.error("An unexpected error occurred during login");
     return next(new ErrorHandler("Invalid Email or Password", 401));
   }
   activityLogger.info(
@@ -273,3 +275,34 @@ exports.deleteUser = async (req, res) => {
     res.status(500);
   }
 };
+
+exports.changePassword = async(req, res) => {
+  const {currentPassword, newPassword} = req.body;
+  const user = await User.findById({ _id: req.user._id });
+  const match = await user.comparePassword(currentPassword);
+  try {if(match) {
+    const encryptPassword = await bcrypt.hash(newPassword, 10);
+    const update = await User.updateOne(
+      { _id: user._id },
+      { $set: { password: encryptPassword } }
+    );
+    res.status(200).json(update);
+  }
+  else {
+    errorLogger.error("Wrong password while changing password");
+    res.status(401).json({
+      msg: "wrong current password"
+    });
+  }} catch(err) {
+    errorLogger.error(
+      "An unexpected error occurred during change Password:",
+      err
+    );
+  }
+}
+
+exports.getAvatar = async(req, res) => {
+  const number = Math.random() * 12230590464;
+  let svgCode = multiavatar(number.toString());
+  res.status(200).send(`<html><head><title>svg</title></head><body>${svgCode}</body></html>`);
+}
