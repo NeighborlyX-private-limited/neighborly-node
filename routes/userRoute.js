@@ -11,6 +11,7 @@ const {
   fetchCities,
   fetchPreSignedURL,
   changePassword,
+  getAvatar,
   deleteUser
 } = require("../controllers/userController");
 const { isAuthenticated } = require("../middlewares/auth");
@@ -29,5 +30,6 @@ router.route("/change-password").put(isAuthenticated, changePassword);
 router.route("/delete-user").delete(isAuthenticated, deleteUser);
 router.route("/fetch-cities").get(fetchCities);
 router.route("/get-presigned-url").get(fetchPreSignedURL);
+router.route("/get-avatar").get(getAvatar);
 
 module.exports = router;

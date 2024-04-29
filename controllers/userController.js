@@ -8,6 +8,7 @@ const crypto = require("crypto");
 const { ObjectId } = require("mongodb");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const bcrypt = require("bcryptjs");
+const multiavatar = require('@multiavatar/multiavatar');
 const {
   CITY_TO_COORDINATE,
   AVAILABLE_CITIES,
@@ -298,4 +299,12 @@ exports.changePassword = async(req, res) => {
       err
     );
   }
+}
+
+exports.getAvatar = async(req, res) => {
+  let svgCode = multiavatar('Binx Bond');
+  console.log(svgCode);
+  res.status(200).json({
+    svg: svgCode
+  });
 }
