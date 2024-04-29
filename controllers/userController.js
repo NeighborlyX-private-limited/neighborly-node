@@ -302,9 +302,7 @@ exports.changePassword = async(req, res) => {
 }
 
 exports.getAvatar = async(req, res) => {
-  let svgCode = multiavatar('Binx Bond');
-  console.log(svgCode);
-  res.status(200).json({
-    svg: svgCode
-  });
+  const number = Math.random() * 12230590464;
+  let svgCode = multiavatar(number.toString());
+  res.status(200).send(`<html><head><title>svg</title></head><body>${svgCode}</body></html>`);
 }
