@@ -45,12 +45,10 @@ exports.addUser = async (req, res) => {
       {
         $addToSet: {
           members: {
-            user: {
-              userId: new ObjectId(userId),
-              userName: user.username,
-              picture: user.picture,
-              karma: user.karma,
-            },
+            userId: new ObjectId(userId),
+            userName: user.username,
+            picture: user.picture,
+            karma: user.karma,
           },
         },
       }
