@@ -25,12 +25,12 @@ exports.addUser = async (req, res) => {
 
     const user = await User.findById(new ObjectId(userId));
     if (!user) {
-      activityLogger.info('User not found');
+      activityLogger.info("User not found");
       return res.status(404).json({ message: "User not found." });
     }
 
     if (user.karma < requiredKarma) {
-      activityLogger.info('Karma insufficent');
+      activityLogger.info("Karma insufficent");
       return res.status(403).json({ message: "Insufficient karma." });
     }
 
@@ -66,7 +66,6 @@ exports.addUser = async (req, res) => {
         .status(200)
         .json({ message: "User added to the group successfully." });
     } else {
-      
       res
         .status(400)
         .json({ message: "Group not found or user already in the group." });
@@ -300,7 +299,7 @@ exports.createGroup = async (req, res) => {
       await Promise.all(
         list.map((member_user) =>
           User.updateOne(
-            { _id: member_user.user.userId },
+            { _id: member_user.userId },
             { $addToSet: { groups: group._id } }
           )
         )
@@ -375,7 +374,7 @@ exports.nearbyUsers = async (req, res) => {
 
     res.status(200).json({ list });
   } catch (error) {
-    errorLogger.error(`Unexpected error occured:`,error);
+    errorLogger.error(`Unexpected error occured:`, error);
     console.error("Unexpected error:", error);
     res
       .status(500)
