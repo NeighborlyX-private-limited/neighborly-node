@@ -133,7 +133,7 @@ exports.removeUser = async (req, res) => {
     let result1, result2;
 
     for (let i = 0; i < group.members.length; ++i) {
-      if (group.members[i].user.userId.toString() === userId) {
+      if (group.members[i].userId.toString() === userId) {
         flag = true;
         break;
       }
@@ -146,12 +146,10 @@ exports.removeUser = async (req, res) => {
         {
           $pull: {
             members: {
-              user: {
-                userId: new ObjectId(userId),
-                userName: foundUser.username,
-                picture: foundUser.picture,
-                karma: foundUser.karma,
-              },
+              userId: new ObjectId(userId),
+              userName: foundUser.username,
+              picture: foundUser.picture,
+              karma: foundUser.karma,
             },
           },
         }
@@ -403,7 +401,7 @@ exports.nearestGroup = async (req, res) => {
           $maxDistance: 300000, // Adjust this distance as needed (in meters)
         },
       },
-      "members.user.userId": { $ne: _id },
+      "members.userId": { $ne: _id },
       // "admin.userId": { $ne: _id },
       "admin.userId": {
         $ne: _id,
@@ -617,7 +615,7 @@ exports.addAdmin = async (req, res) => {
     if (flag) {
       let memberFound = false;
       for (let i = 0; i < group.members.length; ++i) {
-        if (group.members[i].user.userId.toString() === userId) {
+        if (group.members[i].userId.toString() === userId) {
           memberFound = true;
           break;
         }
