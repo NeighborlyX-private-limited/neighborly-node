@@ -306,3 +306,20 @@ exports.getAvatar = async(req, res) => {
   let svgCode = multiavatar(number.toString());
   res.status(200).send(`<html><head><title>svg</title></head><body>${svgCode}</body></html>`);
 }
+
+exports.findMe = async(req, res) => {
+  const user = req.user;
+  try {
+    const findmeUpdate = await User.updateOne(
+      { _id: user._id },
+      { $set: { findMe: !user.findMe } }
+    );
+    activityLogger.info('Updated find me option as',!user.findMe)
+    res.status(200).json(findmeUpdate);
+  } catch(err) {
+    errorLogger.error('There is an error in findMe API: ', err);
+    res.status(500).json({
+      msg: "Find me API crashed"
+    });
+  }
+}
