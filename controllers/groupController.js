@@ -351,6 +351,7 @@ exports.nearbyUsers = async (req, res) => {
       },
       karma: { $gte: karmaThreshold },
       _id: { $ne: req.user._id },
+      findMe: { $eq: true },
     });
 
     // Combine and deduplicate users from both queries
