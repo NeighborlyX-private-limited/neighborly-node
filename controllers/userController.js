@@ -310,12 +310,12 @@ exports.getAvatar = async(req, res) => {
 exports.findMe = async(req, res) => {
   const user = req.user;
   try {
-    const findmeUpdate = await User.updateOne(
+    const findme = await User.updateOne(
       { _id: user._id },
       { $set: { findMe: !user.findMe } }
     );
     activityLogger.info('Updated find me option as',!user.findMe)
-    res.status(200).json(findmeUpdate);
+    res.status(200).json(findme);
   } catch(err) {
     errorLogger.error('There is an error in findMe API: ', err);
     res.status(500).json({
