@@ -12,7 +12,8 @@ const {
   fetchPreSignedURL,
   changePassword,
   getAvatar,
-  deleteUser
+  deleteUser,
+  findMe
 } = require("../controllers/userController");
 const { isAuthenticated } = require("../middlewares/auth");
 
@@ -28,6 +29,7 @@ router.route("/update-user-picture").put(isAuthenticated, updatePicture);
 router.route("/update-user-location").put(isAuthenticated, updateLocation);
 router.route("/change-password").put(isAuthenticated, changePassword);
 router.route("/delete-user").delete(isAuthenticated, deleteUser);
+router.route("/find-me").get(isAuthenticated, findMe);
 router.route("/fetch-cities").get(fetchCities);
 router.route("/get-presigned-url").get(fetchPreSignedURL);
 router.route("/get-avatar").get(getAvatar);
