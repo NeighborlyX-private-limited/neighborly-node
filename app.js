@@ -20,7 +20,7 @@ const CORS_URL = process.env.CORS_URL || "http://localhost:5173";
 app.use(session({
   resave: false,
   saveUninitialized: true,
-  secret: "123456"
+  secret: process.env.SESSION_SECRET
 }));
 
 //Connecting Database
