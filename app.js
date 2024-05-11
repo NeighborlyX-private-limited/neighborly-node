@@ -17,11 +17,11 @@ const PORT = process.env.PORT;
 const API_PREFIX = process.env.API_PREFIX || "";
 const CORS_URL = process.env.CORS_URL || "http://localhost:5173";
 
-app.use(session({
-  resave: false,
-  saveUninitialized: true,
-  secret: process.env.SESSION_SECRET
-}));
+// app.use(session({
+//   resave: false,
+//   saveUninitialized: true,
+//   secret: process.env.SESSION_SECRET
+// }));
 
 //Connecting Database
 connectDatabase();
