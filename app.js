@@ -7,13 +7,21 @@ const connectDatabase = require("./config/database");
 const errorMiddleware = require("./middlewares/error");
 const groupRoute = require("./routes/groupRoute");
 const cors = require("cors");
+const session = require('express-session');
 const { activityLogger, errorLogger } = require("./utils/logger");
 
 dotenv.config({ path: "./config/config.env" });
+
 const app = express();
 const PORT = process.env.PORT;
 const API_PREFIX = process.env.API_PREFIX || "";
 const CORS_URL = process.env.CORS_URL || "http://localhost:5173";
+
+app.use(session({
+  resave: false,
+  saveUninitialized: true,
+  secret: "123456"
+}));
 
 //Connecting Database
 connectDatabase();

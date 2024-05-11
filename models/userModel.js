@@ -10,7 +10,6 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, "Please enter password"],
   },
   picture: {
     type: String,
@@ -28,7 +27,7 @@ const userSchema = new mongoose.Schema({
     },
     coordinates: {
       type: [Number],
-      default: [0,0],
+      default: [0, 0],
     },
   },
   city: {
@@ -39,7 +38,7 @@ const userSchema = new mongoose.Schema({
     },
     coordinates: {
       type: [Number],
-      default: [0,0],
+      default: [0, 0],
     },
   },
   findMe: {
@@ -56,10 +55,14 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 1000,
   },
+  auth_type: {
+    type: String
+  }
 });
 
 userSchema.pre("save", async function () {
-  this.password = await bcrypt.hash(this.password, 10);
+  if (this.password !== undefined)
+    this.password = await bcrypt.hash(this.password, 10);
 });
 
 userSchema.methods.getJWTToken = function () {
