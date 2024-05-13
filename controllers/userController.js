@@ -9,6 +9,8 @@ const { ObjectId } = require("mongodb");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const bcrypt = require("bcryptjs");
 const multiavatar = require('@multiavatar/multiavatar');
+const otpGenerator = require('otp-generator');
+const springedge = require('springedge');
 const {
   CITY_TO_COORDINATE,
   AVAILABLE_CITIES,
@@ -183,6 +185,7 @@ exports.registerUser = async (req, res) => {
       password: password,
       email: email.toLowerCase(),
       picture: picture,
+      auth_type: 'email'
     });
 
     sendToken(user, 200, res);
@@ -321,5 +324,36 @@ exports.findMe = async(req, res) => {
     res.status(500).json({
       msg: "Find me API crashed"
     });
+  }
+}
+
+exports.sendOTP = (req, res) => {
+  const otp = otpGenerator.generate(4, {upperCaseAlphabets: false, lowerCaseAlphabets: false, specialChars: false});
+  res.status(200).json({
+    'msg': otp
+  })
+}
+
+exports.googleAuth = async (req, res) => {
+  const email = req.user.email;
+  const user = await User.findOne({ email: email });  
+  if(user === null) {
+   try{ let username = generateUsername() + Math.floor(Math.random() * 10000);
+    const picture = `https://api.multiavatar.com/${username}.png?apikey=${AVATAR_KEY}`;
+    const newUser = await User.create({
+      username: username,
+      email: email.toLowerCase(),
+      picture: picture,
+      auth_type: 'google'
+    });
+    activityLogger.info("new user added by Google");
+    sendToken(newUser, 200, res);
+    } catch(err) {
+      errorLogger.error("There is a problem in Google authentication");
+    }
+  }
+  else {
+    activityLogger.info(`${user.username} successfully logged in by Google authentication`);
+    sendToken(user,200,res);
   }
 }
