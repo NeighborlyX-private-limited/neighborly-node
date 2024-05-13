@@ -11,10 +11,11 @@ passport.deserializeUser(function (user, done) {
 });
 
 passport.use(new GoogleStrategy({
-    clientID: process.env.CLIENT_ID, // Your Credentials here. 
-    clientSecret: process.env.CLIENT_SECRET, // Your Credentials here. 
+    clientID: process.env.CLIENT_ID, 
+    clientSecret: process.env.CLIENT_SECRET, 
     callbackURL: process.env.AUTH_URL,
-    passReqToCallback: true
+    passReqToCallback: true,
+    scope: ['email', 'profile']
 },
     function (request, accessToken, refreshToken, profile, done) {
         return done(null, profile);

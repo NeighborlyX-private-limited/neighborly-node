@@ -19,7 +19,7 @@ const {
 } = require("../controllers/userController");
 const { isAuthenticated } = require("../middlewares/auth");
 const passport = require('passport');
-require('../passport');
+require('../middlewares/passport');
 const router = express.Router();
 
 router.use(passport.initialize());
@@ -40,12 +40,8 @@ router.route("/fetch-cities").get(fetchCities);
 router.route("/get-presigned-url").get(fetchPreSignedURL);
 router.route("/get-avatar").get(getAvatar);
 router.route("/send-otp").get(sendOTP);
-router.route("/google-auth").get(
-  passport.authenticate('google', {
-    scope:
-      ['email', 'profile']
-  }))
-router.route('/google/callback').get(
+
+router.route('/google/oauth').get(
   passport.authenticate('google', {
     successRedirect: '/user/success',
     failureRedirect: '/user/failure'
