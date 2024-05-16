@@ -18,8 +18,8 @@ const connectDatabase = () => {
 const pool = new Pool({
   user: process.env.PG_USERNAME,
   host: process.env.PG_HOSTNAME,
-  database: process.PG_DATABASE,
-  password: process.PG_PASSWORD,
+  database: process.env.PG_DATABASE,
+  password: process.env.PG_PASSWORD,
   port: process.env.PG_PORT,
 });
 
