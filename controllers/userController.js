@@ -152,7 +152,7 @@ exports.loginUser = async (req, res, next) => {
   }
 
   if (!user) {
-    errorLogger.error(`Invalid email or password for ${user}` )
+    errorLogger.error(`Invalid email or password for ${user}`)
     return next(new ErrorHandler("Invalid Email or Password", 401));
   }
 
@@ -171,13 +171,7 @@ exports.loginUser = async (req, res, next) => {
 // User Register
 exports.registerUser = async (req, res) => {
   const { password, email, pic, current_coordinates } = req.body;
-  let username = generateUsername() + Math.floor(Math.random() * 10000);
-  while (await User.findOne({ username })) {
-    username = generateUsername() + Math.floor(Math.random() * 10000);
-    activityLogger.info(
-      `Registration attempt for user with username ${username}.`
-    );
-  }
+  const username = await getUsername();
   try {
     const picture = `https://api.multiavatar.com/${username}.png?apikey=${AVATAR_KEY}`;
     const user = await User.create({
@@ -187,7 +181,9 @@ exports.registerUser = async (req, res) => {
       picture: picture,
       auth_type: 'email'
     });
-
+    activityLogger.info(
+      `Registration attempt for user with username ${username}.`
+    );
     sendToken(user, 200, res);
   } catch (error) {
     errorLogger.error(
@@ -274,29 +270,31 @@ exports.deleteUser = async (req, res) => {
     const newData = await User.deleteOne({ _id: user._id });
     res.status(200).json(newData);
   } catch (error) {
-    errorLogger.error(`An error occured :`,error);
+    errorLogger.error(`An error occured :`, error);
     res.status(500);
   }
 };
 
-exports.changePassword = async(req, res) => {
-  const {currentPassword, newPassword} = req.body;
+exports.changePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
   const user = await User.findById({ _id: req.user._id });
   const match = await user.comparePassword(currentPassword);
-  try {if(match) {
-    const encryptPassword = await bcrypt.hash(newPassword, 10);
-    const update = await User.updateOne(
-      { _id: user._id },
-      { $set: { password: encryptPassword } }
-    );
-    res.status(200).json(update);
-  }
-  else {
-    errorLogger.error("Wrong password while changing password");
-    res.status(401).json({
-      msg: "wrong current password"
-    });
-  }} catch(err) {
+  try {
+    if (match) {
+      const encryptPassword = await bcrypt.hash(newPassword, 10);
+      const update = await User.updateOne(
+        { _id: user._id },
+        { $set: { password: encryptPassword } }
+      );
+      res.status(200).json(update);
+    }
+    else {
+      errorLogger.error("Wrong password while changing password");
+      res.status(401).json({
+        msg: "wrong current password"
+      });
+    }
+  } catch (err) {
     errorLogger.error(
       "An unexpected error occurred during change Password:",
       err
@@ -304,22 +302,16 @@ exports.changePassword = async(req, res) => {
   }
 }
 
-exports.getAvatar = async(req, res) => {
-  const number = Math.random() * 12230590464;
-  let svgCode = multiavatar(number.toString());
-  res.status(200).send(`<html><head><title>svg</title></head><body>${svgCode}</body></html>`);
-}
-
-exports.findMe = async(req, res) => {
+exports.findMe = async (req, res) => {
   const user = req.user;
   try {
     const findme = await User.updateOne(
       { _id: user._id },
       { $set: { findMe: !user.findMe } }
     );
-    activityLogger.info('Updated find me option as',!user.findMe)
+    activityLogger.info('Updated find me option as', !user.findMe)
     res.status(200).json(findme);
-  } catch(err) {
+  } catch (err) {
     errorLogger.error('There is an error in findMe API: ', err);
     res.status(500).json({
       msg: "Find me API crashed"
@@ -328,7 +320,7 @@ exports.findMe = async(req, res) => {
 }
 
 exports.sendOTP = (req, res) => {
-  const otp = otpGenerator.generate(4, {upperCaseAlphabets: false, lowerCaseAlphabets: false, specialChars: false});
+  const otp = otpGenerator.generate(4, { upperCaseAlphabets: false, lowerCaseAlphabets: false, specialChars: false });
   res.status(200).json({
     'msg': otp
   })
@@ -336,24 +328,33 @@ exports.sendOTP = (req, res) => {
 
 exports.googleAuth = async (req, res) => {
   const email = req.user.email;
-  const user = await User.findOne({ email: email });  
-  if(user === null) {
-   try{ let username = generateUsername() + Math.floor(Math.random() * 10000);
-    const picture = `https://api.multiavatar.com/${username}.png?apikey=${AVATAR_KEY}`;
-    const newUser = await User.create({
-      username: username,
-      email: email.toLowerCase(),
-      picture: picture,
-      auth_type: 'google'
-    });
-    activityLogger.info("new user added by Google");
-    sendToken(newUser, 200, res);
-    } catch(err) {
+  const user = await User.findOne({ email: email });
+  if (user === null) {
+    try {
+      const username = await getUsername();
+      const picture = `https://api.multiavatar.com/${username}.png?apikey=${AVATAR_KEY}`;
+      const newUser = await User.create({
+        username: username,
+        email: email.toLowerCase(),
+        picture: picture,
+        auth_type: 'google'
+      });
+      activityLogger.info("new user added by Google");
+      sendToken(newUser, 200, res);
+    } catch (err) {
       errorLogger.error("There is a problem in Google authentication");
     }
   }
   else {
     activityLogger.info(`${user.username} successfully logged in by Google authentication`);
-    sendToken(user,200,res);
+    sendToken(user, 200, res);
   }
+}
+
+const getUsername = async () => {
+  let username = generateUsername() + Math.floor(Math.random() * 10000);
+  while (await User.findOne({ username })) {
+    username = generateUsername() + Math.floor(Math.random() * 10000);
+  }
+  return username;
 }

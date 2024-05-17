@@ -11,7 +11,6 @@ const {
   fetchCities,
   fetchPreSignedURL,
   changePassword,
-  getAvatar,
   deleteUser,
   findMe,
   sendOTP,
@@ -38,7 +37,6 @@ router.route("/delete-user").delete(isAuthenticated, deleteUser);
 router.route("/find-me").get(isAuthenticated, findMe);
 router.route("/fetch-cities").get(fetchCities);
 router.route("/get-presigned-url").get(fetchPreSignedURL);
-router.route("/get-avatar").get(getAvatar);
 router.route("/send-otp").get(sendOTP);
 
 router.route('/google/oauth').get(
