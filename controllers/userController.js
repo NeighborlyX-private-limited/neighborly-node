@@ -230,7 +230,6 @@ exports.changePassword = async (req, res) => {
   }
 }
 
-
 exports.findMe = async (req, res) => {
   const user = req.user;
   try {
