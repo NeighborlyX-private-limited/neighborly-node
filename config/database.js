@@ -1,8 +1,8 @@
-const { Pool } = require("pg");
 const mongoose = require("mongoose");
 const { activityLogger, errorLogger } = require("../utils/logger");
+const Sequelize = require('sequelize');
 
-const connectDatabase = () => {
+exports.connectDatabase = () => {
   mongoose
     .connect(process.env.DB_URI)
     .then(() => {
@@ -15,13 +15,7 @@ const connectDatabase = () => {
     });
 };
 
-const pool = new Pool({
-  user: process.env.PG_USERNAME,
+exports.sequelize = new Sequelize(process.env.PG_DATABASE, process.env.PG_USERNAME, process.env.PG_PASSWORD, {
   host: process.env.PG_HOSTNAME,
-  database: process.env.PG_DATABASE,
-  password: process.env.PG_PASSWORD,
-  port: process.env.PG_PORT,
+  dialect: 'postgres'
 });
-
-module.exports = pool;
-module.exports = connectDatabase;
