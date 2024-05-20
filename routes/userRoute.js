@@ -10,7 +10,8 @@ const {
   updateLocation,
   fetchCities,
   fetchPreSignedURL,
-  deleteUser
+  deleteUser,
+  verifyEmail
 } = require("../controllers/userController");
 const { isAuthenticated } = require("../middlewares/auth");
 
@@ -27,5 +28,6 @@ router.route("/update-user-location").put(isAuthenticated, updateLocation);
 router.route("/delete-user").delete(isAuthenticated, deleteUser);
 router.route("/fetch-cities").get(fetchCities);
 router.route("/get-presigned-url").get(fetchPreSignedURL);
+router.route("/verify-email").get(verifyEmail);
 
 module.exports = router;

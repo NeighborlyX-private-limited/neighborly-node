@@ -6,6 +6,7 @@ const sendToken = require("../utils/jwtToken");
 const crypto = require("crypto");
 const { ObjectId } = require("mongodb");
 const { activityLogger, errorLogger } = require("../utils/logger");
+const { sendVerificationEmail } = require('../utils/emailService');
 const {
   CITY_TO_COORDINATE,
   AVAILABLE_CITIES,
@@ -178,6 +179,8 @@ exports.registerUser = async (req, res) => {
       email: email,
       picture: picture,
     });
+    await sendVerificationEmail(user.email, user._id);
+
 
     sendToken(user, 200, res);
   } catch (error) {
@@ -192,6 +195,18 @@ exports.registerUser = async (req, res) => {
       });
     }
     return res.status(400).json(error);
+  }
+};
+
+// veeify mail
+exports.verifyEmail = async (req, res) => {
+  const { token } = req.query;
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    await User.findByIdAndUpdate(decoded.id, { verified: true });
+    res.send('Email verified successfully!');
+  } catch (error) {
+    res.status(400).send('Invalid or expired token');
   }
 };
 
