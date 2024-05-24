@@ -8,6 +8,7 @@ const {connectDatabase} = require("./config/database");
 const errorMiddleware = require("./middlewares/error");
 const groupRoute = require("./routes/groupRoute");
 const wallRoute = require("./routes/wallRoute");
+const eventRoute = require('./routes/eventRoute');
 const cors = require("cors");
 const session = require('express-session');
 const { activityLogger, errorLogger } = require("./utils/logger");
@@ -46,6 +47,7 @@ app.use(`${API_PREFIX}/authentication`,authRoute);
 app.use(`${API_PREFIX}/group`, groupRoute);
 app.use(`${API_PREFIX}/dummy`, dummyRoute);
 app.use(`${API_PREFIX}/wall`, wallRoute);
+app.use(`${API_PREFIX}/event`, eventRoute);
 
 app.use(errorMiddleware);
 
