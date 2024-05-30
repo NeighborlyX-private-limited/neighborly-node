@@ -1,0 +1,128 @@
+const { generateUsername } = require("unique-username-generator");
+const User = require("../models/userModel");
+const ErrorHandler = require("../utils/errorHandler");
+const sendToken = require("../utils/jwtToken");
+const { activityLogger, errorLogger } = require("../utils/logger");
+const otpGenerator = require('otp-generator');
+const dotenv = require("dotenv");
+
+const AVATAR_KEY = process.env.MULTI_AVATAR_API_KEY;
+
+// User Login
+exports.loginUser = async (req, res, next) => {
+    const { userId, password } = req.body;
+    let email = "";
+    let username = "";
+    let user;
+
+    const emailRegex = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;
+
+    if (emailRegex.test(userId)) {
+        email = userId.toLowerCase();
+        console.log(email);
+        user = await User.findOne({ email: email });
+    } else {
+        username = userId;
+        user = await User.findOne({ username: username });
+    }
+
+    if (!user) {
+        errorLogger.error(`Invalid email or password for ${user}`)
+        return next(new ErrorHandler("Invalid Email or Password", 401));
+    }
+
+    const match = await user.comparePassword(password);
+
+    if (!match) {
+        errorLogger.error("An unexpected error occurred during login");
+        return next(new ErrorHandler("Invalid Email or Password", 401));
+    }
+    activityLogger.info(
+        `User ${user.username}(${user._id}) has logged in successfully`
+    );
+    sendToken(user, 200, res);
+};
+
+// User Register
+exports.registerUser = async (req, res) => {
+    const { password, email } = req.body;
+    let username = generateUsername() + Math.floor(Math.random() * 10000);
+    while (await User.findOne({ username })) {
+        username = generateUsername() + Math.floor(Math.random() * 10000);
+        activityLogger.info(
+            `Registration attempt for user with username ${username}.`
+        );
+    }
+    try {
+        const picture = `https://api.multiavatar.com/${username}.png?apikey=${AVATAR_KEY}`;
+        const user = await User.create({
+            username: username,
+            password: password,
+            email: email.toLowerCase(),
+            picture: picture,
+            auth_type: 'email'
+        });
+
+        sendToken(user, 200, res);
+    } catch (error) {
+        errorLogger.error(
+            "An unexpected error occurred during user registration:",
+            error
+        );
+        if (error.code === 11000 || error.code === 11001) {
+            return res.status(400).json({
+                error: "Duplicate Entry",
+                message: Object.keys(error.keyValue)[0] + " already exists.",
+            });
+        }
+        return res.status(400).json(error);
+    }
+};
+
+//Logout User
+exports.logoutUser = async (req, res, next) => {
+    const user = req.user.username;
+    activityLogger.info(`${user} logged out`);
+    res.clearCookie("token");
+    req.session.destroy(() => {
+        activityLogger.info('session destroyed successfully');
+    });
+    res.end();
+};
+exports.googleAuth = async (req, res) => {
+    const email = req.user.email;
+    const user = await User.findOne({ email: email });
+    if (user === null) {
+        try {
+            let username = generateUsername() + Math.floor(Math.random() * 10000);
+            while (await User.findOne({ username })) {
+                username = generateUsername() + Math.floor(Math.random() * 10000);
+                activityLogger.info(
+                    `Registration attempt for user with username ${username}.`
+                );
+            }
+            const picture = `https://api.multiavatar.com/${username}.png?apikey=${AVATAR_KEY}`;
+            const newUser = await User.create({
+                username: username,
+                email: email.toLowerCase(),
+                picture: picture,
+                auth_type: 'google'
+            });
+            activityLogger.info("new user added by Google");
+            sendToken(newUser, 200, res);
+        } catch (err) {
+            errorLogger.error("There is a problem in Google authentication");
+        }
+    }
+    else {
+        activityLogger.info(`${user.username} successfully logged in by Google authentication`);
+        sendToken(user, 200, res);
+    }
+}
+
+exports.sendOTP = (req, res) => {
+    const otp = otpGenerator.generate(4, { upperCaseAlphabets: false, lowerCaseAlphabets: false, specialChars: false });
+    res.status(200).json({
+        'msg': otp
+    })
+}
