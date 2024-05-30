@@ -46,14 +46,16 @@ const groupSchema = new mongoose.Schema({
   ],
   members: [
     {
-      userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-        required: true,
+      user: {
+        userId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          required: true,
+        },
+        userName: String,
+        picture: String,
+        karma: Number,
       },
-      userName: String,
-      picture: String,
-      karma: Number,
     },
   ],
 });
