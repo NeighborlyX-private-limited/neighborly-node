@@ -5,6 +5,7 @@ const sendToken = require("../utils/jwtToken");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const otpGenerator = require('otp-generator');
 const dotenv = require("dotenv");
+const { sendVerificationEmail } = require("../utils/emailService");
 
 const AVATAR_KEY = process.env.MULTI_AVATAR_API_KEY;
 
@@ -63,6 +64,8 @@ exports.registerUser = async (req, res) => {
             auth_type: 'email'
         });
 
+       
+
         sendToken(user, 200, res);
     } catch (error) {
         errorLogger.error(
@@ -79,6 +82,62 @@ exports.registerUser = async (req, res) => {
     }
 };
 
+//Send Verification mail
+
+
+exports.sendOTP = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(400).json({ error: 'User not found' });
+    }
+
+    
+    if (user.isVerified) {
+      return res.status(400).json({ error: 'Email is already verified' });
+    }
+
+    await sendVerificationEmail(email);
+    res.status(200).json({ msg: 'OTP sent successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+//Verify OTP
+exports.verifyOTP = async (req, res) => {
+    const { email, otp } = req.body;
+  
+    try {
+      const user = await User.findOne({ email });
+      
+  
+      if (!user) {
+        return res.status(400).json({ error: 'Invalid email or OTP' });
+      }
+  
+      if (user.otp !== otp) {
+        return res.status(400).json({ error: `Invalid OTP` });
+      }
+      if (user.otpExpiry < Date.now()) {
+        return res.status(400).json({ error: 'OTP has expired' });
+      }
+  
+      
+      user.isVerified = true;
+      user.otp = null;
+      user.otpExpiry = null;
+      await user.save();
+  
+      res.status(200).json({ message: 'Email verified successfully' });
+    } catch (error) {
+      res.status(500).json({ error: `An error occurred while verifying OTP: ${error.message}` });
+    }
+  };
 //Logout User
 exports.logoutUser = async (req, res, next) => {
     const user = req.user.username;
@@ -120,9 +179,3 @@ exports.googleAuth = async (req, res) => {
     }
 }
 
-exports.sendOTP = (req, res) => {
-    const otp = otpGenerator.generate(4, { upperCaseAlphabets: false, lowerCaseAlphabets: false, specialChars: false });
-    res.status(200).json({
-        'msg': otp
-    })
-}
