@@ -7,9 +7,11 @@ const {
     registerUser,
     logoutUser,
     sendOTP,
+
     googleAuth,
     verifyOTP
     
+
 } = require('../controllers/authController');
 
 require("../middlewares/passport");
@@ -20,8 +22,10 @@ router.use(passport.session());
 router.route("/login").post(loginUser);
 router.route("/register").post(registerUser);
 router.route("/logout").get(isAuthenticated, logoutUser);
+
 router.route("/send-otp").post(sendOTP);
 router.route("/verify-otp").post(verifyOTP);
+
 router.route("/google/oauth").get(
     passport.authenticate("google", {
         successRedirect: "/user/success",
