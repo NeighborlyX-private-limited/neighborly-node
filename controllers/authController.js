@@ -5,7 +5,9 @@ const sendToken = require("../utils/jwtToken");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const otpGenerator = require('otp-generator');
 const dotenv = require("dotenv");
+
 const { sendVerificationEmail } = require("../utils/emailService");
+
 
 const AVATAR_KEY = process.env.MULTI_AVATAR_API_KEY;
 
@@ -64,7 +66,6 @@ exports.registerUser = async (req, res) => {
             auth_type: 'email'
         });
 
-       
 
         sendToken(user, 200, res);
     } catch (error) {
@@ -81,6 +82,7 @@ exports.registerUser = async (req, res) => {
         return res.status(400).json(error);
     }
 };
+
 
 //Send Verification mail
 
@@ -146,6 +148,7 @@ exports.verifyOTP = async (req, res) => {
       res.status(500).json({ error: `An error occurred while verifying OTP: ${error.message}` });
     }
   };
+
 //Logout User
 exports.logoutUser = async (req, res, next) => {
     const user = req.user.username;
@@ -185,5 +188,13 @@ exports.googleAuth = async (req, res) => {
         activityLogger.info(`${user.username} successfully logged in by Google authentication`);
         sendToken(user, 200, res);
     }
+}
+
+
+exports.sendOTP = (req, res) => {
+    const otp = otpGenerator.generate(4, { upperCaseAlphabets: false, lowerCaseAlphabets: false, specialChars: false });
+    res.status(200).json({
+        'msg': otp
+    })
 }
 

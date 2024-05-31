@@ -68,6 +68,7 @@ const userSchema = new mongoose.Schema({
   },
   auth_type: {
     type: String
+
   },
   isVerified: {
     type:Boolean,
@@ -80,6 +81,7 @@ const userSchema = new mongoose.Schema({
   otpExpiry: {
     type: Date,
   },
+
 });
 
 userSchema.pre("save", async function () {
