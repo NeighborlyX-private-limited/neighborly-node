@@ -92,17 +92,21 @@ exports.sendOTP = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (!user) {
+        errorLogger.error("User not found");
       return res.status(400).json({ error: 'User not found' });
     }
 
     
     if (user.isVerified) {
+        activityLogger.info("Email is already verified");
       return res.status(400).json({ error: 'Email is already verified' });
     }
 
     await sendVerificationEmail(email);
+    activityLogger.info("OTP sent");
     res.status(200).json({ msg: 'OTP sent successfully' });
   } catch (error) {
+    errorLogger.error(`An error occured:${error}`);
     res.status(500).json({ error: error.message });
   }
 };
@@ -117,13 +121,16 @@ exports.verifyOTP = async (req, res) => {
       
   
       if (!user) {
+        errorLogger.error("Invalid Email!");
         return res.status(400).json({ error: 'Invalid email or OTP' });
       }
   
       if (user.otp !== otp) {
+        errorLogger.error("Invalid OTP!");
         return res.status(400).json({ error: `Invalid OTP` });
       }
       if (user.otpExpiry < Date.now()) {
+        errorLogger.error("Expired OTP!");
         return res.status(400).json({ error: 'OTP has expired' });
       }
   
@@ -132,6 +139,7 @@ exports.verifyOTP = async (req, res) => {
       user.otp = null;
       user.otpExpiry = null;
       await user.save();
+      activityLogger.info("Email verified successfully");
   
       res.status(200).json({ message: 'Email verified successfully' });
     } catch (error) {
