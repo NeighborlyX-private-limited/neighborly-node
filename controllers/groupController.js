@@ -6,6 +6,7 @@ const mongoose = require("mongoose");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const { error } = require("winston");
 const ObjectId = mongoose.Types.ObjectId;
+const otpGenerator = require('otp-generator');
 
 exports.addUser = async (req, res) => {
   try {
@@ -267,16 +268,15 @@ exports.createGroup = async (req, res) => {
       errorLogger.error("Invalid coordinates provided during group creation.");
       return res.status(400).json({ message: "Invalid coordinates" });
     }
-    duplicateName = await Group.findOne({ name });
-    if (duplicateName) {
-      errorLogger.error(name + "Group name already exists.");
-      return res.status(200).json({
-        message: "Group name already exists. Chooses a different name",
-        error: true,
-      });
+    let code = otpGenerator.generate(4, { upperCaseAlphabets: false, lowerCaseAlphabets: false, specialChars: false });
+    let displayname = name+code;
+    while(await Group.findOne({displayname})) {
+      code = otpGenerator.generate(4, { upperCaseAlphabets: false, lowerCaseAlphabets: false, specialChars: false });
+      displayname = name + code;
     }
     group = await Group.create({
       name: name,
+      displayname: displayname,
       icon: icon,
       description: description,
       location: {

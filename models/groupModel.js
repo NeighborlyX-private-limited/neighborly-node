@@ -6,6 +6,10 @@ const groupSchema = new mongoose.Schema({
     required: [true, "Please provide group name"],
     maxlength: 100,
   },
+  displayname: {
+    type: String,
+    required: true
+  },
   icon: {
     type: String,
   },
