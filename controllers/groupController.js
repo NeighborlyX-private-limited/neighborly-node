@@ -463,14 +463,16 @@ exports.fetchGroupDetails = async (req, res) => {
 };
 
 exports.updateGroupDetails = async (req, res) => {
-  const { groupId, name, description, type } = req.body;
+  const { groupId, name, description, isOpen, icon, displayname } = req.body;
   const group = await Group.findById(new ObjectId(groupId));
   const user = req.user;
-  console.log(group.admin.userId);
-  console.log(user._id);
   let flag = false;
   try {
     const admin_count = group.admin.length;
+    const presentGroup = await Group.findOne({displayname});
+    if(presentGroup) {
+      throw new Error('Duplicate displayname');
+    }
     for (let i = 0; i < admin_count; ++i) {
       if (group.admin[i].userId.toString() == user._id.toString()) {
         flag = true;
@@ -480,7 +482,7 @@ exports.updateGroupDetails = async (req, res) => {
     if (flag) {
       const updated = await Group.updateOne(
         { _id: new ObjectId(groupId) },
-        { $set: { name: name, description: description, type: type } }
+        { $set: { name: name, displayname: displayname, description: description, isOpen: isOpen, icon: icon } }
       );
       activityLogger.info(`Group Details updated for group ${groupId}.`);
       res.status(200).json(updated);
@@ -526,33 +528,6 @@ exports.updateIcon = async (req, res) => {
   } catch (err) {
     res.status(403).json({
       msg: err.message,
-    });
-  }
-};
-
-exports.checkGroupNameUnique = async (req, res) => {
-  const groupName = req.query.name;
-
-  try {
-    const existingGroup = await Group.findOne({ name: groupName });
-    if (existingGroup) {
-      return res.status(200).json({
-        success: false,
-        message: "Group name already exists. Please choose a different name.",
-      });
-    } else if (!existingGroup) {
-      activityLogger.info(`${groupName} is unique and implemented.`);
-      return res.status(200).json({
-        success: true,
-        message: "Unique group name.",
-      });
-    }
-  } catch (error) {
-    errorLogger.error("An error occured while checking group name", error);
-    res.status(500).json({
-      success: false,
-      message: "An error occurred while checking the group name.",
-      error: error.message,
     });
   }
 };
