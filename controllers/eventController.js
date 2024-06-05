@@ -6,6 +6,7 @@ const Group = require('../models/groupModel');
 const User = require('../models/userModel');
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
+const { otpgenerator } = require('../utils/emailService');
 
 exports.createEvent = async (req, res) => {
     const { name, description, location, radius, startTime, endTime, multimedia } = req.body;
@@ -17,7 +18,7 @@ exports.createEvent = async (req, res) => {
         karma: user.karma
     }
     try {
-        let code = otpGenerator.generate(4, { upperCaseAlphabets: false, lowerCaseAlphabets: false, specialChars: false });
+        let code = otpgenerator();
         let displayname = name + code;
         while (await Group.findOne({ displayname })) {
             code = otpGenerator.generate(4, { upperCaseAlphabets: false, lowerCaseAlphabets: false, specialChars: false });

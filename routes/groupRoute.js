@@ -13,7 +13,6 @@ const {
   nearbyUsers,
   updateGroupDetails,
   deleteGroup,
-  checkGroupNameUnique,
   addAdmin
 } = require("../controllers/groupController");
 
@@ -31,7 +30,6 @@ router
   .route("/fetch-group-details/:groupId")
   .get(isAuthenticated, fetchGroupDetails);
 router.route("/update-group-details").put(isAuthenticated, updateGroupDetails);
-router.route("/is-group-unique").get(checkGroupNameUnique);
 router.route("/add-admin").post(isAuthenticated, addAdmin);
 
 module.exports = router;

@@ -6,6 +6,7 @@ const mongoose = require("mongoose");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const { error } = require("winston");
 const ObjectId = mongoose.Types.ObjectId;
+const {otpgenerator} = require('../utils/emailService');
 
 exports.addUser = async (req, res) => {
   try {
@@ -267,7 +268,7 @@ exports.createGroup = async (req, res) => {
       errorLogger.error("Invalid coordinates provided during group creation.");
       return res.status(400).json({ message: "Invalid coordinates" });
     }
-    let code = otpGenerator.generate(4, { upperCaseAlphabets: false, lowerCaseAlphabets: false, specialChars: false });
+    let code = otpgenerator();
     let displayname = name + code;
     while (await Group.findOne({ displayname })) {
       code = otpGenerator.generate(4, { upperCaseAlphabets: false, lowerCaseAlphabets: false, specialChars: false });
@@ -494,34 +495,6 @@ exports.fetchGroupDetails = async (req, res) => {
       });
     }
   };
-
-exports.checkGroupNameUnique = async (req, res) => {
-  const groupName = req.query.name;
-
-  try {
-    const existingGroup = await Group.findOne({ name: groupName });
-    if (existingGroup) {
-      return res.status(200).json({
-        success: false,
-        message: "Group name already exists. Please choose a different name.",
-      });
-    } else if (!existingGroup) {
-      activityLogger.info(`${groupName} is unique and implemented.`);
-      return res.status(200).json({
-        success: true,
-        message: "Unique group name.",
-      });
-    }
-  } catch (error) {
-    errorLogger.error("An error occured while checking group name", error);
-    res.status(500).json({
-      success: false,
-      message: "An error occurred while checking the group name.",
-      error: error.message,
-    });
-  }
-};
-
 exports.deleteGroup = async (req, res) => {
   try {
     const user = req.user;
