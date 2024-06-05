@@ -1,7 +1,7 @@
 const express = require("express");
 const { isAuthenticated } = require("../middlewares/auth");
 const router = express.Router();
-const { otpLimiter } = require("../middlewares/rateLimiter");
+//const { otpLimiter } = require("../middlewares/rateLimiter");
 const passport = require("passport");
 const {
   loginUser,
