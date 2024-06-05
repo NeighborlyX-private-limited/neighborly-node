@@ -40,4 +40,15 @@ const sendVerificationEmail = async (userEmail) => {
   return transporter.sendMail(mailOptions);
 };
 
-module.exports = { sendVerificationEmail };
+const forgotPasswordEmail = async (userEmail) => {
+  const mailOptions = {
+    from: `"Neighborly" <${process.env.SMTP_USER}>`,
+    to: userEmail,
+    subject: "Generate a new Password",
+    html: `<p>Hi,</p><p>Here is a link to re-generate your password.</p><a href='#'>click here</a>`,
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
+module.exports = { sendVerificationEmail, forgotPasswordEmail };

@@ -205,9 +205,15 @@ exports.deleteUser = async (req, res) => {
 };
 
 exports.changePassword = async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
-  const user = await User.findById({ _id: req.user._id });
-  const match = await user.comparePassword(currentPassword);
+  const { currentPassword, newPassword, email, flag } = req.body;
+  const user = await User.findOne({ email });
+  let match = false;
+  if (flag) { 
+    match = await user.comparePassword(currentPassword); 
+  }
+  else {
+    match = true;
+  }
   try {
     if (match) {
       const encryptPassword = await bcrypt.hash(newPassword, 10);
