@@ -12,7 +12,6 @@ const {
   fetchGroupDetails,
   nearbyUsers,
   updateGroupDetails,
-  updateIcon,
   deleteGroup,
   checkGroupNameUnique,
   addAdmin
@@ -33,7 +32,6 @@ router
   .get(isAuthenticated, fetchGroupDetails);
 router.route("/update-group-details").put(isAuthenticated, updateGroupDetails);
 router.route("/is-group-unique").get(checkGroupNameUnique);
-router.route("/update-group-icon").put(isAuthenticated, updateIcon);
 router.route("/add-admin").post(isAuthenticated, addAdmin);
 
 module.exports = router;

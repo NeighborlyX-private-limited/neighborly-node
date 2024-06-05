@@ -17,8 +17,15 @@ exports.createEvent = async (req, res) => {
         karma: user.karma
     }
     try {
+        let code = otpGenerator.generate(4, { upperCaseAlphabets: false, lowerCaseAlphabets: false, specialChars: false });
+        let displayname = name + code;
+        while (await Group.findOne({ displayname })) {
+            code = otpGenerator.generate(4, { upperCaseAlphabets: false, lowerCaseAlphabets: false, specialChars: false });
+            displayname = name + code;
+        }
         const group = await Group.create({
             name: name,
+            displayname: displayname,
             description: description,
             location: {
                 type: "Point",
