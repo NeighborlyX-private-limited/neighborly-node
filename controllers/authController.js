@@ -6,7 +6,7 @@ const { activityLogger, errorLogger } = require("../utils/logger");
 const otpGenerator = require("otp-generator");
 const dotenv = require("dotenv");
 
-const { sendVerificationEmail } = require("../utils/emailService");
+const { sendVerificationEmail, forgotPasswordEmail } = require("../utils/emailService");
 
 const AVATAR_KEY = process.env.MULTI_AVATAR_API_KEY;
 
@@ -185,3 +185,21 @@ exports.googleAuth = async (req, res) => {
     sendToken(user, 200, res);
   }
 };
+
+exports.forgotPassword = async(req, res) => {
+  const {email} = req.body;
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      errorLogger.error("User not found");
+      return res.status(400).json({ error: "User not found" });
+    }
+    await forgotPasswordEmail(email);
+    activityLogger.info("forgot password email sent");
+    res.status(200).json({ msg: "forgot-password email sent successfully" });
+  } catch (error) {
+    errorLogger.error(`An error occured in forgotPassword:${error}`);
+    res.status(500).json({ error: error.message });
+  }
+}

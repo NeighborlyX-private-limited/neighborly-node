@@ -17,11 +17,7 @@ const transporter = nodemailer.createTransport({
 });
 
 const sendVerificationEmail = async (userEmail) => {
-  const otp = otpGenerator.generate(6, {
-    upperCaseAlphabets: false,
-    lowerCaseAlphabets: false,
-    specialChars: false,
-  });
+  const otp = otpgenerator();
   const otpExpiry = new Date(Date.now() + 15 * 60 * 1000);
 
   const user = await User.findOneAndUpdate(
@@ -40,4 +36,24 @@ const sendVerificationEmail = async (userEmail) => {
   return transporter.sendMail(mailOptions);
 };
 
-module.exports = { sendVerificationEmail };
+const forgotPasswordEmail = async (userEmail) => {
+  const mailOptions = {
+    from: `"Neighborly" <${process.env.SMTP_USER}>`,
+    to: userEmail,
+    subject: "Generate a new Password",
+    html: `<p>Hi,</p><p>Here is a link to re-generate your password.</p><a href='#'>click here</a>`,
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
+const otpgenerator = () => {
+  const otp = otpGenerator.generate(6, {
+    upperCaseAlphabets: false,
+    lowerCaseAlphabets: false,
+    specialChars: false,
+  });
+  return otp;
+}
+
+module.exports = { sendVerificationEmail, forgotPasswordEmail, otpgenerator };
