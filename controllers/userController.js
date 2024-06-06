@@ -1,35 +1,37 @@
 const User = require("../models/userModel");
 const sendToken = require("../utils/jwtToken");
 const { activityLogger, errorLogger } = require("../utils/logger");
+const Group = require("../models/groupModel");
 const bcrypt = require("bcryptjs");
+const uuid = require("uuid");
 const {
   CITY_TO_COORDINATE,
   AVAILABLE_CITIES,
   S3,
   S3_BUCKET_NAME,
 } = require("../utils/constants");
-const Group = require("../models/groupModel");
 
-exports.fetchPreSignedURL = async (req, res, next) => {
+exports.uploadFile = async (req, res, next) => {
+  const file = req.file;
+  const fileKey = `${uuid.v4()}-${file.originalname}`;
+  activityLogger.info(`Uploading file: ${fileKey}`);
+
   const params = {
     Bucket: S3_BUCKET_NAME,
-    Key: req.query.fileName,
-    Expires: 120, //seconds
-    ContentType: "image/jpeg",
+    Key: fileKey,
+    Body: file.buffer,
+    ContentType: file.mimetype,
+    ACL: "public-read",
   };
 
-  S3.getSignedUrl("putObject", params, (error, url) => {
-    if (error) {
-      errorLogger.error(
-        "An error occurred while fetching presigned URL." + error
-      );
-      res.status(500).json({
-        success: false,
-        message: "An error occurred while fetching presigned URL.",
-      });
-    } else {
-      res.status(200).json({ success: true, url });
+  S3.upload(params, (err, data) => {
+    if (err) {
+      activityLogger.error("Error uploading file:", err);
+      return res.status(500).json({ success: false, message: "Upload failed" });
     }
+
+    activityLogger.info("File uploaded successfully. S3 URL:", data.Location);
+    res.status(200).json({ success: true, url: data.Location });
   });
 };
 
@@ -60,8 +62,7 @@ exports.updateLocation = async (req, res, next) => {
           "home_coordinates.coordinates": homeLocation,
         },
       });
-    }
-    else if (userLocation) {
+    } else if (userLocation) {
       // If userLocation is provided, it should be an array with [lat, lng]
       activityLogger.info(
         "Updating user's location based on coordinates: " + userLocation
@@ -70,7 +71,7 @@ exports.updateLocation = async (req, res, next) => {
       await User.findByIdAndUpdate(user._id, {
         $set: {
           "current_coordinates.coordinates": userLocation,
-          "city.coordinates": [0,0]
+          "city.coordinates": [0, 0],
         },
       });
     } else if (cityLocation && CITY_TO_COORDINATE[cityLocation.toLowerCase()]) {
@@ -83,7 +84,7 @@ exports.updateLocation = async (req, res, next) => {
       await User.findByIdAndUpdate(user._id, {
         $set: {
           "city.coordinates": coordinates,
-          "current_coordinates.coordinates": [0,0]
+          "current_coordinates.coordinates": [0, 0],
         },
       });
     } else {
@@ -204,9 +205,15 @@ exports.deleteUser = async (req, res) => {
 };
 
 exports.changePassword = async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
-  const user = await User.findById({ _id: req.user._id });
-  const match = await user.comparePassword(currentPassword);
+  const { currentPassword, newPassword, email, flag } = req.body;
+  const user = await User.findOne({ email });
+  let match = false;
+  if (flag) { 
+    match = await user.comparePassword(currentPassword); 
+  }
+  else {
+    match = true;
+  }
   try {
     if (match) {
       const encryptPassword = await bcrypt.hash(newPassword, 10);
@@ -215,11 +222,10 @@ exports.changePassword = async (req, res) => {
         { $set: { password: encryptPassword } }
       );
       res.status(200).json(update);
-    }
-    else {
+    } else {
       errorLogger.error("Wrong password while changing password");
       res.status(401).json({
-        msg: "wrong current password"
+        msg: "wrong current password",
       });
     }
   } catch (err) {
@@ -228,7 +234,7 @@ exports.changePassword = async (req, res) => {
       err
     );
   }
-}
+};
 
 exports.findMe = async (req, res) => {
   const user = req.user;
@@ -237,12 +243,12 @@ exports.findMe = async (req, res) => {
       { _id: user._id },
       { $set: { findMe: !user.findMe } }
     );
-    activityLogger.info('Updated find me option as', !user.findMe)
+    activityLogger.info("Updated find me option as", !user.findMe);
     res.status(200).json(findme);
   } catch (err) {
-    errorLogger.error('There is an error in findMe API: ', err);
+    errorLogger.error("There is an error in findMe API: ", err);
     res.status(500).json({
-      msg: "Find me API crashed"
+      msg: "Find me API crashed",
     });
   }
-}
+};

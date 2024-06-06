@@ -1,7 +1,6 @@
 const express = require("express");
 const { isAuthenticated } = require("../middlewares/auth");
 const router = express.Router();
-//const { otpLimiter } = require("../middlewares/rateLimiter");
 const passport = require("passport");
 const {
   loginUser,
@@ -10,6 +9,7 @@ const {
   sendOTP,
   googleAuth,
   verifyOTP,
+  forgotPassword,
 } = require("../controllers/authController");
 
 require("../middlewares/passport");
@@ -23,12 +23,13 @@ router.route("/logout").get(isAuthenticated, logoutUser);
 
 router.route("/send-otp").post(sendOTP);
 router.route("/verify-otp").post(verifyOTP);
+router.route("/forgot-password").post(forgotPassword);
 
 router.route("/google/oauth").get(
   passport.authenticate("google", {
     successRedirect: "/user/success",
     failureRedirect: "/user/failure",
-  }),
+  })
 );
 router.route("/success").get(googleAuth);
 router.route("/failure").get((req, res) => {

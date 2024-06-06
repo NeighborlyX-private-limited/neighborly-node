@@ -4,13 +4,13 @@ dotenv.config({ path: "./config/config.env" });
 
 // AWS configuration settings
 AWS.config.update({
-  region: process.env.AWS_ACCESS_KEY_ID,
-  accessKeyId: process.env.AWS_SECRET_ACCESS_KEY,
-  secretAccessKey: process.env.AWS_REGION,
+  region: process.env.AWS_REGION,
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
 });
 
 const S3 = new AWS.S3();
-const S3_BUCKET_NAME = "www.neighborly.in";
+const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
 const CITY_TO_COORDINATE = {
   delhi: [28.5643, 77.2442],
   noida: [28.5747, 77.356],

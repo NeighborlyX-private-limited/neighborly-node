@@ -6,7 +6,7 @@ const { activityLogger, errorLogger } = require("../utils/logger");
 const otpGenerator = require("otp-generator");
 const dotenv = require("dotenv");
 
-const { sendVerificationEmail } = require("../utils/emailService");
+const { sendVerificationEmail, forgotPasswordEmail } = require("../utils/emailService");
 
 const AVATAR_KEY = process.env.MULTI_AVATAR_API_KEY;
 
@@ -40,7 +40,7 @@ exports.loginUser = async (req, res, next) => {
     return next(new ErrorHandler("Invalid Email or Password", 401));
   }
   activityLogger.info(
-    `User ${user.username}(${user._id}) has logged in successfully`,
+    `User ${user.username}(${user._id}) has logged in successfully`
   );
   sendToken(user, 200, res);
 };
@@ -52,7 +52,7 @@ exports.registerUser = async (req, res) => {
   while (await User.findOne({ username })) {
     username = generateUsername() + Math.floor(Math.random() * 10000);
     activityLogger.info(
-      `Registration attempt for user with username ${username}.`,
+      `Registration attempt for user with username ${username}.`
     );
   }
   try {
@@ -69,7 +69,7 @@ exports.registerUser = async (req, res) => {
   } catch (error) {
     errorLogger.error(
       "An unexpected error occurred during user registration:",
-      error,
+      error
     );
     if (error.code === 11000 || error.code === 11001) {
       return res.status(400).json({
@@ -89,6 +89,7 @@ exports.sendOTP = async (req, res) => {
   try {
     const user = await User.findOne({ email });
 
+    activityLogger.info("Sending OTP for " + email);
     if (!user) {
       errorLogger.error("User not found");
       return res.status(400).json({ error: "User not found" });
@@ -114,7 +115,7 @@ exports.verifyOTP = async (req, res) => {
 
   try {
     const user = await User.findOne({ email });
-
+    activityLogger.info("Verifying OTP for " + email);
     if (!user) {
       errorLogger.error("Invalid Email!");
       return res.status(400).json({ error: "Invalid email or OTP" });
@@ -137,11 +138,9 @@ exports.verifyOTP = async (req, res) => {
 
     res.status(200).json({ message: "Email verified successfully" });
   } catch (error) {
-    res
-      .status(500)
-      .json({
-        error: `An error occurred while verifying OTP: ${error.message}`,
-      });
+    res.status(500).json({
+      error: `An error occurred while verifying OTP: ${error.message}`,
+    });
   }
 };
 
@@ -164,7 +163,7 @@ exports.googleAuth = async (req, res) => {
       while (await User.findOne({ username })) {
         username = generateUsername() + Math.floor(Math.random() * 10000);
         activityLogger.info(
-          `Registration attempt for user with username ${username}.`,
+          `Registration attempt for user with username ${username}.`
         );
       }
       const picture = `https://api.multiavatar.com/${username}.png?apikey=${AVATAR_KEY}`;
@@ -181,8 +180,26 @@ exports.googleAuth = async (req, res) => {
     }
   } else {
     activityLogger.info(
-      `${user.username} successfully logged in by Google authentication`,
+      `${user.username} successfully logged in by Google authentication`
     );
     sendToken(user, 200, res);
   }
 };
+
+exports.forgotPassword = async(req, res) => {
+  const {email} = req.body;
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      errorLogger.error("User not found");
+      return res.status(400).json({ error: "User not found" });
+    }
+    await forgotPasswordEmail(email);
+    activityLogger.info("forgot password email sent");
+    res.status(200).json({ msg: "forgot-password email sent successfully" });
+  } catch (error) {
+    errorLogger.error(`An error occured in forgotPassword:${error}`);
+    res.status(500).json({ error: error.message });
+  }
+}

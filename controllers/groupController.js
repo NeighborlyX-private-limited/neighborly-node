@@ -6,6 +6,7 @@ const mongoose = require("mongoose");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const { error } = require("winston");
 const ObjectId = mongoose.Types.ObjectId;
+const {otpgenerator} = require('../utils/emailService');
 
 exports.addUser = async (req, res) => {
   try {
@@ -267,16 +268,15 @@ exports.createGroup = async (req, res) => {
       errorLogger.error("Invalid coordinates provided during group creation.");
       return res.status(400).json({ message: "Invalid coordinates" });
     }
-    duplicateName = await Group.findOne({ name });
-    if (duplicateName) {
-      errorLogger.error(name + "Group name already exists.");
-      return res.status(200).json({
-        message: "Group name already exists. Chooses a different name",
-        error: true,
-      });
+    let code = otpgenerator();
+    let displayname = name + code;
+    while (await Group.findOne({ displayname })) {
+      code = otpGenerator.generate(4, { upperCaseAlphabets: false, lowerCaseAlphabets: false, specialChars: false });
+      displayname = name + code;
     }
     group = await Group.create({
       name: name,
+      displayname: displayname,
       icon: icon,
       description: description,
       location: {
@@ -462,101 +462,39 @@ exports.fetchGroupDetails = async (req, res) => {
   }
 };
 
-exports.updateGroupDetails = async (req, res) => {
-  const { groupId, name, description, type } = req.body;
-  const group = await Group.findById(new ObjectId(groupId));
-  const user = req.user;
-  console.log(group.admin.userId);
-  console.log(user._id);
-  let flag = false;
-  try {
-    const admin_count = group.admin.length;
-    for (let i = 0; i < admin_count; ++i) {
-      if (group.admin[i].userId.toString() == user._id.toString()) {
-        flag = true;
-        break;
+  exports.updateGroupDetails = async (req, res) => {
+    const { groupId, name, description, isOpen, icon, displayname } = req.body;
+    const group = await Group.findById(new ObjectId(groupId));
+    const user = req.user;
+    let flag = false;
+    try {
+      const admin_count = group.admin.length;
+      const presentGroup = await Group.findOne({ displayname });
+      if (presentGroup) {
+        throw new Error('Duplicate displayname');
       }
-    }
-    if (flag) {
-      const updated = await Group.updateOne(
-        { _id: new ObjectId(groupId) },
-        { $set: { name: name, description: description, type: type } }
-      );
-      activityLogger.info(`Group Details updated for group ${groupId}.`);
-      res.status(200).json(updated);
-    } else {
-      throw new Error("Access denied");
-    }
-  } catch (err) {
-    res.status(403).json({
-      msg: err.message,
-    });
-  }
-};
-
-exports.updateIcon = async (req, res) => {
-  const { groupId, icon } = req.body;
-  const group = await Group.findById(new ObjectId(groupId));
-  const user = req.user;
-  console.log(group.admin.userId);
-  console.log(user._id);
-  let flag = false;
-  try {
-    const admin_count = group.admin.length;
-    for (let i = 0; i < admin_count; ++i) {
-      if (group.admin[i].userId.toString() == user._id.toString()) {
-        flag = true;
-        break;
+      for (let i = 0; i < admin_count; ++i) {
+        if (group.admin[i].userId.toString() == user._id.toString()) {
+          flag = true;
+          break;
+        }
       }
-    }
-    if (flag) {
-      const updated = await Group.updateOne(
-        { _id: new ObjectId(groupId) },
-        { $set: { icon: icon } }
-      );
-      activityLogger.info(`Icon updated for ${groupId}`);
-      res.status(200).json(updated);
-    } else {
-      errorLogger.error(
-        `An error occured while updating icon for ${groupId}:`,
-        error
-      );
-      throw new Error("Access denied");
-    }
-  } catch (err) {
-    res.status(403).json({
-      msg: err.message,
-    });
-  }
-};
-
-exports.checkGroupNameUnique = async (req, res) => {
-  const groupName = req.query.name;
-
-  try {
-    const existingGroup = await Group.findOne({ name: groupName });
-    if (existingGroup) {
-      return res.status(200).json({
-        success: false,
-        message: "Group name already exists. Please choose a different name.",
-      });
-    } else if (!existingGroup) {
-      activityLogger.info(`${groupName} is unique and implemented.`);
-      return res.status(200).json({
-        success: true,
-        message: "Unique group name.",
+      if (flag) {
+        const updated = await Group.updateOne(
+          { _id: new ObjectId(groupId) },
+          { $set: { name: name, displayname: displayname, description: description, isOpen: isOpen, icon: icon } }
+        );
+        activityLogger.info(`Group Details updated for group ${groupId}.`);
+        res.status(200).json(updated);
+      } else {
+        throw new Error("Access denied");
+      }
+    } catch (err) {
+      res.status(403).json({
+        msg: err.message,
       });
     }
-  } catch (error) {
-    errorLogger.error("An error occured while checking group name", error);
-    res.status(500).json({
-      success: false,
-      message: "An error occurred while checking the group name.",
-      error: error.message,
-    });
-  }
-};
-
+  };
 exports.deleteGroup = async (req, res) => {
   try {
     const user = req.user;
