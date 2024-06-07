@@ -1,45 +1,46 @@
 name: Deploy to EC2
-
 on:
   push:
     branches:
-      - master  # Adjust the branch as needed
-
+      - master # Adjust the branch as needed
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-
-    - name: Install SSH client
-      run: sudo apt-get install -y openssh-client
-
-    - name: Add SSH key
-      uses: webfactory/ssh-agent@v0.5.3
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-    - name: Run deployment script on EC2
-      run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "bash deployment-scripts/backend-deployment-script"
-
-    - name: Check PM2 logs for success
-      run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "pm2 logs Backend --lines 50" > pm2_logs.txt
-        cat pm2_logs.txt
-        if grep -q "Server is running on http://localhost:5000" pm2_logs.txt; then
-          echo "Deployment successful"
-        else
-          echo "Deployment failed"
-          exit 1
-        fi
-
-    - name: Notify success
-      if: success()
-      run: echo "Deployment was successful!"
-
-    - name: Notify failure
-      if: failure()
-      run: echo "Deployment failed. Check the logs for details."
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Install SSH client
+        run: sudo apt-get install -y openssh-client
+      - name: Add SSH key
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Run deployment script on EC2
+        run: |
+          echo "Running deployment script..."
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "bash deployment-scripts/backend-deployment-script"
+          echo "Deployment script completed."
+      - name: Check PM2 logs for success
+        run: |
+          echo "Checking PM2 logs..."
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            LOG_PATH=$(pm2 show Backend | grep 'out log path' | awk '{print $6}')
+            echo "Log path: $LOG_PATH"
+            tail -n 50 $LOG_PATH > pm2_logs.txt
+            cat pm2_logs.txt
+          EOF
+          scp -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:pm2_logs.txt .
+          cat pm2_logs.txt
+          if grep -q "Server is running on http://localhost:5000" pm2_logs.txt; then
+            echo "Deployment successful"
+          else
+            echo "Deployment failed"
+            exit 1
+          fi
+          echo "Log check completed."
+      - name: Notify success
+        if: success()
+        run: echo "Deployment was successful!"
+      - name: Notify failure
+        if: failure()
+        run: echo "Deployment failed. Check the logs for details."
