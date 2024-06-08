@@ -3,6 +3,7 @@ const User = require("../models/userModel");
 const ErrorHandler = require("../utils/errorHandler");
 const sendToken = require("../utils/jwtToken");
 const { activityLogger, errorLogger } = require("../utils/logger");
+const bcrypt = require("bcryptjs");
 const otpGenerator = require("otp-generator");
 const dotenv = require("dotenv");
 
@@ -129,11 +130,9 @@ exports.verifyOTP = async (req, res) => {
       errorLogger.error("Expired OTP!");
       return res.status(400).json({ error: "OTP has expired" });
     }
-
-    user.isVerified = true;
-    user.otp = null;
-    user.otpExpiry = null;
-    await user.save();
+    await User.updateOne({_id: user._id}, {
+      $set: {otp: null, otpExpiry: null, isVerified: true}
+    })
     activityLogger.info("Email verified successfully");
 
     res.status(200).json({ message: "Email verified successfully" });
