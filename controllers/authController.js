@@ -7,7 +7,10 @@ const bcrypt = require("bcryptjs");
 const otpGenerator = require("otp-generator");
 const dotenv = require("dotenv");
 
-const { sendVerificationEmail, forgotPasswordEmail } = require("../utils/emailService");
+const {
+  sendVerificationEmail,
+  forgotPasswordEmail,
+} = require("../utils/emailService");
 
 const AVATAR_KEY = process.env.MULTI_AVATAR_API_KEY;
 
@@ -112,7 +115,7 @@ exports.sendOTP = async (req, res) => {
 
 //Verify OTP
 exports.verifyOTP = async (req, res) => {
-  const { email, otp } = req.body;
+  const { email, otp, verificationFor } = req.body;
 
   try {
     const user = await User.findOne({ email });
@@ -130,12 +133,29 @@ exports.verifyOTP = async (req, res) => {
       errorLogger.error("Expired OTP!");
       return res.status(400).json({ error: "OTP has expired" });
     }
-    await User.updateOne({_id: user._id}, {
-      $set: {otp: null, otpExpiry: null, isVerified: true}
-    })
-    activityLogger.info("Email verified successfully");
-
-    res.status(200).json({ message: "Email verified successfully" });
+    // No logic change for forget password as it does not matter much, change required here if needed
+    await User.updateOne(
+      { _id: user._id },
+      {
+        $set: { otp: null, otpExpiry: null, isVerified: true },
+      }
+    );
+    if (verificationFor === "email-verify") {
+      activityLogger.info("Email verified successfully for " + email);
+      res.status(200).json({ message: "Email verified successfully" });
+    } else if (verificationFor === "forgot-password") {
+      activityLogger.info(
+        "Password changed OTP verified. Proceeding to change password for " +
+          email
+      );
+      res
+        .status(200)
+        .json({ message: "Reset password OTP verified successfully" });
+    } else {
+      // TODO this logic needs to be changed as we are currently only taking email in req params
+      activityLogger.info("Phone number OTP verified for " + email);
+      res.status(200).json({ message: "Phone number verified successfully" });
+    }
   } catch (error) {
     res.status(500).json({
       error: `An error occurred while verifying OTP: ${error.message}`,
@@ -185,8 +205,8 @@ exports.googleAuth = async (req, res) => {
   }
 };
 
-exports.forgotPassword = async(req, res) => {
-  const {email} = req.body;
+exports.forgotPassword = async (req, res) => {
+  const { email } = req.body;
   try {
     const user = await User.findOne({ email });
 
@@ -201,4 +221,4 @@ exports.forgotPassword = async(req, res) => {
     errorLogger.error(`An error occured in forgotPassword:${error}`);
     res.status(500).json({ error: error.message });
   }
-}
+};

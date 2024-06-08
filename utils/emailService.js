@@ -23,7 +23,7 @@ const sendVerificationEmail = async (userEmail) => {
   const user = await User.findOneAndUpdate(
     { email: userEmail },
     { otp, otpExpiry },
-    { new: true },
+    { new: true }
   );
 
   const mailOptions = {
@@ -37,11 +37,19 @@ const sendVerificationEmail = async (userEmail) => {
 };
 
 const forgotPasswordEmail = async (userEmail) => {
+  const otp = otpgenerator();
+  const otpExpiry = new Date(Date.now() + 15 * 60 * 1000);
+
+  const user = await User.findOneAndUpdate(
+    { email: userEmail },
+    { otp, otpExpiry },
+    { new: true }
+  );
   const mailOptions = {
     from: `"Neighborly" <${process.env.SMTP_USER}>`,
     to: userEmail,
     subject: "Generate a new Password",
-    html: `<p>Hi,</p><p>Here is a link to re-generate your password.</p><a href='#'>click here</a>`,
+    html: `<p>Hi,</p><p>Here is the OTP to reset your password: <strong>${otp}</strong> </p>`,
   };
 
   return transporter.sendMail(mailOptions);
@@ -54,6 +62,6 @@ const otpgenerator = () => {
     specialChars: false,
   });
   return otp;
-}
+};
 
 module.exports = { sendVerificationEmail, forgotPasswordEmail, otpgenerator };
