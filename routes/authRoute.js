@@ -9,7 +9,7 @@ const {
   sendOTP,
   googleAuth,
   verifyOTP,
-  forgotPassword
+  forgotPassword,
 } = require("../controllers/authController");
 
 require("../middlewares/passport");
