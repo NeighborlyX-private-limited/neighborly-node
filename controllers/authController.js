@@ -99,11 +99,6 @@ exports.sendOTP = async (req, res) => {
       return res.status(400).json({ error: "User not found" });
     }
 
-    if (user.isVerified) {
-      activityLogger.info("Email is already verified");
-      return res.status(400).json({ error: "Email is already verified" });
-    }
-
     await sendVerificationEmail(email);
     activityLogger.info("OTP sent");
     res.status(200).json({ msg: "OTP sent successfully" });
