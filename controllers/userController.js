@@ -221,7 +221,10 @@ exports.changePassword = async (req, res) => {
         { _id: user._id },
         { $set: { password: encryptPassword } }
       );
-      res.status(200).json(update);
+      activityLogger.info("Password updated successfully");
+      res.status(200).json({
+        "msg":"Password Updated successfully",
+      });
     } else {
       errorLogger.error("Wrong password while changing password");
       res.status(401).json({
@@ -233,6 +236,9 @@ exports.changePassword = async (req, res) => {
       "An unexpected error occurred during change Password:",
       err
     );
+    res.status(400).json({
+      "msg": "something wrong in change password",
+    })
   }
 };
 
