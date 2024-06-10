@@ -7,7 +7,10 @@ const bcrypt = require("bcryptjs");
 const otpGenerator = require("otp-generator");
 const dotenv = require("dotenv");
 
-const { sendVerificationEmail, forgotPasswordEmail } = require("../utils/emailService");
+const {
+  sendVerificationEmail,
+  forgotPasswordEmail,
+} = require("../utils/emailService");
 
 const AVATAR_KEY = process.env.MULTI_AVATAR_API_KEY;
 
@@ -96,11 +99,6 @@ exports.sendOTP = async (req, res) => {
       return res.status(400).json({ error: "User not found" });
     }
 
-    if (user.isVerified) {
-      activityLogger.info("Email is already verified");
-      return res.status(400).json({ error: "Email is already verified" });
-    }
-
     await sendVerificationEmail(email);
     activityLogger.info("OTP sent");
     res.status(200).json({ msg: "OTP sent successfully" });
@@ -112,7 +110,7 @@ exports.sendOTP = async (req, res) => {
 
 //Verify OTP
 exports.verifyOTP = async (req, res) => {
-  const { email, otp } = req.body;
+  const { email, otp, verificationFor } = req.body;
 
   try {
     const user = await User.findOne({ email });
@@ -185,8 +183,8 @@ exports.googleAuth = async (req, res) => {
   }
 };
 
-exports.forgotPassword = async(req, res) => {
-  const {email} = req.body;
+exports.forgotPassword = async (req, res) => {
+  const { email } = req.body;
   try {
     const user = await User.findOne({ email });
 
@@ -201,4 +199,4 @@ exports.forgotPassword = async(req, res) => {
     errorLogger.error(`An error occured in forgotPassword:${error}`);
     res.status(500).json({ error: error.message });
   }
-}
+};
