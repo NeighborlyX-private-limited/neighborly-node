@@ -27,8 +27,8 @@ router.route("/forgot-password").post(forgotPassword);
 
 router.route("/google/oauth").get(
   passport.authenticate("google", {
-    successRedirect: "/user/success",
-    failureRedirect: "/user/failure",
+    successRedirect: "/authentication/success",
+    failureRedirect: "/authentication/failure",
   })
 );
 router.route("/success").get(googleAuth);
