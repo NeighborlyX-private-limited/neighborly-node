@@ -206,12 +206,12 @@ exports.deleteUser = async (req, res) => {
 
 exports.changePassword = async (req, res) => {
   const { currentPassword, newPassword, email, flag } = req.body;
+  activityLogger.info(`changing password for user: ${email}`);
   const user = await User.findOne({ email });
   let match = false;
-  if (flag) { 
-    match = await user.comparePassword(currentPassword); 
-  }
-  else {
+  if (flag) {
+    match = await user.comparePassword(currentPassword);
+  } else {
     match = true;
   }
   try {
