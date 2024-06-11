@@ -67,6 +67,7 @@ exports.registerUser = async (req, res) => {
       email: email.toLowerCase(),
       picture: picture,
       auth_type: "email",
+      city: { coordinates: [28.5643, 77.2442]}
     });
 
     sendToken(user, 200, res);
