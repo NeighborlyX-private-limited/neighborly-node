@@ -10,7 +10,7 @@ exports.findPosts = async (req, res) => {
     const user = req.user;
     let posts;
     try {
-        if (isHome) {
+        if (isHome === true) {
             const homeLocation = user.home_coordinates.coordinates;
             posts = await sequelize.query(`SELECT postid, userid, username, title, content, multimedia, createdat, cheers, boos, postlocation
 	FROM posts WHERE ST_DWithin(postlocation, ST_SetSRID(ST_Point(${homeLocation[0]}, ${homeLocation[1]}), 4326), 300000) ORDER BY createdat DESC`);
@@ -18,6 +18,7 @@ exports.findPosts = async (req, res) => {
         }
         else {
             if (user.city.coordinates[0] == 0 && user.city.coordinates[1] == 0) {
+                console.log(user.city.coordinates[0]+", "+user.city.coordinates[1]);
                 const current_coordinates = user.current_coordinates.coordinates;
                 posts = await sequelize.query(`SELECT postid, userid, username, title, content, multimedia, createdat, cheers, boos, postlocation
 	FROM posts WHERE ST_DWithin(postlocation, ST_SetSRID(ST_Point(${current_coordinates[0]}, ${current_coordinates[1]}), 4326), 300000) ORDER BY createdat DESC`);

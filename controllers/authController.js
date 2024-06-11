@@ -66,7 +66,7 @@ exports.registerUser = async (req, res) => {
       password: password,
       email: email.toLowerCase(),
       picture: picture,
-      auth_type: "email",
+      auth_type: "email"
     });
 
     sendToken(user, 200, res);
