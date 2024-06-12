@@ -49,7 +49,7 @@ const userSchema = new mongoose.Schema({
     },
     coordinates: {
       type: [Number],
-      default: [0, 0],
+      default: [28.5643, 77.2442],
     },
   },
   findMe: {
@@ -67,13 +67,11 @@ const userSchema = new mongoose.Schema({
     default: 1000,
   },
   auth_type: {
-    type: String
-
+    type: String,
   },
   isVerified: {
-    type:Boolean,
-    default:false
-
+    type: Boolean,
+    default: false,
   },
   otp: {
     type: String,
@@ -81,7 +79,6 @@ const userSchema = new mongoose.Schema({
   otpExpiry: {
     type: Date,
   },
-
 });
 
 userSchema.pre("save", async function () {
