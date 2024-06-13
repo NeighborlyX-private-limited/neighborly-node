@@ -51,7 +51,7 @@ exports.loginUser = async (req, res, next) => {
 
 // User Register
 exports.registerUser = async (req, res) => {
-  const { password, email } = req.body;
+  const { password, email, dob, gender } = req.body;
   let username = generateUsername() + Math.floor(Math.random() * 10000);
   while (await User.findOne({ username })) {
     username = generateUsername() + Math.floor(Math.random() * 10000);
@@ -65,6 +65,8 @@ exports.registerUser = async (req, res) => {
       username: username,
       password: password,
       email: email.toLowerCase(),
+      dob: dob,
+      gender: gender,
       picture: picture,
       auth_type: "email",
     });
