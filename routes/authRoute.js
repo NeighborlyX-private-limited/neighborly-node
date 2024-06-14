@@ -25,15 +25,6 @@ router.route("/send-otp").post(sendOTP);
 router.route("/verify-otp").post(verifyOTP);
 router.route("/forgot-password").post(forgotPassword);
 
-router.route("/google/oauth").get(
-  passport.authenticate("google", {
-    successRedirect: "/authentication/success",
-    failureRedirect: "/authentication/failure",
-  })
-);
-router.route("/success").get(googleAuth);
-router.route("/failure").get((req, res) => {
-  res.status(403).send("forbidden");
-});
+router.route("/google/login").post(googleAuth);
 
 module.exports = router;

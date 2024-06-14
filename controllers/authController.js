@@ -6,6 +6,7 @@ const { activityLogger, errorLogger } = require("../utils/logger");
 const bcrypt = require("bcryptjs");
 const otpGenerator = require("otp-generator");
 const dotenv = require("dotenv");
+const { google } = require('googleapis');
 
 const {
   sendVerificationEmail,
@@ -168,37 +169,57 @@ exports.logoutUser = async (req, res, next) => {
   });
   res.end();
 };
+
 exports.googleAuth = async (req, res) => {
-  const email = req.user.email;
-  const user = await User.findOne({ email: email });
-  if (user === null) {
-    try {
-      let username = generateUsername() + Math.floor(Math.random() * 10000);
-      while (await User.findOne({ username })) {
-        username = generateUsername() + Math.floor(Math.random() * 10000);
-        activityLogger.info(
-          `Registration attempt for user with username ${username}.`
-        );
-      }
-      const picture = `https://api.multiavatar.com/${username}.png?apikey=${AVATAR_KEY}`;
-      const newUser = await User.create({
-        username: username,
-        email: email.toLowerCase(),
-        picture: picture,
-        auth_type: "google",
-      });
-      activityLogger.info("new user added by Google");
-      sendToken(newUser, 200, res);
-    } catch (err) {
-      errorLogger.error("There is a problem in Google authentication");
-    }
-  } else {
-    activityLogger.info(
-      `${user.username} successfully logged in by Google authentication`
-    );
-    sendToken(user, 200, res);
+  const { tokenId } = req.body;
+  const client = new google.auth.OAuth2(
+    process.env.CLIENT_ID,
+    process.env.CLIENT_SECRET,
+    process.env.AUTH_URL
+  );
+  const ticket = await client.verifyIdToken({
+    idToken: tokenId,
+    audience: process.env.CLIENT_ID,
+  });
+  const payload = ticket.getPayload();
+
+  if (!payload) {
+    errorLogger.error("Invalid token provided for Oauth");
+    res.status(400).json({
+      "message": "invalid token"
+    });
   }
-};
+
+  const { email, email_verified, given_name, family_name } = payload;
+
+  if (!email_verified) {
+    errorLogger.error("Email is not verified");
+    res.status(400).json({
+      "message": "Email is not verified"
+    });
+  }
+  let username = generateUsername() + Math.floor(Math.random() * 10000);
+  while (await User.findOne({ username })) {
+    username = generateUsername() + Math.floor(Math.random() * 10000);
+  }
+  try {
+    const picture = `https://api.multiavatar.com/${username}.png?apikey=${AVATAR_KEY}`;
+    const user = await User.create({
+      username: username,
+      password: password,
+      email: email.toLowerCase(),
+      picture: picture,
+      auth_type: "email",
+    });
+    activityLogger.info("User logged in successfully");
+    sendToken(user, 200, res);
+  } catch (error) {
+    errorLogger.error("Error in Oauth:", err);
+    res.status(500).json({
+      "message": err
+    });
+  }
+}
 
 exports.forgotPassword = async (req, res) => {
   const { email } = req.body;
