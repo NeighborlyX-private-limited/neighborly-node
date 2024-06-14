@@ -1,46 +1,99 @@
 const Post = require("../models/PostModel");
+const Poll = require("../models/pollModel");
+const User = require("../models/userModel");
 const Report = require("../models/ReportModel");
 const { Op, where } = require("sequelize");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const { sequelize } = require("../config/database");
 
+// Fetch posts and polls
 exports.findPosts = async (req, res) => {
   let isHome = false;
   isHome = req.query?.home;
   const user = req.user;
   let posts;
+
   try {
+    let location = null;
     if (isHome === true) {
-      const homeLocation = user.home_coordinates.coordinates;
-      posts =
-        await sequelize.query(`SELECT postid, userid, username, title, content, multimedia, createdat, cheers, boos, postlocation
-	FROM posts WHERE ST_DWithin(postlocation, ST_SetSRID(ST_Point(${homeLocation[0]}, ${homeLocation[1]}), 4326), 300000) ORDER BY createdat DESC`);
-      posts = posts[0];
+      location = user.home_coordinates.coordinates;
     } else {
-      if (user.city.coordinates[0] == 0 && user.city.coordinates[1] == 0) {
-        const current_coordinates = user.current_coordinates.coordinates;
-        posts =
-          await sequelize.query(`SELECT postid, userid, username, title, content, multimedia, createdat, cheers, boos, postlocation
-	FROM posts WHERE ST_DWithin(postlocation, ST_SetSRID(ST_Point(${current_coordinates[0]}, ${current_coordinates[1]}), 4326), 300000) ORDER BY createdat DESC`);
-        posts = posts[0];
-      } else {
-        const cityLocation = user.city.coordinates;
-        posts =
-          await sequelize.query(`SELECT postid, userid, username, title, content, multimedia, createdat, cheers, boos, postlocation
-	FROM posts WHERE ST_DWithin(postlocation, ST_SetSRID(ST_Point(${cityLocation[0]}, ${cityLocation[1]}), 4326), 300000) ORDER BY createdat DESC`);
-        posts = posts[0];
-      }
+      location = user.current_coordinates.coordinates;
     }
-    activityLogger.info("Posts are fetched");
-    res.status(200).json(posts);
+    posts =
+      await sequelize.query(`SELECT postid, userid, username, title, content, multimedia, createdat, cheers, boos, postlocation
+	FROM posts WHERE ST_DWithin(postlocation, ST_SetSRID(ST_Point(${location[0]}, ${location[1]}), 4326), 300000) ORDER BY createdat DESC`);
+    posts = posts[0];
+
+    // Fetch user details for posts
+    const postsWithUserDetails = await Promise.all(
+      posts.map(async (post) => {
+        const user = await User.findById(req.user._id).lean();
+        return {
+          ...post,
+          userProfilePicture: user.picture,
+        };
+      })
+    );
+
+    activityLogger.info("Posts and polls are fetched");
+    res.status(200).json(postsWithUserDetails);
   } catch (err) {
     errorLogger.error(err);
     res.status(500).json({
-      msg: "Internal server error in fetch-post",
+      msg: "Internal server error in fetch-posts",
     });
   }
 };
 
+// Create a new poll
+exports.createPoll = async (req, res) => {
+  const { question, options } = req.body;
+  const createdBy = req.user._id;
+  const location = req.user.current_coordinates; // Assuming user's current location
+
+  try {
+    const poll = await Poll.create({
+      question,
+      options: options.map((option) => ({ text: option, votes: 0 })),
+      createdBy,
+      location,
+    });
+    res.status(200).json(poll);
+  } catch (err) {
+    errorLogger.error("Create poll is not working: ", err);
+    res.status(500).json({
+      msg: "Internal server error in create-poll",
+    });
+  }
+};
+
+exports.fetchPollById = async (req, res) => {
+  try {
+    const poll = await Poll.findById(req.params.id);
+    if (!poll) return res.status(404).json({ message: "Poll not found" });
+    res.json(poll);
+  } catch (err) {
+    errorLogger.error(err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.deletePoll = async (req, res) => {
+  try {
+    const pollId = req.params.id;
+    const poll = await Poll.findById(pollId);
+    if (!poll) return res.status(404).json({ message: "Poll not found" });
+
+    await poll.remove();
+    res.json({ message: "Poll deleted" });
+  } catch (err) {
+    errorLogger.error("Something wrong with deletePoll: ", err);
+    res.status(500).json({
+      msg: "error in delete-poll",
+    });
+  }
+};
 exports.feedBack = async (req, res) => {
   const { postId, feedback } = req.body;
   let update;
@@ -68,7 +121,7 @@ exports.createPost = async (req, res) => {
   try {
     const userId = user._id.toString();
     const userName = user.username;
-    console.log(userId);
+
     const post = await Post.create({
       userid: userId,
       username: userName,
@@ -148,4 +201,8 @@ exports.reportPost = async (req, res) => {
       msg: "error in report-post",
     });
   }
+};
+
+exports.fetchPostById = async (req, res) => {
+  // TODO dummy code here
 };

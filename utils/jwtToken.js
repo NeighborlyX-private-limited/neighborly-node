@@ -11,9 +11,8 @@ const sendToken = (user, statusCode, res) => {
   res.status(statusCode).cookie("token", token, options).json({
     success: true,
     token,
-    user
+    user,
   });
-  // res.status(statusCode)
   // res.setHeader("Authorization", token);
   // res.send();
   // res.status(statusCode).cookie("token", token, options).json({

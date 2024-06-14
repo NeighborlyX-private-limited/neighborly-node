@@ -14,6 +14,13 @@ const userSchema = new mongoose.Schema({
   picture: {
     type: String,
   },
+  gender: {
+    type: String,
+    enum: ["Male", "Female", "Others"],
+  },
+  dob: {
+    type: Date,
+  },
   email: {
     type: String,
     required: [true, "Please enter email"],
@@ -27,21 +34,10 @@ const userSchema = new mongoose.Schema({
     },
     coordinates: {
       type: [Number],
-      default: [0, 0],
+      default: [28.5643, 77.2442],
     },
   },
   home_coordinates: {
-    type: {
-      type: String,
-      enum: ["Point"],
-      default: "Point",
-    },
-    coordinates: {
-      type: [Number],
-      default: [0, 0],
-    },
-  },
-  city: {
     type: {
       type: String,
       enum: ["Point"],
