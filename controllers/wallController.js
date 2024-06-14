@@ -12,45 +12,23 @@ exports.findPosts = async (req, res) => {
   isHome = req.query?.home;
   const user = req.user;
   let posts;
+
   try {
+    let location = null;
     if (isHome === true) {
-      const homeLocation = user.home_coordinates.coordinates;
-      posts =
-        await sequelize.query(`SELECT postid, userid, username, title, content, multimedia, createdat, cheers, boos, postlocation
-	FROM posts WHERE ST_DWithin(postlocation, ST_SetSRID(ST_Point(${homeLocation[0]}, ${homeLocation[1]}), 4326), 300000) ORDER BY createdat DESC`);
-      posts = posts[0];
+      location = user.home_coordinates.coordinates;
     } else {
-      if (user.city.coordinates[0] == 0 && user.city.coordinates[1] == 0) {
-        const current_coordinates = user.current_coordinates.coordinates;
-        posts =
-          await sequelize.query(`SELECT postid, userid, username, title, content, multimedia, createdat, cheers, boos, postlocation
-	FROM posts WHERE ST_DWithin(postlocation, ST_SetSRID(ST_Point(${current_coordinates[0]}, ${current_coordinates[1]}), 4326), 300000) ORDER BY createdat DESC`);
-        posts = posts[0];
-      } else {
-        const homeLocation = user.home_coordinates.coordinates;
-        posts =
-          await sequelize.query(`SELECT postid, userid, username, title, content, multimedia, createdat, cheers, boos, postlocation
-	FROM posts WHERE ST_DWithin(postlocation, ST_SetSRID(ST_Point(${homeLocation[0]}, ${homeLocation[1]}), 4326), 300000) ORDER BY createdat DESC`);
-        posts = posts[0];
-      }
+      location = user.current_coordinates.coordinates;
     }
-    // Fetch polls filtered by location using $near
-    const polls = await Poll.find({
-      location: {
-        $near: {
-          $geometry: {
-            type: "Point",
-            coordinates: currentCoordinates,
-          },
-          $maxDistance: 300000, // Distance in meters
-        },
-      },
-    }).lean();
+    posts =
+      await sequelize.query(`SELECT postid, userid, username, title, content, multimedia, createdat, cheers, boos, postlocation
+	FROM posts WHERE ST_DWithin(postlocation, ST_SetSRID(ST_Point(${location[0]}, ${location[1]}), 4326), 300000) ORDER BY createdat DESC`);
+    posts = posts[0];
 
     // Fetch user details for posts
     const postsWithUserDetails = await Promise.all(
       posts.map(async (post) => {
-        const user = await User.findById(post.userid).lean();
+        const user = await User.findById(req.user._id).lean();
         return {
           ...post,
           userProfilePicture: user.picture,
@@ -58,24 +36,8 @@ exports.findPosts = async (req, res) => {
       })
     );
 
-    // Fetch user details for polls
-    const pollsWithUserDetails = await Promise.all(
-      polls.map(async (poll) => {
-        const user = await User.findById(poll.createdBy).lean();
-        return {
-          ...poll,
-          userProfilePicture: user.picture,
-        };
-      })
-    );
-    const combined = [...posts, ...polls].sort((a, b) => {
-      const dateA = new Date(a.createdat || a.created_at);
-      const dateB = new Date(b.createdat || b.created_at);
-      return dateB - dateA;
-    });
-
     activityLogger.info("Posts and polls are fetched");
-    res.status(200).json(combined);
+    res.status(200).json(postsWithUserDetails);
   } catch (err) {
     errorLogger.error(err);
     res.status(500).json({
@@ -243,12 +205,4 @@ exports.reportPost = async (req, res) => {
 
 exports.fetchPostById = async (req, res) => {
   // TODO dummy code here
-  try {
-    const post = await Post.findById(req.params.id);
-    if (!post) return res.status(404).json({ message: "Post not found" });
-    res.json(post);
-  } catch (err) {
-    errorLogger.error(err);
-    res.status(500).json({ message: err.message });
-  }
 };
