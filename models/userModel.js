@@ -74,7 +74,7 @@ const userSchema = new mongoose.Schema({
   },
   otpExpiry: {
     type: Date,
-  },
+  }
 });
 
 userSchema.pre("save", async function () {
@@ -82,9 +82,9 @@ userSchema.pre("save", async function () {
     this.password = await bcrypt.hash(this.password, 10);
 });
 
-userSchema.methods.getJWTToken = function () {
-  return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRY,
+userSchema.methods.getJWTToken = function (expiry, secret) {
+  return jwt.sign({ id: this._id }, secret, {
+    expiresIn: expiry,
   });
 };
 
