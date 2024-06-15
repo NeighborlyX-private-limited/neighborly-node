@@ -6,12 +6,7 @@ const User = require("../models/userModel");
 exports.isAuthenticated = async (req, res, next) => {
     const { refreshToken } = req.cookies;
 
-    const token = req.headers['authorization'];
-
-    const accessToken = token.substring(7);
-
-    console.log(accessToken);
-    
+    const accessToken = req.headers['authorization'];    
 
     // if(!token)
     //     return next(new ErrorHandler("You must login first", 401));
@@ -26,6 +21,8 @@ exports.isAuthenticated = async (req, res, next) => {
     }
 
     try {
+        const accessToken = token.substring(7);
+        console.log(accessToken);
         const decodedData = jwt.verify(accessToken, process.env.JWT_SECRET);
         req.user = await User.findById(decodedData.id);
         next();
@@ -36,8 +33,9 @@ exports.isAuthenticated = async (req, res, next) => {
 
         try {
             const decoded = jwt.verify(refreshToken, process.env.REFRESH_SECRET);
+            console.log(decoded.id);
             const user = await User.findById(decoded.id);
-            const accesstoken = user.getJWTToken(process.env.JWT_EXPIRY);
+            const accesstoken = user.getJWTToken(process.env.JWT_EXPIRY, process.env.JWT_SECRET);
             req.user = user;
             req.header("Authorization", accesstoken);
             next();

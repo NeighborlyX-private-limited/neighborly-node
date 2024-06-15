@@ -165,7 +165,7 @@ exports.verifyOTP = async (req, res) => {
 exports.logoutUser = async (req, res, next) => {
   const user = req.user.username;
   activityLogger.info(`${user} logged out`);
-  res.clearCookie("token");
+  res.clearCookie("refreshToken");
   req.session.destroy(() => {
     activityLogger.info("session destroyed successfully");
   });
