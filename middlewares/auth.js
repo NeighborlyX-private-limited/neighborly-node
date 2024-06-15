@@ -37,7 +37,7 @@ exports.isAuthenticated = async (req, res, next) => {
             const user = await User.findById(decoded.id);
             const accesstoken = user.getJWTToken(process.env.JWT_EXPIRY, process.env.JWT_SECRET);
             req.user = user;
-            req.header("Authorization", accesstoken);
+            res.header("Authorization", accesstoken);
             next();
         } catch (error) {
             return res.status(400).send('Invalid Token.');
