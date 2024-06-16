@@ -1,5 +1,4 @@
-const Post = require("../models/PostModel");
-const Poll = require("../models/pollModel");
+const Post = require("../models/ContentModel");
 const User = require("../models/userModel");
 const Report = require("../models/ReportModel");
 const { Op, where } = require("sequelize");
@@ -46,54 +45,6 @@ exports.findPosts = async (req, res) => {
   }
 };
 
-// Create a new poll
-exports.createPoll = async (req, res) => {
-  const { question, options } = req.body;
-  const createdBy = req.user._id;
-  const location = req.user.current_coordinates; // Assuming user's current location
-
-  try {
-    const poll = await Poll.create({
-      question,
-      options: options.map((option) => ({ text: option, votes: 0 })),
-      createdBy,
-      location,
-    });
-    res.status(200).json(poll);
-  } catch (err) {
-    errorLogger.error("Create poll is not working: ", err);
-    res.status(500).json({
-      msg: "Internal server error in create-poll",
-    });
-  }
-};
-
-exports.fetchPollById = async (req, res) => {
-  try {
-    const poll = await Poll.findById(req.params.id);
-    if (!poll) return res.status(404).json({ message: "Poll not found" });
-    res.json(poll);
-  } catch (err) {
-    errorLogger.error(err);
-    res.status(500).json({ message: err.message });
-  }
-};
-
-exports.deletePoll = async (req, res) => {
-  try {
-    const pollId = req.params.id;
-    const poll = await Poll.findById(pollId);
-    if (!poll) return res.status(404).json({ message: "Poll not found" });
-
-    await poll.remove();
-    res.json({ message: "Poll deleted" });
-  } catch (err) {
-    errorLogger.error("Something wrong with deletePoll: ", err);
-    res.status(500).json({
-      msg: "error in delete-poll",
-    });
-  }
-};
 exports.feedBack = async (req, res) => {
   const { postId, feedback } = req.body;
   let update;

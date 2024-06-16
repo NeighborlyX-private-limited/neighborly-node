@@ -9,6 +9,7 @@ const errorMiddleware = require("./middlewares/error");
 const groupRoute = require("./routes/groupRoute");
 const wallRoute = require("./routes/wallRoute");
 const eventRoute = require("./routes/eventRoute");
+const postRoute = require("./routes/postRoute");
 const cors = require("cors");
 const session = require("express-session");
 const { activityLogger, errorLogger } = require("./utils/logger");
@@ -50,6 +51,7 @@ app.use(`${API_PREFIX}/group`, groupRoute);
 app.use(`${API_PREFIX}/dummy`, dummyRoute);
 app.use(`${API_PREFIX}/wall`, wallRoute);
 app.use(`${API_PREFIX}/event`, eventRoute);
+app.use(`${API_PREFIX}/post`, postRoute);
 
 app.use(errorMiddleware);
 

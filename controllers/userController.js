@@ -26,7 +26,7 @@ exports.uploadFile = async (req, res, next) => {
 
   S3.upload(params, (err, data) => {
     if (err) {
-      activityLogger.error("Error uploading file:", err);
+      errorLogger.error("Error uploading file:", err);
       return res.status(500).json({ success: false, message: "Upload failed" });
     }
 
