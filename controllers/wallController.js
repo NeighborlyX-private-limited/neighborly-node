@@ -20,8 +20,8 @@ exports.findPosts = async (req, res) => {
       location = user.current_coordinates.coordinates;
     }
     posts =
-      await sequelize.query(`SELECT postid, userid, username, title, content, multimedia, createdat, cheers, boos, postlocation
-	FROM posts WHERE ST_DWithin(postlocation, ST_SetSRID(ST_Point(${location[0]}, ${location[1]}), 4326), 300000) ORDER BY createdat DESC`);
+      await sequelize.query(`SELECT contentid, userid, username, title, content, multimedia, createdat, cheers, boos, postlocation, city, type, poll_options
+	FROM content WHERE ST_DWithin(postlocation, ST_SetSRID(ST_Point(${location[0]}, ${location[1]}), 4326), 300000) ORDER BY createdat DESC`);
     posts = posts[0];
 
     // Fetch user details for posts
@@ -52,10 +52,10 @@ exports.feedBack = async (req, res) => {
     if (feedback) {
       update = await Post.increment(
         { cheers: 1 },
-        { where: { postid: postId } }
+        { where: { contentid: postId } }
       );
     } else {
-      update = await Post.increment({ boos: 1 }, { where: { postid: postId } });
+      update = await Post.increment({ boos: 1 }, { where: { contentid: postId } });
     }
     res.status(200).json(update);
   } catch (err) {
@@ -71,11 +71,9 @@ exports.createPost = async (req, res) => {
   const user = req.user;
   try {
     const userId = user._id.toString();
-    const userName = user.username;
 
     const post = await Post.create({
       userid: userId,
-      username: userName,
       title: title,
       content: content,
       multimedia: multimedia,
@@ -99,7 +97,7 @@ exports.deletePost = async (req, res) => {
     const postId = req.params["postId"];
     const post = await Post.findOne({
       where: {
-        postid: postId,
+        contentid: postId,
       },
     });
     const userId = req.user._id;
@@ -128,20 +126,19 @@ exports.reportPost = async (req, res) => {
     const { postId, reason } = req.body;
     const post = await Post.findOne({
       where: {
-        postid: postId,
+        contentid: postId,
       },
     });
     const userId = req.user._id;
-    const userName = req.user.username;
     if (userId.toString() === post.userid) {
       res.status(400).json({
         msg: "user is self reporter",
       });
     } else {
       const report = await Report.create({
-        reportedby: userName,
-        postid: postId,
-        reason: reason,
+        userid: userId,
+        contentid: postId,
+        report_reason: reason,
         createdat: Date.now(),
       });
       res.status(200).json(report);
@@ -155,5 +152,15 @@ exports.reportPost = async (req, res) => {
 };
 
 exports.fetchPostById = async (req, res) => {
-  // TODO dummy code here
+  try {
+    const { id } = req.params;
+    const post = await Post.findAll();
+    activityLogger.info("Found a post with id:",id);
+    res.status(200).json(post);
+  }catch(err) {
+    errorLogger.error("Something wrong with fetchPostById", err);
+    res.status(400).json({
+      msg: err
+    });
+  }
 };

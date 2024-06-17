@@ -1,53 +1,44 @@
-const { sequelize } = require("../config/database");
-const { DataTypes } = require("sequelize");
+const { sequelize } = require('../config/database');
+const { DataTypes } = require('sequelize');
 
-const Content = sequelize.define(
-  "content",
-  {
+
+
+const Content = sequelize.define('content', {
     contentid: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
     },
     userid: {
-      type: DataTypes.STRING(24),
-      allowNull: false,
+        type: DataTypes.STRING(255),
+        allowNull: false
     },
+    username: DataTypes.STRING(255),
     title: {
-      type: DataTypes.STRING(100),
-      allowNull: false,
+        type: DataTypes.STRING(255),
+        allowNull: false
     },
-    content: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    multimedia: {
-      type: DataTypes.STRING(255),
-      allowNull: true,
-    },
-    createdat: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
+    body: DataTypes.TEXT,
+    multimedia: DataTypes.TEXT,
+    createdat: DataTypes.DATE,
     cheers: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 0,
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
     },
     boos: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 0,
+        type: DataTypes.INTEGER,
+        defaultValue: 0
     },
-    postlocation: {
-      type: DataTypes.GEOGRAPHY("POINT", 4326),
-      allowNull: true,
+    postlocation: DataTypes.GEOGRAPHY('POINT', 4326),
+    city: DataTypes.STRING(255),
+    type: {
+        type: DataTypes.STRING(50),
+        allowNull: false
     },
-  },
-  {
-    timestamps: false,
-  }
-);
+    poll_options: DataTypes.JSONB,
+    allow_multiple_votes: DataTypes.BOOLEAN
+}, {
+    timestamps: false
+});
 
 module.exports = Content;

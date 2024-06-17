@@ -7,12 +7,18 @@ const Report = sequelize.define('reports', {
         autoIncrement: true,
         primaryKey: true
     },
-    reportedby: DataTypes.STRING(24),
-    postid: DataTypes.INTEGER,
+    userid: {
+        type: DataTypes.STRING(24),
+        allowNull: false
+    },
+    contentid: DataTypes.INTEGER,
     commentid: DataTypes.INTEGER,
-    pollid: DataTypes.INTEGER,
-    reason: DataTypes.TEXT,
-    createdat: DataTypes.DATE
+    report_reason: DataTypes.TEXT,
+    createdat: DataTypes.DATE,
+    processed: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    }
 }, {
     timestamps: false
 });
