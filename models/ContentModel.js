@@ -38,6 +38,7 @@ const Content = sequelize.define('content', {
     poll_options: DataTypes.JSONB,
     allow_multiple_votes: DataTypes.BOOLEAN
 }, {
+    tableName: 'content',
     timestamps: false
 });
 
