@@ -1,9 +1,13 @@
 const Post = require("../models/ContentModel");
 const User = require("../models/userModel");
+const Comment = require("../models/CommentModel");
+const Award = require("../models/AwardModel");
 const Report = require("../models/ReportModel");
+const PollVote = require("../models/PollVoteModel");
 const { Op, where } = require("sequelize");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const { sequelize } = require("../config/database");
+const { raw } = require("express");
 
 // Fetch posts and polls
 exports.findPosts = async (req, res) => {
@@ -28,10 +32,41 @@ exports.findPosts = async (req, res) => {
     const postsWithUserDetails = await Promise.all(
       posts.map(async (post) => {
         const user = await User.findById(req.user._id).lean();
-        return {
-          ...post,
-          userProfilePicture: user.picture,
-        };
+        const commentCount = await Comment.count({ where: { contentid: post.contentid } });
+        const awardCount = await Award.count({ where: { contentid: post.contentid } });
+        if (post.type === "poll") {
+          const options = post.poll_options;
+          let pollVotes = await Promise.all(
+            options.map(async (data) => {
+              const vote = await PollVote.findOne({
+                raw: true,
+                attributes: ['votes'],
+                where: {
+                  [Op.and]: [{ contentid: post.contentid }, { optionid: data.optionId }]
+                }
+              });
+              const result = {
+                option: data.option,
+                votes: vote.votes
+              };
+              return result;
+            }));
+          return {
+            ...post,
+            userProfilePicture: user.picture,
+            commentCount: commentCount,
+            awardCount: awardCount,
+            pollVotes: pollVotes
+          };
+        }
+        else {
+          return {
+            ...post,
+            userProfilePicture: user.picture,
+            commentCount: commentCount,
+            awardCount: awardCount
+          };
+        }
       })
     );
 
@@ -55,10 +90,7 @@ exports.feedBack = async (req, res) => {
         { where: { contentid: postId } }
       );
     } else {
-      update = await Post.increment(
-        { boos: 1 },
-        { where: { contentid: postId } }
-      );
+      update = await Post.increment({ boos: 1 }, { where: { contentid: postId } });
     }
     res.status(200).json(update);
   } catch (err) {
@@ -70,21 +102,44 @@ exports.feedBack = async (req, res) => {
 };
 
 exports.createPost = async (req, res) => {
-  const { title, content, multimedia, location } = req.body;
+  const { title, content, multimedia, location, type, city, allowMultipleVotes, pollOptions } = req.body;
   const user = req.user;
   try {
     const userId = user._id.toString();
-
-    const post = await Post.create({
-      userid: userId,
-      title: title,
-      content: content,
-      multimedia: multimedia,
-      createdat: Date.now(),
-      cheers: 0,
-      boos: 0,
-      postlocation: { type: "POINT", coordinates: location },
-    });
+    const username = user.username;
+    let post;
+    if (type === "poll") {
+      post = await Post.create({
+        userid: userId,
+        username: username,
+        title: title,
+        body: content,
+        multimedia: multimedia,
+        createdat: Date.now(),
+        cheers: 0,
+        boos: 0,
+        postlocation: { type: "POINT", coordinates: location },
+        type: type,
+        city: city,
+        allow_multiple_votes: allowMultipleVotes,
+        poll_options: pollOptions
+      });
+    }
+    else {
+      post = await Post.create({
+        userid: userId,
+        username: username,
+        title: title,
+        body: content,
+        multimedia: multimedia,
+        createdat: Date.now(),
+        cheers: 0,
+        boos: 0,
+        postlocation: { type: "POINT", coordinates: location },
+        type: type,
+        city: city
+      });
+    }
     activityLogger.info("new Post created");
     res.status(200).json(post);
   } catch (err) {
@@ -154,29 +209,3 @@ exports.reportPost = async (req, res) => {
   }
 };
 
-exports.fetchPostById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const post = await Post.findAll();
-    activityLogger.info("Found a post with id:", id);
-    res.status(200).json(post);
-  } catch (err) {
-    errorLogger.error("Something wrong with fetchPostById", err);
-    res.status(400).json({
-      msg: err,
-    });
-  }
-};
-
-exports.fetchCommentThread = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const comment = await Comment.findAll();
-    res.status(200).json(comment);
-  } catch (err) {
-    errorLogger.error("Something wrong with fetchCommentThread", err);
-    res.status(400).json({
-      msg: err,
-    });
-  }
-};

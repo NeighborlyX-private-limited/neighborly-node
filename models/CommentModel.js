@@ -1,43 +1,40 @@
 const { sequelize } = require('../config/database');
 const { DataTypes } = require('sequelize');
 
-const Content = sequelize.define('content', {
-    contentid: {
+const Comment = sequelize.define('comments', {
+    commentid: {
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true
     },
+    contentid: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    parent_commentid: DataTypes.INTEGER,
     userid: {
         type: DataTypes.STRING(255),
         allowNull: false
     },
-    username: DataTypes.STRING(255),
-    title: {
+    username: {
         type: DataTypes.STRING(255),
         allowNull: false
     },
-    body: DataTypes.TEXT,
-    multimedia: DataTypes.TEXT,
+    text: {
+        type: DataTypes.TEXT,
+        allowNull: false
+    },
     createdat: DataTypes.DATE,
     cheers: {
         type: DataTypes.INTEGER,
-        defaultValue: 0,
+        defaultValue: 0
     },
     boos: {
         type: DataTypes.INTEGER,
         defaultValue: 0
-    },
-    postlocation: DataTypes.GEOGRAPHY('POINT', 4326),
-    city: DataTypes.STRING(255),
-    type: {
-        type: DataTypes.STRING(50),
-        allowNull: false
-    },
-    poll_options: DataTypes.JSONB,
-    allow_multiple_votes: DataTypes.BOOLEAN
+    }
 }, {
-    tableName: 'content',
     timestamps: false
 });
 
-module.exports = Content;
+module.exports = Comment;
