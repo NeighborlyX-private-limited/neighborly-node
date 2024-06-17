@@ -55,7 +55,10 @@ exports.feedBack = async (req, res) => {
         { where: { contentid: postId } }
       );
     } else {
-      update = await Post.increment({ boos: 1 }, { where: { contentid: postId } });
+      update = await Post.increment(
+        { boos: 1 },
+        { where: { contentid: postId } }
+      );
     }
     res.status(200).json(update);
   } catch (err) {
@@ -155,12 +158,25 @@ exports.fetchPostById = async (req, res) => {
   try {
     const { id } = req.params;
     const post = await Post.findAll();
-    activityLogger.info("Found a post with id:",id);
+    activityLogger.info("Found a post with id:", id);
     res.status(200).json(post);
-  }catch(err) {
+  } catch (err) {
     errorLogger.error("Something wrong with fetchPostById", err);
     res.status(400).json({
-      msg: err
+      msg: err,
+    });
+  }
+};
+
+exports.fetchCommentThread = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const comment = await Comment.findAll();
+    res.status(200).json(comment);
+  } catch (err) {
+    errorLogger.error("Something wrong with fetchCommentThread", err);
+    res.status(400).json({
+      msg: err,
     });
   }
 };
