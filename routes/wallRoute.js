@@ -5,16 +5,17 @@ const router = express.Router();
 
 const {
   findPosts,
-  feedBack,
+  feedback,
   createPost,
-  deletePost,
-  reportPost,
+  deleteData,
+  report,
 } = require("../controllers/wallController");
 
 router.route("/fetch-posts").get(isAuthenticated, findPosts);
-router.route("/feedback-post").put(isAuthenticated, feedBack);
+router.route("/fetch-posts/:postId?").get(isAuthenticated, findPosts);
+router.route("/feedback").put(isAuthenticated, feedback);
 router.route("/create-post").post(isAuthenticated, createPost);
-router.route("/delete-post/:postId").delete(isAuthenticated, deletePost);
-router.route("/report-post").post(isAuthenticated, reportPost);
+router.route("/delete/:type/:id").delete(isAuthenticated, deleteData);
+router.route("/report").post(isAuthenticated, report);
 
 module.exports = router;
