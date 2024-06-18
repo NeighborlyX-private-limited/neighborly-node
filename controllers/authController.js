@@ -6,7 +6,7 @@ const { activityLogger, errorLogger } = require("../utils/logger");
 const bcrypt = require("bcryptjs");
 const otpGenerator = require("otp-generator");
 const dotenv = require("dotenv");
-const { google } = require('googleapis');
+const { OAuthClient, OAuth2Client } = require("google-auth-library");
 
 const {
   sendVerificationEmail,
@@ -173,14 +173,11 @@ exports.logoutUser = async (req, res, next) => {
 };
 
 exports.googleAuth = async (req, res) => {
-  const { tokenId } = req.body;
-  const client = new google.auth.OAuth2(
-    process.env.CLIENT_ID,
-    process.env.CLIENT_SECRET,
-    process.env.AUTH_URL
-  );
+  try {
+    const { token } = req.body;
+    const client = new OAuth2Client(process.env.CLIENT_ID);
   const ticket = await client.verifyIdToken({
-    idToken: tokenId,
+    idToken: token,
     audience: process.env.CLIENT_ID,
   });
   const payload = ticket.getPayload();
@@ -219,6 +216,11 @@ exports.googleAuth = async (req, res) => {
     errorLogger.error("Error in Oauth:", err);
     res.status(500).json({
       "message": err
+    });
+  }} catch(err) {
+    errorLogger.error("Error in Oauth:", err);
+    res.status(500).json({
+      "message": "Error in Oauth"
     });
   }
 }
