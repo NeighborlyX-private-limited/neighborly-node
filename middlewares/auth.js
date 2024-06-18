@@ -8,14 +8,6 @@ exports.isAuthenticated = async (req, res, next) => {
 
     const accessToken = req.headers['authorization'];    
 
-    // if(!token)
-    //     return next(new ErrorHandler("You must login first", 401));
-
-    // const decodedData = jwt.verify(token, process.env.JWT_SECRET);
-
-    // req.user = await User.findById(decodedData.id);
-    
-    // next();
     if (!accessToken && !refreshToken) {
         return res.status(401).send('Access Denied. No token provided.');
     }
