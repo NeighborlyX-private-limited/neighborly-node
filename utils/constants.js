@@ -30,6 +30,15 @@ const CITY_RADIUS = {
   gurugram: 10.06,
 };
 
+const VALIDAWARDTYPES = new Set([
+  "Local Legend",
+  "Sunflower",
+  "Streetlight",
+  "Park Bench",
+  "Map",
+  // Add more awards here as needed
+]);
+
 module.exports = {
   CITY_TO_COORDINATE,
   COORDINATE_TO_CITY,
@@ -37,4 +46,5 @@ module.exports = {
   AVAILABLE_CITIES,
   S3,
   S3_BUCKET_NAME,
+  VALIDAWARDTYPES,
 };

@@ -10,6 +10,7 @@ const { Op, where } = require("sequelize");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const { sequelize } = require("../config/database");
 const { raw } = require("express");
+const { VALIDAWARDTYPES } = require("../utils/constants");
 
 // Fetch posts and polls
 exports.findPosts = async (req, res) => {
@@ -83,7 +84,7 @@ exports.findPosts = async (req, res) => {
           );
           return {
             ...post,
-            userProfilePicture: user.picture,
+            userProfilePicture: user ? user.picture : null,
             commentCount: commentCount,
             awards: awardNames,
             pollVotes: pollVotes,
@@ -91,7 +92,7 @@ exports.findPosts = async (req, res) => {
         } else {
           return {
             ...post,
-            userProfilePicture: user.picture,
+            userProfilePicture: user ? user.picture : null,
             commentCount: commentCount,
             awards: awardNames,
           };
@@ -109,11 +110,12 @@ exports.findPosts = async (req, res) => {
   }
 };
 
-//TODO stop feedback if user has already provided
 exports.feedback = async (req, res) => {
   try {
     const { id, type, feedback } = req.body;
     const userId = req.user._id;
+
+    let voteType = feedback === "cheer" ? "cheer" : "boo";
 
     if (type === "post") {
       const post = await Post.findOne({ where: { contentid: id } });
@@ -121,7 +123,17 @@ exports.feedback = async (req, res) => {
         return res.status(404).json({ msg: "Post not found" });
       }
 
-      let voteType = feedback === "cheer" ? "cheer" : "boo";
+      // Check if the user has already voted on this post
+      const existingVote = await ContentVote.findOne({
+        where: { contentid: id, userid: userId.toString() },
+      });
+
+      if (existingVote) {
+        return res
+          .status(400)
+          .json({ msg: "User has already voted on this post" });
+      }
+
       await ContentVote.create({
         contentid: id,
         userid: userId.toString(),
@@ -144,7 +156,17 @@ exports.feedback = async (req, res) => {
         return res.status(404).json({ msg: "Comment not found" });
       }
 
-      let voteType = feedback === "cheer" ? "cheer" : "boo";
+      // Check if the user has already voted on this comment
+      const existingVote = await CommentVote.findOne({
+        where: { commentid: id, userid: userId.toString() },
+      });
+
+      if (existingVote) {
+        return res
+          .status(400)
+          .json({ msg: "User has already voted on this comment" });
+      }
+
       await CommentVote.create({
         commentid: id,
         userid: userId.toString(),
@@ -316,5 +338,66 @@ exports.report = async (req, res) => {
   } catch (err) {
     errorLogger.error("Something wrong with report: ", err);
     return res.status(500).json({ msg: "Internal server error in report" });
+  }
+};
+
+exports.giveAward = async (req, res) => {
+  try {
+    const { id, type, awardType } = req.body;
+    const giverUserId = req.user._id;
+
+    if (!id || !type || !awardType) {
+      return res.status(400).json({ msg: "Missing required fields" });
+    }
+
+    // Validate the award type using the constants file
+    if (!VALIDAWARDTYPES.has(awardType)) {
+      return res.status(400).json({ msg: "Invalid award type" });
+    }
+
+    if (type === "post") {
+      const post = await Post.findOne({ where: { contentid: id } });
+      if (!post) {
+        return res.status(404).json({ msg: "Post not found" });
+      }
+
+      await Award.create({
+        contentid: id,
+        commentid: null,
+        giver_userid: giverUserId.toString(),
+        receiver_userid: post.userid,
+        award_type: awardType,
+        createdat: new Date(),
+      });
+
+      activityLogger.info(
+        `Award (${awardType}) given to post ID ${id} by user ${giverUserId}`
+      );
+    } else if (type === "comment") {
+      const comment = await Comment.findOne({ where: { commentid: id } });
+      if (!comment) {
+        return res.status(404).json({ msg: "Comment not found" });
+      }
+
+      await Award.create({
+        contentid: null,
+        commentid: id,
+        giver_userid: giverUserId.toString(),
+        receiver_userid: comment.userid,
+        award_type: awardType,
+        createdat: new Date(),
+      });
+
+      activityLogger.info(
+        `Award (${awardType}) given to comment ID ${id} by user ${giverUserId}`
+      );
+    } else {
+      return res.status(400).json({ msg: "Invalid type specified" });
+    }
+
+    return res.status(200).json({ msg: "Award given successfully" });
+  } catch (err) {
+    errorLogger.error("Something wrong with giveAward: ", err);
+    return res.status(500).json({ msg: "Internal server error in giveAward" });
   }
 };
