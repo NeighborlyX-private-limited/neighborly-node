@@ -52,7 +52,7 @@ exports.updateLocation = async (req, res, next) => {
     const homeLocation = body?.homeLocation;
     let updatedCoordinates;
     if (homeLocation) {
-      // If userLocation is provided, it should be an array with [lat, lng]
+      // If homeLocation is provided, it should be an array with [lat, lng]
       activityLogger.info(
         "Updating user's home location based on coordinates: " + homeLocation
       );
