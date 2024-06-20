@@ -7,7 +7,6 @@ const { Op, where } = require("sequelize");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const { sequelize } = require("../config/database");
 
-//TODO improvements needed here
 exports.fetchCommentThread = async (req, res) => {
   try {
     const parentCommentid = req.params["id"];
@@ -32,7 +31,7 @@ exports.fetchCommentThread = async (req, res) => {
     // Fetch user details for each comment
     const userIds = comments.map((comment) => comment.userid);
     const users = await User.find({ _id: { $in: userIds } }).select(
-      "username picture"
+      "_id picture"
     );
 
     // Map user details to comments
@@ -54,9 +53,9 @@ exports.fetchCommentThread = async (req, res) => {
         boos: comment.boos,
         awards: awards,
         user_picture: user ? user.picture : null,
-        user_username: user ? user.username : null,
       };
     });
+
     activityLogger.info(
       `Fetched comment thread for parent comment ID: ${parentCommentid}`
     );
@@ -80,7 +79,7 @@ exports.fetchComments = async (req, res) => {
 
     // Fetch comments with awards
     const comments = await Comment.findAndCountAll({
-      where: { contentid: postId },
+      where: { contentid: postId, parent_commentid: null },
       include: [
         {
           model: Award,
@@ -122,7 +121,6 @@ exports.fetchComments = async (req, res) => {
         boos: comment.boos,
         award_type: awards,
         user_picture: user ? user.picture : null,
-        user_username: user ? user.username : null,
       };
     });
     activityLogger.info(`Fetched comments for post ID: ${postId}`);
@@ -143,7 +141,7 @@ exports.fetchComments = async (req, res) => {
 //TODO fetch the user details from req
 exports.addComment = async (req, res) => {
   try {
-    const { contentid, text } = req.body;
+    const { contentid, text, parentCommentid } = req.body;
     // Validate input parameters
     userid = req.user._id;
     username = req.user.username;
@@ -160,6 +158,7 @@ exports.addComment = async (req, res) => {
     const newComment = await Comment.create({
       contentid: contentid,
       userid: userid,
+      parent_commentid: parentCommentid,
       username: username,
       text: text,
       cheers: 0,
