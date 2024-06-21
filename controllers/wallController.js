@@ -116,78 +116,80 @@ exports.feedback = async (req, res) => {
     const userId = req.user._id;
 
     let voteType = feedback === "cheer" ? "cheer" : "boo";
+    let oppositeVoteType = feedback === "cheer" ? "boo" : "cheer";
+    let voteModel, contentModel, contentIdField;
 
     if (type === "post") {
-      const post = await Post.findOne({ where: { contentid: id } });
-      if (!post) {
-        return res.status(404).json({ msg: "Post not found" });
-      }
-
-      // Check if the user has already voted on this post
-      const existingVote = await ContentVote.findOne({
-        where: { contentid: id, userid: userId.toString() },
-      });
-
-      if (existingVote) {
-        return res
-          .status(400)
-          .json({ msg: "User has already voted on this post" });
-      }
-
-      await ContentVote.create({
-        contentid: id,
-        userid: userId.toString(),
-        votetype: voteType,
-        createdat: new Date(),
-        processed: true,
-      });
-
-      if (feedback === "cheer") {
-        await Post.increment({ cheers: 1 }, { where: { contentid: id } });
-      } else {
-        await Post.increment({ boos: 1 }, { where: { contentid: id } });
-      }
       activityLogger.info(
-        `Feedback (${feedback}) added to post ID ${id} by user ${userId}`
+        `Processing Post feedback for ${id} from user ${userId}`
       );
+      voteModel = ContentVote;
+      contentModel = Post;
+      contentIdField = "contentid";
     } else if (type === "comment") {
-      const comment = await Comment.findOne({ where: { commentid: id } });
-      if (!comment) {
-        return res.status(404).json({ msg: "Comment not found" });
-      }
-
-      // Check if the user has already voted on this comment
-      const existingVote = await CommentVote.findOne({
-        where: { commentid: id, userid: userId.toString() },
-      });
-
-      if (existingVote) {
-        return res
-          .status(400)
-          .json({ msg: "User has already voted on this comment" });
-      }
-
-      await CommentVote.create({
-        commentid: id,
-        userid: userId.toString(),
-        votetype: voteType,
-        createdat: new Date(),
-        processed: true,
-      });
-
-      if (feedback === "cheer") {
-        await Comment.increment({ cheers: 1 }, { where: { commentid: id } });
-      } else {
-        await Comment.increment({ boos: 1 }, { where: { commentid: id } });
-      }
       activityLogger.info(
-        `Feedback (${feedback}) added to comment ID ${id} by user ${userId}`
+        `Processing Comment feedback for ${id} from user ${userId}`
       );
+      voteModel = CommentVote;
+      contentModel = Comment;
+      contentIdField = "commentid";
     } else {
+      errorLogger.error("Invalid type specified, should be a comment or post");
       return res.status(400).json({ msg: "Invalid type specified" });
     }
 
-    return res.status(200).json({ msg: "Feedback recorded" });
+    const content = await contentModel.findOne({
+      where: { [contentIdField]: id },
+    });
+    if (!content) {
+      return res.status(404).json({
+        msg: `${type.charAt(0).toUpperCase() + type.slice(1)} not found`,
+      });
+    }
+
+    const existingVote = await voteModel.findOne({
+      where: { [contentIdField]: id, userid: userId.toString() },
+    });
+
+    if (existingVote) {
+      if (existingVote.votetype === voteType) {
+        // Reverse the vote
+        activityLogger.info(`Reversing feedback for ${id} from user ${userId}`);
+        await voteModel.destroy({ where: { voteid: existingVote.voteid } });
+        await contentModel.decrement(
+          { [voteType + "s"]: 1 },
+          { where: { [contentIdField]: id } }
+        );
+        return res.status(200).json({ msg: "Vote reversed successfully" });
+      } else {
+        // Update the vote type
+        activityLogger.info(`Updating feedback for ${id} from user ${userId}`);
+        existingVote.votetype = voteType;
+        await existingVote.save();
+        await contentModel.increment(
+          { [voteType + "s"]: 1, [oppositeVoteType + "s"]: -1 },
+          { where: { [contentIdField]: id } }
+        );
+        return res.status(200).json({ msg: "Vote updated successfully" });
+      }
+    } else {
+      // Create a new vote
+      await voteModel.create({
+        [contentIdField]: id,
+        userid: userId.toString(),
+        votetype: voteType,
+        createdat: new Date(),
+        processed: true,
+      });
+      await contentModel.increment(
+        { [voteType + "s"]: 1 },
+        { where: { [contentIdField]: id } }
+      );
+      activityLogger.info(
+        `Feedback (${feedback}) added to ${type} ID ${id} by user ${userId}`
+      );
+      return res.status(200).json({ msg: "Feedback recorded" });
+    }
   } catch (err) {
     errorLogger.error("Something wrong with feedback: ", err);
     return res.status(500).json({ msg: "Internal server error in feedback" });
