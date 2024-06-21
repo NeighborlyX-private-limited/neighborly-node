@@ -26,7 +26,6 @@ exports.loginUser = async (req, res, next) => {
 
   if (emailRegex.test(userId)) {
     email = userId.toLowerCase();
-    console.log(email);
     user = await User.findOne({ email: email });
   } else {
     username = userId;
