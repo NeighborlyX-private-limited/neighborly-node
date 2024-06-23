@@ -6,7 +6,7 @@ const { activityLogger, errorLogger } = require("../utils/logger");
 const bcrypt = require("bcryptjs");
 const otpGenerator = require("otp-generator");
 const dotenv = require("dotenv");
-const { OAuthClient, OAuth2Client } = require("google-auth-library");
+const { OAuth2Client } = require("google-auth-library");
 
 const {
   sendVerificationEmail,
@@ -175,7 +175,7 @@ exports.logoutUser = async (req, res, next) => {
 exports.googleAuth = async (req, res) => {
   try {
     const { token } = req.body;
-    const client = new OAuth2Client(process.env.CLIENT_ID);
+    const client = new OAuth2Client();
   const ticket = await client.verifyIdToken({
     idToken: token,
     audience: process.env.CLIENT_ID,
@@ -205,10 +205,9 @@ exports.googleAuth = async (req, res) => {
     const picture = `https://api.multiavatar.com/${username}.png?apikey=${AVATAR_KEY}`;
     const user = await User.create({
       username: username,
-      password: password,
       email: email.toLowerCase(),
       picture: picture,
-      auth_type: "email",
+      auth_type: "google",
     });
     activityLogger.info("User logged in successfully");
     sendToken(user, 200, res);
