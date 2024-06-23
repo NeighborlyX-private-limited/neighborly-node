@@ -30,14 +30,14 @@ exports.findPosts = async (req, res) => {
     if (postId) {
       // Fetch a specific post by ID
       posts = await sequelize.query(`
-        SELECT contentid, userid, username, title, body, multimedia, createdat, cheers, boos, postlocation, city, type, poll_options
+        SELECT contentid, userid, username, title, body, multimedia, createdat, cheers, boos, postlocation, city, type, poll_options, allow_multiple_votes
         FROM content
         WHERE contentid = ${postId}
       `);
     } else {
       // Fetch all posts within a certain distance
       posts = await sequelize.query(`
-        SELECT contentid, userid, username, title, body, multimedia, createdat, cheers, boos, postlocation, city, type, poll_options
+        SELECT contentid, userid, username, title, body, multimedia, createdat, cheers, boos, postlocation, city, type, poll_options, allow_multiple_votes
         FROM content
         WHERE ST_DWithin(postlocation, ST_SetSRID(ST_Point(${location[0]}, ${location[1]}), 4326), 300000)
         ORDER BY createdat DESC
@@ -63,31 +63,36 @@ exports.findPosts = async (req, res) => {
 
         if (post.type === "poll") {
           const options = post.poll_options;
-          let pollVotes = await Promise.all(
-            options.map(async (data) => {
-              const vote = await PollVote.findOne({
-                raw: true,
-                attributes: ["votes"],
-                where: {
-                  [Op.and]: [
-                    { contentid: post.contentid },
-                    { optionid: data.optionId },
-                  ],
-                },
-              });
-              const result = {
-                option: data.option,
-                votes: vote ? vote.votes : 0,
-              };
-              return result;
-            })
-          );
+
+          // Fetch votes for all options in the poll
+          const pollVotes = await PollVote.findAll({
+            raw: true,
+            attributes: [
+              "optionid",
+              [sequelize.fn("SUM", sequelize.col("votes")), "votes"],
+            ],
+            where: {
+              contentid: post.contentid,
+            },
+            group: ["optionid"],
+          });
+
+          const pollVotesMap = pollVotes.reduce((acc, vote) => {
+            acc[vote.optionid] = vote.votes;
+            return acc;
+          }, {});
+
+          const pollResults = options.map((data) => ({
+            option: data.option,
+            votes: pollVotesMap[data.optionId] || 0,
+          }));
+
           return {
             ...post,
             userProfilePicture: user ? user.picture : null,
             commentCount: commentCount,
             awards: awardNames,
-            pollVotes: pollVotes,
+            pollVotes: pollResults,
           };
         } else {
           return {
