@@ -157,7 +157,7 @@ exports.addComment = async (req, res) => {
     // Create the new comment
     const newComment = await Comment.create({
       contentid: contentid,
-      userid: userid,
+      userid: userid.toString(),
       parent_commentid: parentCommentid,
       username: username,
       text: text,

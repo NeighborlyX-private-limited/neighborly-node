@@ -187,7 +187,6 @@ exports.googleAuth = async (req, res) => {
         message: "invalid token",
       });
     }
-
     const { email, email_verified, given_name, family_name } = payload;
 
     if (!email_verified) {

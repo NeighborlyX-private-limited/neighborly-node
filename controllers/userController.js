@@ -161,7 +161,7 @@ exports.updatePicture = async (req, res) => {
 //Userinfo
 exports.userinfo = async (req, res) => {
   const user = req.user;
-  activityLogger.info(`info fetched for USer: ${userId}`);
+  activityLogger.info(`info fetched for USer: ${user._id}`);
   res.status(200).json(user);
 };
 
