@@ -26,7 +26,6 @@ exports.loginUser = async (req, res, next) => {
 
   if (emailRegex.test(userId)) {
     email = userId.toLowerCase();
-    console.log(email);
     user = await User.findOne({ email: email });
   } else {
     username = userId;
@@ -176,53 +175,54 @@ exports.googleAuth = async (req, res) => {
   try {
     const { token } = req.body;
     const client = new OAuth2Client();
-  const ticket = await client.verifyIdToken({
-    idToken: token,
-    audience: process.env.CLIENT_ID,
-  });
-  const payload = ticket.getPayload();
-
-  if (!payload) {
-    errorLogger.error("Invalid token provided for Oauth");
-    res.status(400).json({
-      "message": "invalid token"
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      requiredAudience: process.env.CLIENT_ID,
     });
-  }
+    const payload = ticket.getPayload();
 
-  const { email, email_verified, given_name, family_name } = payload;
+    if (!payload) {
+      errorLogger.error("Invalid token provided for Oauth");
+      res.status(400).json({
+        message: "invalid token",
+      });
+    }
+    const { email, email_verified, given_name, family_name } = payload;
 
-  if (!email_verified) {
-    errorLogger.error("Email is not verified");
-    res.status(400).json({
-      "message": "Email is not verified"
-    });
-  }
-  let username = generateUsername() + Math.floor(Math.random() * 10000);
-  while (await User.findOne({ username })) {
-    username = generateUsername() + Math.floor(Math.random() * 10000);
-  }
-  try {
-    const picture = `https://api.multiavatar.com/${username}.png?apikey=${AVATAR_KEY}`;
-    const user = await User.create({
-      username: username,
-      email: email.toLowerCase(),
-      picture: picture,
-      auth_type: "google",
-    });
-    activityLogger.info("User logged in successfully");
-    sendToken(user, 200, res);
-  } catch (error) {
+    if (!email_verified) {
+      errorLogger.error("Email is not verified");
+      res.status(400).json({
+        message: "Email is not verified",
+      });
+    }
+    let username = generateUsername() + Math.floor(Math.random() * 10000);
+    while (await User.findOne({ username })) {
+      username = generateUsername() + Math.floor(Math.random() * 10000);
+    }
+    try {
+      const picture = `https://api.multiavatar.com/${username}.png?apikey=${AVATAR_KEY}`;
+      const user = await User.create({
+        username: username,
+        password: password,
+        email: email.toLowerCase(),
+        picture: picture,
+        auth_type: "email",
+      });
+      activityLogger.info("User logged in successfully");
+      sendToken(user, 200, res);
+    } catch (error) {
+      errorLogger.error("Error in Oauth:", err);
+      res.status(500).json({
+        message: err,
+      });
+    }
+  } catch (err) {
     errorLogger.error("Error in Oauth:", err);
     res.status(500).json({
-      "message": err
-    });
-  }} catch(err) {
-    errorLogger.error("Error in Oauth:", err);
-    res.status(500).json({
-      "message": "Error in Oauth"
+      message: "Error in Oauth",
     });
   }
-}
+};
 
 exports.forgotPassword = async (req, res) => {
   const { email } = req.body;

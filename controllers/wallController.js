@@ -10,6 +10,7 @@ const { Op, where } = require("sequelize");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const { sequelize } = require("../config/database");
 const { raw } = require("express");
+const { VALIDAWARDTYPES } = require("../utils/constants");
 
 // Fetch posts and polls
 exports.findPosts = async (req, res) => {
@@ -83,7 +84,7 @@ exports.findPosts = async (req, res) => {
           );
           return {
             ...post,
-            userProfilePicture: user.picture,
+            userProfilePicture: user ? user.picture : null,
             commentCount: commentCount,
             awards: awardNames,
             pollVotes: pollVotes,
@@ -91,7 +92,7 @@ exports.findPosts = async (req, res) => {
         } else {
           return {
             ...post,
-            userProfilePicture: user.picture,
+            userProfilePicture: user ? user.picture : null,
             commentCount: commentCount,
             awards: awardNames,
           };
@@ -109,63 +110,86 @@ exports.findPosts = async (req, res) => {
   }
 };
 
-//TODO stop feedback if user has already provided
 exports.feedback = async (req, res) => {
   try {
     const { id, type, feedback } = req.body;
     const userId = req.user._id;
 
+    let voteType = feedback === "cheer" ? "cheer" : "boo";
+    let oppositeVoteType = feedback === "cheer" ? "boo" : "cheer";
+    let voteModel, contentModel, contentIdField;
+
     if (type === "post") {
-      const post = await Post.findOne({ where: { contentid: id } });
-      if (!post) {
-        return res.status(404).json({ msg: "Post not found" });
-      }
-
-      let voteType = feedback === "cheer" ? "cheer" : "boo";
-      await ContentVote.create({
-        contentid: id,
-        userid: userId.toString(),
-        votetype: voteType,
-        createdat: new Date(),
-        processed: true,
-      });
-
-      if (feedback === "cheer") {
-        await Post.increment({ cheers: 1 }, { where: { contentid: id } });
-      } else {
-        await Post.increment({ boos: 1 }, { where: { contentid: id } });
-      }
       activityLogger.info(
-        `Feedback (${feedback}) added to post ID ${id} by user ${userId}`
+        `Processing Post feedback for ${id} from user ${userId}`
       );
+      voteModel = ContentVote;
+      contentModel = Post;
+      contentIdField = "contentid";
     } else if (type === "comment") {
-      const comment = await Comment.findOne({ where: { commentid: id } });
-      if (!comment) {
-        return res.status(404).json({ msg: "Comment not found" });
-      }
-
-      let voteType = feedback === "cheer" ? "cheer" : "boo";
-      await CommentVote.create({
-        commentid: id,
-        userid: userId.toString(),
-        votetype: voteType,
-        createdat: new Date(),
-        processed: true,
-      });
-
-      if (feedback === "cheer") {
-        await Comment.increment({ cheers: 1 }, { where: { commentid: id } });
-      } else {
-        await Comment.increment({ boos: 1 }, { where: { commentid: id } });
-      }
       activityLogger.info(
-        `Feedback (${feedback}) added to comment ID ${id} by user ${userId}`
+        `Processing Comment feedback for ${id} from user ${userId}`
       );
+      voteModel = CommentVote;
+      contentModel = Comment;
+      contentIdField = "commentid";
     } else {
+      errorLogger.error("Invalid type specified, should be a comment or post");
       return res.status(400).json({ msg: "Invalid type specified" });
     }
 
-    return res.status(200).json({ msg: "Feedback recorded" });
+    const content = await contentModel.findOne({
+      where: { [contentIdField]: id },
+    });
+    if (!content) {
+      return res.status(404).json({
+        msg: `${type.charAt(0).toUpperCase() + type.slice(1)} not found`,
+      });
+    }
+
+    const existingVote = await voteModel.findOne({
+      where: { [contentIdField]: id, userid: userId.toString() },
+    });
+
+    if (existingVote) {
+      if (existingVote.votetype === voteType) {
+        // Reverse the vote
+        activityLogger.info(`Reversing feedback for ${id} from user ${userId}`);
+        await voteModel.destroy({ where: { voteid: existingVote.voteid } });
+        await contentModel.decrement(
+          { [voteType + "s"]: 1 },
+          { where: { [contentIdField]: id } }
+        );
+        return res.status(200).json({ msg: "Vote reversed successfully" });
+      } else {
+        // Update the vote type
+        activityLogger.info(`Updating feedback for ${id} from user ${userId}`);
+        existingVote.votetype = voteType;
+        await existingVote.save();
+        await contentModel.increment(
+          { [voteType + "s"]: 1, [oppositeVoteType + "s"]: -1 },
+          { where: { [contentIdField]: id } }
+        );
+        return res.status(200).json({ msg: "Vote updated successfully" });
+      }
+    } else {
+      // Create a new vote
+      await voteModel.create({
+        [contentIdField]: id,
+        userid: userId.toString(),
+        votetype: voteType,
+        createdat: new Date(),
+        processed: true,
+      });
+      await contentModel.increment(
+        { [voteType + "s"]: 1 },
+        { where: { [contentIdField]: id } }
+      );
+      activityLogger.info(
+        `Feedback (${feedback}) added to ${type} ID ${id} by user ${userId}`
+      );
+      return res.status(200).json({ msg: "Feedback recorded" });
+    }
   } catch (err) {
     errorLogger.error("Something wrong with feedback: ", err);
     return res.status(500).json({ msg: "Internal server error in feedback" });
@@ -316,5 +340,66 @@ exports.report = async (req, res) => {
   } catch (err) {
     errorLogger.error("Something wrong with report: ", err);
     return res.status(500).json({ msg: "Internal server error in report" });
+  }
+};
+
+exports.giveAward = async (req, res) => {
+  try {
+    const { id, type, awardType } = req.body;
+    const giverUserId = req.user._id;
+
+    if (!id || !type || !awardType) {
+      return res.status(400).json({ msg: "Missing required fields" });
+    }
+
+    // Validate the award type using the constants file
+    if (!VALIDAWARDTYPES.has(awardType)) {
+      return res.status(400).json({ msg: "Invalid award type" });
+    }
+
+    if (type === "post") {
+      const post = await Post.findOne({ where: { contentid: id } });
+      if (!post) {
+        return res.status(404).json({ msg: "Post not found" });
+      }
+
+      await Award.create({
+        contentid: id,
+        commentid: null,
+        giver_userid: giverUserId.toString(),
+        receiver_userid: post.userid,
+        award_type: awardType,
+        createdat: new Date(),
+      });
+
+      activityLogger.info(
+        `Award (${awardType}) given to post ID ${id} by user ${giverUserId}`
+      );
+    } else if (type === "comment") {
+      const comment = await Comment.findOne({ where: { commentid: id } });
+      if (!comment) {
+        return res.status(404).json({ msg: "Comment not found" });
+      }
+
+      await Award.create({
+        contentid: null,
+        commentid: id,
+        giver_userid: giverUserId.toString(),
+        receiver_userid: comment.userid,
+        award_type: awardType,
+        createdat: new Date(),
+      });
+
+      activityLogger.info(
+        `Award (${awardType}) given to comment ID ${id} by user ${giverUserId}`
+      );
+    } else {
+      return res.status(400).json({ msg: "Invalid type specified" });
+    }
+
+    return res.status(200).json({ msg: "Award given successfully" });
+  } catch (err) {
+    errorLogger.error("Something wrong with giveAward: ", err);
+    return res.status(500).json({ msg: "Internal server error in giveAward" });
   }
 };
