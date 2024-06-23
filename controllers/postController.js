@@ -3,6 +3,7 @@ const User = require("../models/userModel");
 const Report = require("../models/ReportModel");
 const Comment = require("../models/CommentModel");
 const Award = require("../models/AwardModel");
+const PollVote = require("../models/PollVoteModel");
 const { Op, where } = require("sequelize");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const { sequelize } = require("../config/database");
@@ -138,7 +139,6 @@ exports.fetchComments = async (req, res) => {
   }
 };
 
-//TODO fetch the user details from req
 exports.addComment = async (req, res) => {
   try {
     const { contentid, text, parentCommentid } = req.body;
@@ -178,5 +178,68 @@ exports.addComment = async (req, res) => {
     res.status(500).json({
       msg: err.message || "Something went wrong",
     });
+  }
+};
+
+//TODO I do not like the vote addition logic, rework once we launch?
+exports.sendPollVote = async (req, res) => {
+  try {
+    const { contentid, optionid } = req.body;
+    const userid = req.user._id.toString();
+
+    if (!contentid || !optionid) {
+      return res
+        .status(400)
+        .json({ error: "Content ID and Option ID are required" });
+    }
+
+    // Fetch the poll content to check if multiple votes are allowed
+    const pollContent = await Post.findByPk(contentid);
+    if (!pollContent) {
+      return res.status(404).json({ error: "Poll not found" });
+    }
+
+    const allowMultipleVotes = pollContent.allow_multiple_votes;
+
+    // Check if the user has already voted for this poll
+    const existingVotes = await PollVote.findAll({
+      where: {
+        contentid,
+        userid,
+      },
+    });
+
+    if (existingVotes.length > 0) {
+      if (!allowMultipleVotes) {
+        return res
+          .status(400)
+          .json({ error: "Multiple votes are not allowed for this poll" });
+      }
+
+      const hasVotedForOption = existingVotes.some(
+        (vote) => vote.optionid === optionid
+      );
+      if (hasVotedForOption) {
+        return res
+          .status(400)
+          .json({ error: "You have already voted for this option" });
+      }
+    }
+
+    // Create a new poll vote entry
+    const newVote = await PollVote.create({
+      contentid,
+      userid,
+      optionid,
+      votes: 1, // Every vote will be just 1 vote. We add the total count in the end
+      votedate: new Date(),
+    });
+    activityLogger.info(
+      `Added new vote by user: ${userid}, contentid: ${contentid}`
+    );
+    res.status(201).json(newVote);
+  } catch (error) {
+    errorLogger.error("Error sending poll vote:", error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };

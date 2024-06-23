@@ -23,7 +23,6 @@ exports.isAuthenticated = async (req, res, next) => {
 
     try {
       const decoded = jwt.verify(refreshToken, process.env.REFRESH_SECRET);
-      console.log(decoded.id);
       const user = await User.findById(decoded.id);
       const accesstoken = user.getJWTToken(
         process.env.JWT_EXPIRY,
