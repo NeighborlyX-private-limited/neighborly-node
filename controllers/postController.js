@@ -46,7 +46,7 @@ exports.fetchCommentThread = async (req, res) => {
       const user = userMap[comment.userid];
       return {
         commentid: comment.commentid,
-        text: comment.body,
+        text: comment.text,
         userid: comment.userid,
         username: comment.username,
         cheers: comment.cheers,
