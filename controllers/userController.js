@@ -140,22 +140,31 @@ exports.getUserGroups = async (req, res, next) => {
 // update user display pictures
 
 exports.updatePicture = async (req, res) => {
-  const { userId, picture, randomize } = req.body;
+  const user = req.user ;
+  const { picture, randomize } = req.body;
+  let updates 
+  try{
   if (!randomize) {
-    activityLogger.info(`Pic updated for user: ${userId}`);
-    const update = await User.update(
-      { _id: userId },
+    activityLogger.info(`Pic updated for user: ${user._id}`);
+     updates = await User.updateOne(
+      { _id: user._id },
+      
       { $set: { picture: picture } }
     );
+    
   } else {
     randomAvatarURL = createRandomAvatar();
-    const update = await User.update(
+     updates = await User.updateOne(
       { _id: userId },
       { $set: { picture: randomAvatarURL } }
     );
   }
-
-  res.status(200).json(update);
+  res.status(200).json({"message":"success"});
+}
+catch (error) {
+  errorLogger.error(`An error occured :`, error);
+  res.status(500).json({"message":"failed"});
+}
 };
 
 //Userinfo
