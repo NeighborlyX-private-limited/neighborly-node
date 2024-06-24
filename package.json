@@ -28,7 +28,7 @@
     "multer": "^1.4.5-lts.1",
     "node-file-logger": "^0.9.5",
     "nodemailer": "^6.9.13",
-    "nodemon": "^3.0.1",
+    "nodemon": "^3.1.4",
     "opencage-api-client": "^1.0.3",
     "otp-generator": "^4.0.1",
     "passport": "^0.7.0",
@@ -44,7 +44,7 @@
   },
   "devDependencies": {
     "eslint": "^8.52.0",
-    "prettier": "^3.1.0",
+    "prettier": "3.3.2",
     "prettier-eslint": "^16.1.2"
   }
 }
