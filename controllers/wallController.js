@@ -84,6 +84,7 @@ exports.findPosts = async (req, res) => {
 
           const pollResults = options.map((data) => ({
             option: data.option,
+            optionId: data.optionId,
             votes: pollVotesMap[data.optionId] || 0,
           }));
 
@@ -92,7 +93,8 @@ exports.findPosts = async (req, res) => {
             userProfilePicture: user ? user.picture : null,
             commentCount: commentCount,
             awards: awardNames,
-            pollVotes: pollResults,
+            pollResults: pollResults,
+            poll_options: undefined, // Explicitly remove poll_options from the response
           };
         } else {
           return {
@@ -231,7 +233,6 @@ exports.createPost = async (req, res) => {
         type: type,
         city: city,
         allow_multiple_votes: allowMultipleVotes,
-        poll_options: pollOptions,
       });
     } else {
       post = await Post.create({
