@@ -22,6 +22,7 @@ router.route("/update-user-picture").put(isAuthenticated, updatePicture);
 router.route("/update-user-location").put(isAuthenticated, updateLocation);
 router.route("/change-password").put(changePassword);
 router.route("/delete-user").delete(isAuthenticated, deleteUser);
+router.route("/update-user-info").put(isAuthenticated,updateUserInfo);
 router.route("/find-me").get(isAuthenticated, findMe);
 router.route("/fetch-cities").get(fetchCities);
 router.route("/upload-file").post(singleFileUpload, uploadFile);
