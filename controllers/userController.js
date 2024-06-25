@@ -267,3 +267,21 @@ exports.findMe = async (req, res) => {
     });
   }
 };
+
+exports.updateUserInfo = async (req, res) => {
+    const user = req.user;
+    const { dob,gender } = req.body;
+    try {
+        const {email} = user;
+        const update = await User.findOneAndUpdate({ email }, { $set: { "gender":gender,"dob": dob } }, { new: true });
+        if (update) {
+            activityLogger.info(`Info updated for user ${user.username}`); 
+            sendToken(user, 200, res);
+        } else {
+            res.status(404).json({ message: "User not found" });
+        }
+    } catch (error) {
+        errorLogger.error(`An unexpected error occurred: ${error.message}`);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
