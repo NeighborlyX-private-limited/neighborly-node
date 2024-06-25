@@ -10,6 +10,7 @@ const {
   changePassword,
   deleteUser,
   findMe,
+  updateUserInfo,
 } = require("../controllers/userController");
 const { isAuthenticated } = require("../middlewares/auth");
 const { singleFileUpload } = require("../middlewares/fileUpload");
