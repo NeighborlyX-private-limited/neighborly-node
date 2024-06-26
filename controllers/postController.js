@@ -45,7 +45,7 @@ exports.fetchCommentThread = async (req, res) => {
       const awards = comment.awards.map((award) => award.award_type);
       const user = userMap[comment.userid];
       return {
-        commentid: comment.commentid,
+        replyid: comment.commentid,
         text: comment.text,
         userid: comment.userid,
         username: comment.username,
