@@ -231,6 +231,7 @@ exports.createPost = async (req, res) => {
         boos: 0,
         postlocation: { type: "POINT", coordinates: location },
         type: type,
+        poll_options: pollOptions,
         city: city,
         allow_multiple_votes: allowMultipleVotes,
       });
