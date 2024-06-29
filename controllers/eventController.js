@@ -68,19 +68,40 @@ exports.createEvent = async (req, res) => {
 
 exports.getNearbyEvents = async (req, res) => {
     const { latitude, longitude, radius } = req.query;
-    let events;
+
     try {
-        events = await sequelize.query(`SELECT eventid, userid, eventname, description, location, starttime, endtime, createdat, multimedia, groupid
-	FROM events WHERE ST_DWithin(location, ST_SetSRID(ST_Point(${latitude}, ${longitude}), 4326), ${radius}) ORDER BY createdat DESC`);
-        events = events[0];
+        
+        const lat = parseFloat(latitude);
+        const lon = parseFloat(longitude);
+        const rad = parseInt(radius);
+
+        const events = await Event.findAll({
+            attributes: [
+                'eventid', 'userid', 'eventname', 'description', 'location', 
+                'starttime', 'endtime', 'createdat', 'multimedia', 'groupid'
+            ],
+           
+            where: sequelize.where(
+                sequelize.fn(
+                    'ST_DWithin',
+                    sequelize.col('location'),
+                    sequelize.fn('ST_SetSRID', sequelize.fn('ST_MakePoint', lon, lat), 4326),
+                    rad
+                ),
+                true
+            ),
+            order: [['createdat', 'DESC']]
+        });
+
         res.status(200).json(events);
     } catch (err) {
         errorLogger.error("Something wrong in events/nearby: ", err);
         res.status(400).json({
-            "msg": err
+            "msg": err.message || "Failed to fetch events"
         });
     }
-}
+};
+
 
 exports.joinEvent = async (req, res) => {
     try {
@@ -118,3 +139,102 @@ exports.joinEvent = async (req, res) => {
         });
     }
 }
+exports.deleteEvent = async (req, res) => {
+    const eventId = req.params['eventId']; 
+
+    if (!eventId) {
+        return res.status(400).json({ message: "Event ID is missing" });
+    }
+
+    try {
+        
+        const result = await Event.destroy({
+            where: { eventid: eventId }
+        });
+
+        if (result > 0) { 
+            activityLogger.info("Event deleted successfully");
+            res.status(200).json({ message: "Event successfully canceled" });
+        } else {
+            errorLogger.error("Event not found or already deleted");
+            res.status(404).json({ message: "Event not found or already deleted" });
+        }
+    } catch (error) {
+        errorLogger.error('Error deleting event: ' + error.message);
+        res.status(500).json({ message: "Failed to delete the event due to an error" });
+    }
+};
+
+
+
+exports.searchEvents = async (req, res) => {
+    const query = req.body.searchQuery; 
+
+    if (!query) {
+        errorLogger.error("Search query missing - cannot proceed with event search.");
+        return res.status(400).json({ message: "Please provide a search query." });
+    }
+
+    try {
+        const events = await Event.findAll({
+            where: {
+                [Op.or]: [ 
+                    {
+                        eventname: {
+                            [Op.iLike]: `%${query}%`  
+                        }
+                    },
+                    {
+                        description: {
+                            [Op.iLike]: `%${query}%`
+                        }
+                    }
+                ]
+            },
+            attributes: ['eventid', 'eventname', 'starttime', 'location'],
+            order: [['starttime', 'ASC']]
+        });
+
+        if (events.length > 0) {
+            activityLogger.info(`Found ${events.length} events matching the query '${query}'.`);
+            res.status(200).json(events);
+        } else {
+            errorLogger.info(`No events found for the query '${query}'.`);
+            res.status(404).json({ message: "No events found matching your query." });
+        }
+    } catch (error) {
+        errorLogger.error('Error searching for events: ' + error.message);
+        res.status(500).json({ message: "Error searching for events." });
+    }
+};
+
+exports.updateEvent = async (req, res) => {
+    const eventId = req.params['eventId']; 
+    const {...updateData } = req.body; 
+
+    if (!eventId) {
+        return res.status(400).json({ message: "Event ID is required" });
+    }
+
+    if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: "No update fields provided" });
+    }
+
+    try {
+        // Attempt to update the event
+        const [updatedRows] = await Event.update(updateData, {
+            where: { eventid: eventId }
+        });
+
+        if (updatedRows > 0) {
+            activityLogger.info(`Event updated for ${eventId}`);
+            res.status(200).json({ message: "Event updated successfully" });
+        } else {
+            errorLogger.error(`Event not found`);
+            res.status(404).json({ message: "Event not found" });
+        }
+    } catch (error) {
+        errorLogger.error('Error updating event:', error);
+        res.status(500).json({ message: "Failed to update the event due to an error" });
+    }
+};
