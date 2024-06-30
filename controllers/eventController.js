@@ -119,78 +119,19 @@ exports.joinEvent = async (req, res) => {
         });
     }
 }
-exports.eventDiscovery = async (req, res) => {
-    const { date, category, location } = req.query;
-    let filter = {};
-    errorLogger.error(error)
-
-    if (date) {
-       
-        if (date.includes(',')) {
-            const [startDate, endDate] = date.split(',');
-            filter.starttime = { [Op.between]: [new Date(startDate), new Date(endDate)] };
-        } else {
-            filter.starttime = { [Op.eq]: new Date(date) };
-        }
-    }
-
-    if (category) {
-        filter.category = category;
-    }
-
-    if (location) {
-        const [latitude, longitude, radius] = location.split(',');
-        filter.location = sequelize.where(
-            sequelize.fn(
-                'ST_DWithin',
-                sequelize.col('location'),
-                sequelize.fn('ST_SetSRID', sequelize.fn('ST_Point', latitude, longitude), 4326),
-                radius
-            ),
-            true
-        );
-    }
-
-    try {
-        const events = await Event.findAll({
-            where: filter,
-            attributes: ['eventid', 'eventname', 'starttime', 'endtime', 'location', 'description', 'multimedia'],
-            order: [['starttime', 'ASC']]
-        });
-        const formattedEvents = events.map(event => ({
-            eventId: event.eventid,
-            title: event.eventname,
-            date: event.starttime,
-            time: event.endtime,
-            location: event.location,
-            shortDescription: event.description,
-            thumbnailImage: event.multimedia ? event.multimedia[0] : null,
-        }));
-        res.status(200).json(formattedEvents);
-    } catch (err) {
-        errorLogger.error("Something wrong in event discovery: ", err);
-        res.status(400).json({
-            "msg": err
-        });
-    }
-}
-
-
 exports.eventDetails = async(req,res)=>{
-    const{eventId} =req.params;
-    try{
-        const event = await Event.findOne({
-            where: { eventid: eventDetail },
-            attributes: ['eventid', 'eventname', 'description', 'starttime', 'endtime', 'location', 'category', 'multimedia'],
-            include: [{
-                model: Organizer,
-                attributes: ['name', 'contact']
-            }]
+    const eventId = (req.params['eventId']);
+    console.log(eventId)
+    try {
+        activityLogger.info("event Id recived");
+        const event = await Event.findByPk(eventId, {
+            attributes: ['eventid', 'eventname', 'description', 'starttime', 'endtime', 'location', 'multimedia'],
+            
         });
         if (!event) {
             return res.status(404).json({ msg: 'Event not found' });
         }
-
+           console.log(event)
         // Format the response
         const eventDetails = {
             eventId: event.eventid,
@@ -199,12 +140,7 @@ exports.eventDetails = async(req,res)=>{
             date: event.starttime,
             time: event.endtime,
             location: event.location,
-            category: event.category,
-            fullImage: event.multimedia ? event.multimedia[1] : null, // Assuming multimedia[1] is the full image
-            organizerDetails: event.Organizer ? {
-                name: event.Organizer.name,
-                contact: event.Organizer.contact
-            } : null
+            category: event.category,          
         };
 
         // Send the response

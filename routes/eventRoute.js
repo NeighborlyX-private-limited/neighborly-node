@@ -8,6 +8,5 @@ const { createEvent, getNearbyEvents, joinEvent, eventId, eventDiscovery, eventD
 router.route('/create-event').post(isAuthenticated, createEvent);
 router.route('/events/nearby').get(isAuthenticated, getNearbyEvents);
 router.route('/events/:eventId/join').put(isAuthenticated, joinEvent);
-router.route('/events/:eventId').get(isAuthenticated, eventDiscovery);
-router.route('/events/:eventDetail').get(isAuthenticated, eventDetails);
+router.route('/event-detail/:eventId').get(isAuthenticated, eventDetails);
 module.exports = router;
