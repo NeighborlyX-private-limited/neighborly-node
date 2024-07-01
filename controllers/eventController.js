@@ -182,6 +182,12 @@ exports.deleteEvent = async (req, res) => {
             await Group.findByIdAndDelete(groupId);
         }
 
+        await User.updateMany(
+            { groups: groupId },
+            { $pull: { groups: groupId } }
+        );
+
+
         activityLogger.info("Event and associated group successfully canceled");
         res.status(200).json({ message: "Event and associated group successfully canceled" });
     } catch (error) {
