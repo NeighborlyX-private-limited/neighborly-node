@@ -9,14 +9,20 @@ const ObjectId = mongoose.Types.ObjectId;
 const { otpgenerator } = require('../utils/emailService');
 
 exports.createEvent = async (req, res) => {
-    const { name, description, location, radius, startTime, endTime, multimedia } = req.body;
+    const { name, description, radius, startTime, endTime, multimedia } = req.body;
     const user = req.user;
+    const isHome = req.query?.home;
+    
+    // Use a new variable to determine the location
+    let eventLocation = isHome ? user.home_coordinates.coordinates : user.current_coordinates.coordinates;
+
     const admin = {
         userId: user._id,
         userName: user.username,
         picture: user.picture,
         karma: user.karma
-    }
+    };
+
     try {
         let code = otpgenerator();
         let displayname = name + code;
@@ -24,13 +30,14 @@ exports.createEvent = async (req, res) => {
             code = otpGenerator.generate(4, { upperCaseAlphabets: false, lowerCaseAlphabets: false, specialChars: false });
             displayname = name + code;
         }
+
         const group = await Group.create({
             name: name,
             displayname: displayname,
             description: description,
             location: {
                 type: "Point",
-                coordinates: location,
+                coordinates: eventLocation,
             },
             radius: radius,
             isOpen: true,
@@ -38,21 +45,24 @@ exports.createEvent = async (req, res) => {
             members: [],
             karma: 1000,
         });
+
         const event = await Event.create({
             userid: user._id.toString(),
             eventname: name,
             description: description,
-            location: { type: "POINT", coordinates: location },
+            location: { type: "Point", coordinates: eventLocation },
             starttime: Date.parse(startTime),
             endtime: Date.parse(endTime),
             createdat: Date.now(),
             multimedia: multimedia,
             groupid: group._id.toString()
         });
+
         const groupAddedInUser = await User.updateOne(
             { _id: user._id },
             { $addToSet: { groups: group._id } }
         );
+
         activityLogger.info(`Event created with eventid: ${event.eventid} and groupid: ${group._id}`);
         res.status(200).json({
             "eventId": event.eventid,
@@ -62,25 +72,29 @@ exports.createEvent = async (req, res) => {
         errorLogger.error('Some error in create events: ', err);
         res.status(400).json({
             "msg": "Some thing wrong with create event"
-        })
+        });
     }
-}
+};
+
 
 exports.getNearbyEvents = async (req, res) => {
     const { latitude, longitude, radius } = req.query;
+    const user = req.user; // Ensure the user object is available in the request
+    const isHome = req.query?.home === 'true'; // Correctly parse the boolean from query string
 
     try {
-        
-        const lat = parseFloat(latitude);
-        const lon = parseFloat(longitude);
+        // Decide the location based on the user's choice
+        const lat = isHome ? user.home_coordinates.latitude : parseFloat(latitude);
+        const lon = isHome ? user.home_coordinates.longitude : parseFloat(longitude);
         const rad = parseInt(radius);
+
+        activityLogger.info(`Coordinates: Latitude = ${lat}, Longitude = ${lon}, Radius = ${rad}`);
 
         const events = await Event.findAll({
             attributes: [
                 'eventid', 'userid', 'eventname', 'description', 'location', 
                 'starttime', 'endtime', 'createdat', 'multimedia', 'groupid'
             ],
-           
             where: sequelize.where(
                 sequelize.fn(
                     'ST_DWithin',
@@ -93,6 +107,7 @@ exports.getNearbyEvents = async (req, res) => {
             order: [['createdat', 'DESC']]
         });
 
+        activityLogger.info(`Found ${events.length} events nearby.`);
         res.status(200).json(events);
     } catch (err) {
         errorLogger.error("Something wrong in events/nearby: ", err);
@@ -101,6 +116,7 @@ exports.getNearbyEvents = async (req, res) => {
         });
     }
 };
+
 
 
 exports.joinEvent = async (req, res) => {
@@ -139,33 +155,40 @@ exports.joinEvent = async (req, res) => {
         });
     }
 }
+
 exports.deleteEvent = async (req, res) => {
-    const eventId = req.params['eventId']; 
+    const eventId = req.params.eventId;
 
     if (!eventId) {
         return res.status(400).json({ message: "Event ID is missing" });
     }
 
     try {
-        
-        const result = await Event.destroy({
+        // Fetch the event to get the associated group ID using Sequelize
+        const event = await Event.findByPk(eventId);
+        if (!event) {
+            return res.status(404).json({ message: "Event not found or already deleted" });
+        }
+
+        const groupId = event.groupid;
+
+        // Delete the event using Sequelize
+        await Event.destroy({
             where: { eventid: eventId }
         });
 
-        if (result > 0) { 
-            activityLogger.info("Event deleted successfully");
-            res.status(200).json({ message: "Event successfully canceled" });
-        } else {
-            errorLogger.error("Event not found or already deleted");
-            res.status(404).json({ message: "Event not found or already deleted" });
+        // If the event has an associated group, delete the group using Mongoose
+        if (groupId) {
+            await Group.findByIdAndDelete(groupId);
         }
+
+        activityLogger.info("Event and associated group successfully canceled");
+        res.status(200).json({ message: "Event and associated group successfully canceled" });
     } catch (error) {
-        errorLogger.error('Error deleting event: ' + error.message);
-        res.status(500).json({ message: "Failed to delete the event due to an error" });
+        errorLogger.error('Error deleting event and associated group:', error);
+        res.status(500).json({ message: "Failed to delete the event and associated group due to an error" });
     }
 };
-
-
 
 exports.searchEvents = async (req, res) => {
     const query = req.body.searchQuery; 
