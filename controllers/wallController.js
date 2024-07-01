@@ -18,10 +18,11 @@ exports.findPosts = async (req, res) => {
   const user = req.user;
   const postId = req.params.postId; // Added to check if a specific post ID is provided
   let posts;
+  const ranges = [3000, 30000, 300000, 1000000, 2500000]; // Define the range increments in meters
+  let location = null;
 
   try {
-    let location = null;
-    if (isHome === true) {
+    if (isHome) {
       location = user.home_coordinates.coordinates;
     } else {
       location = user.current_coordinates.coordinates;
@@ -29,22 +30,43 @@ exports.findPosts = async (req, res) => {
 
     if (postId) {
       // Fetch a specific post by ID
-      posts = await sequelize.query(`
-        SELECT contentid, userid, username, title, body, multimedia, createdat, cheers, boos, postlocation, city, type, poll_options, allow_multiple_votes
-        FROM content
-        WHERE contentid = ${postId}
-      `);
+      posts = await Post.findAll({
+        where: { contentid: postId },
+        include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
+      });
     } else {
-      // Fetch all posts within a certain distance
-      posts = await sequelize.query(`
-        SELECT contentid, userid, username, title, body, multimedia, createdat, cheers, boos, postlocation, city, type, poll_options, allow_multiple_votes
-        FROM content
-        WHERE ST_DWithin(postlocation, ST_SetSRID(ST_Point(${location[0]}, ${location[1]}), 4326), 300000)
-        ORDER BY createdat DESC
-      `);
-    }
+      // Incremental range search logic
+      for (let range of ranges) {
+        posts = await Post.findAll({
+          where: {
+            postlocation: {
+              [Op.and]: [
+                { [Op.ne]: null },
+                sequelize.where(
+                  sequelize.fn(
+                    "ST_DWithin",
+                    sequelize.col("postlocation"),
+                    sequelize.fn(
+                      "ST_SetSRID",
+                      sequelize.fn("ST_Point", location[0], location[1]),
+                      4326
+                    ),
+                    range
+                  ),
+                  true
+                ),
+              ],
+            },
+          },
+          include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
+          order: [["createdat", "DESC"]],
+        });
 
-    posts = posts[0];
+        if (posts.length > 0) {
+          break; // Exit the loop if posts are found
+        }
+      }
+    }
 
     // Fetch user details for posts
     const postsWithUserDetails = await Promise.all(
@@ -55,11 +77,7 @@ exports.findPosts = async (req, res) => {
         });
 
         // Fetch detailed awards information
-        const awards = await Award.findAll({
-          where: { contentid: post.contentid },
-          attributes: ["award_type"],
-        });
-        const awardNames = awards.map((award) => award.award_type);
+        const awards = post.awards.map((award) => award.award_type);
 
         if (post.type === "poll") {
           const options = post.poll_options;
@@ -89,19 +107,19 @@ exports.findPosts = async (req, res) => {
           }));
 
           return {
-            ...post,
+            ...post.get({ plain: true }),
             userProfilePicture: user ? user.picture : null,
             commentCount: commentCount,
-            awards: awardNames,
+            awards: awards,
             pollResults: pollResults,
             poll_options: undefined, // Explicitly remove poll_options from the response
           };
         } else {
           return {
-            ...post,
+            ...post.get({ plain: true }),
             userProfilePicture: user ? user.picture : null,
             commentCount: commentCount,
-            awards: awardNames,
+            awards: awards,
           };
         }
       })
