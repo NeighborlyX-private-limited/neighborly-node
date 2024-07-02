@@ -73,7 +73,10 @@ const userSchema = new mongoose.Schema({
   },
   otpExpiry: {
     type: Date,
-  }
+  },
+  bio: {
+    type: String,
+  },
 });
 
 userSchema.pre("save", async function () {

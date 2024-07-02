@@ -158,3 +158,56 @@ exports.getUserGroups = async (req, res, next) => {
     res.status(500).json({ msg: "Internal server error fetching user groups" });
   }
 };
+
+exports.getUserInfo = async (req, res) => {
+  const userId = req.params.userId || req.user._id.toString();
+  try {
+    const user = await User.findById(userId).lean();
+
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    const [postCount, awards] = await Promise.all([
+      Post.count({ where: { userid: userId, type: "post" } }),
+      Award.findAll({
+        where: { receiver_userid: userId },
+        attributes: ["award_type"],
+      }),
+    ]);
+
+    // Calculate awards count and most prominent award
+    const awardCounts = awards.reduce((acc, award) => {
+      acc[award.award_type] = (acc[award.award_type] || 0) + 1;
+      return acc;
+    }, {});
+
+    const mostProminentAward = Object.keys(awardCounts).reduce(
+      (a, b) => (awardCounts[a] > awardCounts[b] ? a : b),
+      null
+    );
+
+    const userInfo = {
+      userId: userId,
+      username: user.username,
+      email: user.email,
+      picture: user.picture,
+      bio: user.bio || null, // Check for bio existence as for older users bio does not exist
+      postCount: postCount,
+      karma: user.karma,
+      awardsCount: Object.values(awardCounts).reduce((a, b) => a + b, 0),
+      mostProminentAward: mostProminentAward,
+      title: mostProminentAward || "",
+    };
+
+    res.status(200).json({
+      success: true,
+      user: userInfo,
+    });
+  } catch (error) {
+    errorLogger.error(
+      `Error in getUserInfo for user: ${userId}. Error: ${error}`
+    );
+    res.status(500).json({ msg: "Internal server error fetching user info" });
+  }
+};

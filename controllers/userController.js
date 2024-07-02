@@ -242,6 +242,7 @@ exports.findMe = async (req, res) => {
   }
 };
 // Update user info API
+// TODO add logic to update bio, if it does not exist then add in the document and update
 exports.updateUserInfo = async (req, res) => {
   const user = req.user;
   const { dob, gender } = req.body;
