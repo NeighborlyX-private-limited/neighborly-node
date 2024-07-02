@@ -96,7 +96,7 @@ exports.findPosts = async (req, res) => {
           });
 
           const pollVotesMap = pollVotes.reduce((acc, vote) => {
-            acc[vote.optionid] = vote.votes;
+            acc[vote.optionid] = parseInt(vote.votes, 10);
             return acc;
           }, {});
 
