@@ -3,75 +3,81 @@ const Post = require("../models/ContentModel");
 const PollVote = require("../models/PollVoteModel");
 const Comment = require("../models/CommentModel");
 const Award = require("../models/AwardModel");
+const User = require("../models/userModel");
 const Group = require("../models/groupModel");
 const { activityLogger, errorLogger } = require("../utils/logger");
 
-// Fetch user posts
-exports.getUserPosts = async (req, res) => {
+exports.getUserContent = async (req, res) => {
   try {
     const userId = req.params.userId || req.user._id.toString();
-    const posts = await Post.findAll({
-      where: { userid: userId, type: "post" },
+    const content = await Post.findAll({
+      where: { userid: userId },
       order: [["createdat", "DESC"]],
-    });
-    activityLogger.info(`Fetched posts for user: ${userId}`);
-    res.status(200).json(posts);
-  } catch (err) {
-    errorLogger.error(`Error fetching user posts: ${err.message}`);
-    res.status(500).json({ msg: "Internal server error fetching user posts" });
-  }
-};
-
-// Fetch user polls
-exports.getUserPolls = async (req, res) => {
-  try {
-    const userId = req.params.userId || req.user._id.toString();
-    const polls = await Post.findAll({
-      where: { userid: userId, type: "poll" },
-      order: [["createdat", "DESC"]],
+      include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
     });
 
-    const pollsWithVotes = await Promise.all(
-      polls.map(async (poll) => {
-        const options = poll.poll_options;
-
-        // Fetch votes for all options in the poll
-        const pollVotes = await PollVote.findAll({
-          raw: true,
-          attributes: [
-            "optionid",
-            [sequelize.fn("SUM", sequelize.col("votes")), "votes"],
-          ],
-          where: {
-            contentid: poll.contentid,
-          },
-          group: ["optionid"],
+    const contentWithDetails = await Promise.all(
+      content.map(async (item) => {
+        const user = await User.findById(item.userid).lean();
+        const commentCount = await Comment.count({
+          where: { contentid: item.contentid },
         });
 
-        const pollVotesMap = pollVotes.reduce((acc, vote) => {
-          acc[vote.optionid] = vote.votes;
-          return acc;
-        }, {});
+        const awards = item.awards.map((award) => award.award_type);
+        if (item.type === "poll") {
+          const options = item.poll_options;
 
-        const pollResults = options.map((data) => ({
-          option: data.option,
-          optionId: data.optionId,
-          votes: pollVotesMap[data.optionId] || 0,
-        }));
+          const pollVotes = await PollVote.findAll({
+            raw: true,
+            attributes: [
+              "optionid",
+              [sequelize.fn("SUM", sequelize.col("votes")), "votes"],
+            ],
+            where: {
+              contentid: item.contentid,
+            },
+            group: ["optionid"],
+          });
 
-        return {
-          ...poll.get({ plain: true }),
-          pollResults: pollResults,
-          poll_options: undefined, // Explicitly remove poll_options from the response
-        };
+          const pollVotesMap = pollVotes.reduce((acc, vote) => {
+            acc[vote.optionid] = parseInt(vote.votes, 10);
+            return acc;
+          }, {});
+
+          const pollResults = options.map((data) => ({
+            option: data.option,
+            optionId: data.optionId,
+            votes: pollVotesMap[data.optionId] || 0,
+          }));
+
+          return {
+            ...item.get({ plain: true }),
+            userProfilePicture: user ? user.picture : null,
+            commentCount: commentCount,
+            awards: awards,
+            pollResults: pollResults,
+            poll_options: undefined,
+          };
+        } else {
+          return {
+            ...item.get({ plain: true }),
+            userProfilePicture: user ? user.picture : null,
+            commentCount: commentCount,
+            awards: awards,
+          };
+        }
       })
     );
 
-    activityLogger.info(`Fetched polls for user: ${userId}`);
-    res.status(200).json(pollsWithVotes);
+    activityLogger.info(
+      `Fetched content (posts and polls) for user: ${userId}`
+    );
+    res.status(200).json(contentWithDetails);
   } catch (err) {
-    errorLogger.error(`Error fetching user polls: ${err.message}`);
-    res.status(500).json({ msg: "Internal server error fetching user polls" });
+    errorLogger.error(`Error fetching user content: ${err.message}`);
+    res
+      .status(500)
+      .json({ msg: "Internal server error fetching user content" });
   }
 };
 
@@ -81,9 +87,31 @@ exports.getUserAwards = async (req, res) => {
     const userId = req.params.userId || req.user._id.toString();
     const awards = await Award.findAll({
       where: { receiver_userid: userId },
+      attributes: ["award_type"],
     });
+
+    const awardCounts = awards.reduce((acc, award) => {
+      acc[award.award_type] = (acc[award.award_type] || 0) + 1;
+      return acc;
+    }, {});
+
+    const mostProminentAward = Object.keys(awardCounts).reduce(
+      (a, b) => (awardCounts[a] > awardCounts[b] ? a : b),
+      null
+    );
+
+    const formattedAwards = Object.entries(awardCounts).map(
+      ([type, count]) => ({
+        type,
+        count,
+      })
+    );
+
     activityLogger.info(`Fetched awards for user: ${userId}`);
-    res.status(200).json(awards);
+    res.status(200).json({
+      awards: formattedAwards,
+      mostProminentAward: mostProminentAward,
+    });
   } catch (err) {
     errorLogger.error(`Error fetching user awards: ${err.message}`);
     res.status(500).json({ msg: "Internal server error fetching user awards" });
