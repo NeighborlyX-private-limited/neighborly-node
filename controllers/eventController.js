@@ -7,7 +7,6 @@ const User = require('../models/userModel');
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const { otpgenerator } = require('../utils/emailService');
-const { error } = require('winston');
 
 exports.createEvent = async (req, res) => {
     const { name, description, radius, startTime, endTime, multimedia } = req.body;
@@ -159,9 +158,9 @@ exports.joinEvent = async (req, res) => {
 
 exports.eventDetails = async(req,res)=>{
     const eventId = (req.params['eventId']);
-    console.log(eventId)
+   
     try {
-        activityLogger.info("event Id recived");
+        activityLogger.info("Event ID received: ${event.eventid}");
         const event = await Event.findByPk(eventId, {
             attributes: ['eventid', 'eventname', 'description', 'starttime', 'endtime', 'location', 'multimedia'],
             
@@ -169,7 +168,7 @@ exports.eventDetails = async(req,res)=>{
         if (!event) {
             return res.status(404).json({ msg: 'Event not found' });
         }
-           console.log(event)
+           
         // Format the response
         const eventDetails = {
             eventId: event.eventid,
@@ -178,7 +177,13 @@ exports.eventDetails = async(req,res)=>{
             date: event.starttime,
             time: event.endtime,
             location: event.location,
-            category: event.category,          
+            category: event.category, 
+            fullImage: event.multimedia ? event.multimedia[1] : null,  
+            organizerDetails: {
+                userId: event.userid,
+                userPicture: event.userPicture,
+                
+            }      
         };
 
         // Send the response
