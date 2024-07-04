@@ -158,12 +158,12 @@ exports.joinEvent = async (req, res) => {
 
 exports.eventDetails = async(req,res)=>{
     const eventId = (req.params['eventId']);
-   
     try {
-        activityLogger.info("Event ID received: ${event.eventid}");
+        activityLogger.info('Event ID received: ${event.eventid}');
         const event = await Event.findByPk(eventId, {
             attributes: ['eventid', 'eventname', 'description', 'starttime', 'endtime', 'location', 'multimedia'],
-            
+
+
         });
         if (!event) {
             return res.status(404).json({ msg: 'Event not found' });
@@ -179,12 +179,10 @@ exports.eventDetails = async(req,res)=>{
             date: event.starttime,
             time: event.endtime,
             location: event.location,
-            category: event.category, 
-             multimedia: multimedia,  
+            category: event.category,
+            multimedia: multimedia,  
             userId: user._id,
-            picture: user.picture,  
-                
-            }      
+            picture: user.picture,    
         };
 
         // Send the response
