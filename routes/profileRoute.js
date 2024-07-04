@@ -1,5 +1,6 @@
 const express = require("express");
 const { isAuthenticated } = require("../middlewares/auth");
+const { singleFileUpload } = require("../middlewares/fileUpload");
 const router = express.Router();
 
 const {
@@ -11,7 +12,7 @@ const {
   submitFeedback,
   editUserInfo,
 } = require("../controllers/profileController");
-const { singleFileUpload } = require("../middlewares/fileUpload");
+
 
 router.route("/user-content/:userId?").get(isAuthenticated, getUserContent);
 router.route("/user-awards/:userId?").get(isAuthenticated, getUserAwards);
