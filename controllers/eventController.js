@@ -168,6 +168,8 @@ exports.eventDetails = async(req,res)=>{
         if (!event) {
             return res.status(404).json({ msg: 'Event not found' });
         }
+        const user = req.user;
+        const multimedia = req.body;
            
         // Format the response
         const eventDetails = {
@@ -178,10 +180,9 @@ exports.eventDetails = async(req,res)=>{
             time: event.endtime,
             location: event.location,
             category: event.category, 
-            fullImage: event.multimedia ? event.multimedia[1] : null,  
-            organizerDetails: {
-                userId: event.userid,
-                userPicture: event.userPicture,
+             multimedia: multimedia,  
+            userId: user._id,
+            picture: user.picture,  
                 
             }      
         };
