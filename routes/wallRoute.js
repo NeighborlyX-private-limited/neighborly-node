@@ -1,6 +1,6 @@
 const express = require("express");
 const { isAuthenticated } = require("../middlewares/auth");
-
+const { singleFileUpload } = require("../middlewares/fileUpload");
 const router = express.Router();
 
 const {
@@ -15,7 +15,9 @@ const {
 router.route("/fetch-posts").get(isAuthenticated, findPosts);
 router.route("/fetch-posts/:postId?").get(isAuthenticated, findPosts);
 router.route("/feedback").put(isAuthenticated, feedback);
-router.route("/create-post").post(isAuthenticated, createPost);
+router
+  .route("/create-post")
+  .post(isAuthenticated, singleFileUpload, createPost);
 router.route("/delete/:type/:id").delete(isAuthenticated, deleteData);
 router.route("/report").post(isAuthenticated, report);
 router.post("/give-award", isAuthenticated, giveAward);

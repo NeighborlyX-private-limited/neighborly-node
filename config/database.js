@@ -15,7 +15,8 @@ exports.connectDatabase = () => {
     });
 };
 
-exports.sequelize = new Sequelize(
+// Connect to PostgreSQL
+const sequelize = new Sequelize(
   process.env.PG_DATABASE,
   process.env.PG_USERNAME,
   process.env.PG_PASSWORD,
@@ -25,3 +26,16 @@ exports.sequelize = new Sequelize(
     logging: false,
   }
 );
+
+sequelize
+  .authenticate()
+  .then(() => {
+    console.log("PostgreSQL connected successfully...");
+    activityLogger.info("PostgreSQL connected successfully");
+  })
+  .catch((err) => {
+    errorLogger.error(`PostgreSQL connection error:`, err);
+    console.log("PostgreSQL connection failed:", err);
+  });
+
+exports.sequelize = sequelize;

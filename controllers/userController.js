@@ -113,58 +113,32 @@ exports.loggedInUser = async (req, res, next) => {
   }
 };
 
-exports.getUserGroups = async (req, res, next) => {
-  const user = req.user;
-  activityLogger.info(`fetching groups for ${user.username}`);
-  try {
-    const groups = await User.findById(user._id).populate("groups");
-    const list = [];
-    groups.groups.forEach((group) => {
-      list.push({
-        group_name: group.name,
-        group_id: group._id,
-      });
-    });
-    activityLogger.info(`Retrieved groups for ${user.username}`);
-    res.status(200).json({
-      success: true,
-      groups: list,
-    });
-  } catch (error) {
-    errorLogger.error(
-      `Error in getUserGroups for ${user.username}. Error: ${error}`
-    );
-  }
-};
-
 // update user display pictures
 
 exports.updatePicture = async (req, res) => {
-  const user = req.user ;
+  const user = req.user;
   const { picture, randomize } = req.body;
-  let updates 
-  try{
-  if (!randomize) {
-    activityLogger.info(`Pic updated for user: ${user._id}`);
-     updates = await User.updateOne(
-      { _id: user._id },
-      
-      { $set: { picture: picture } }
-    );
-    
-  } else {
-    randomAvatarURL = createRandomAvatar();
-     updates = await User.updateOne(
-      { _id: userId },
-      { $set: { picture: randomAvatarURL } }
-    );
+  let updates;
+  try {
+    if (!randomize) {
+      activityLogger.info(`Pic updated for user: ${user._id}`);
+      updates = await User.updateOne(
+        { _id: user._id },
+
+        { $set: { picture: picture } }
+      );
+    } else {
+      randomAvatarURL = createRandomAvatar();
+      updates = await User.updateOne(
+        { _id: userId },
+        { $set: { picture: randomAvatarURL } }
+      );
+    }
+    res.status(200).json({ message: "success" });
+  } catch (error) {
+    errorLogger.error(`An error occured :`, error);
+    res.status(500).json({ message: "failed" });
   }
-  res.status(200).json({"message":"success"});
-}
-catch (error) {
-  errorLogger.error(`An error occured :`, error);
-  res.status(500).json({"message":"failed"});
-}
 };
 
 //Userinfo
@@ -268,20 +242,47 @@ exports.findMe = async (req, res) => {
   }
 };
 // Update user info API
+// TODO add logic to update bio, if it does not exist then add in the document and update
 exports.updateUserInfo = async (req, res) => {
   const user = req.user;
-  const { dob,gender } = req.body;
+  const { dob, gender } = req.body;
   try {
-      const {email} = user;
-      const update = await User.findOneAndUpdate({ email }, { $set: { "gender":gender,"dob": dob } }, { new: true });
-      if (update) {
-          activityLogger.info(`Info updated for user ${user.username}`); 
-          sendToken(user, 200, res);
-      } else {
-          res.status(404).json({ message: "User not found" });
-      }
+    const { email } = user;
+    const update = await User.findOneAndUpdate(
+      { email },
+      { $set: { gender: gender, dob: dob } },
+      { new: true }
+    );
+    if (update) {
+      activityLogger.info(`Info updated for user ${user.username}`);
+      sendToken(user, 200, res);
+    } else {
+      res.status(404).json({ message: "User not found" });
+    }
   } catch (error) {
-      errorLogger.error(`An unexpected error occurred: ${error.message}`);
-      res.status(500).json({ message: "Internal server error" });
+    errorLogger.error(`An unexpected error occurred: ${error.message}`);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
+
+// exports.submitFeedback = async (req, res) => {
+//   const { feedbackText } = req.body;
+//   const user = req.user;
+//   if (!feedbackText) {
+//     return res.status(400).json({ msg: "Feedback text is required" });
+//   }
+
+//   try {
+//     const feedback = await Feedback.create({
+//       userid: user._id.toString(),
+//       feedback_text: feedbackText,
+//       createdat: new Date(),
+//     });
+
+//     activityLogger.info(`Feedback submitted by user: ${user.username}`);
+//     res.status(200).json({ msg: "Feedback submitted successfully" });
+//   } catch (error) {
+//     errorLogger.error(`Error submitting feedback: ${error}`);
+//     res.status(500).json({ msg: "Internal server error submitting feedback" });
+//   }
+// };
