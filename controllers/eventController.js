@@ -7,7 +7,6 @@ const User = require('../models/userModel');
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const { otpgenerator } = require('../utils/emailService');
-const { error } = require('winston');
 
 exports.createEvent = async (req, res) => {
     const { name, description, radius, startTime, endTime, multimedia } = req.body;
@@ -156,6 +155,47 @@ exports.joinEvent = async (req, res) => {
         });
     }
 }
+
+exports.eventDetails = async(req,res)=>{
+    const eventId = (req.params['eventId']);
+   
+    try {
+        activityLogger.info("Event ID received: ${event.eventid}");
+        const event = await Event.findByPk(eventId, {
+            attributes: ['eventid', 'eventname', 'description', 'starttime', 'endtime', 'location', 'multimedia'],
+            
+        });
+        if (!event) {
+            return res.status(404).json({ msg: 'Event not found' });
+        }
+        const user = req.user;
+        const multimedia = req.body;
+           
+        // Format the response
+        const eventDetails = {
+            eventId: event.eventid,
+            title: event.eventname,
+            description: event.description,
+            date: event.starttime,
+            time: event.endtime,
+            location: event.location,
+            category: event.category, 
+             multimedia: multimedia,  
+            userId: user._id,
+            picture: user.picture,  
+                
+            }      
+        };
+
+        // Send the response
+        res.status(200).json(eventDetails);
+    } catch (err) {
+        errorLogger.error("Error fetching event details: ", err);
+        res.status(500).json({ msg: 'Internal server error' });
+    }
+    
+}
+
 
 exports.deleteEvent = async (req, res) => {
     const eventId = req.params.eventId;
