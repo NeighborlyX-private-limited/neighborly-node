@@ -10,7 +10,8 @@ const { Op, where } = require("sequelize");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const { sequelize } = require("../config/database");
 const { raw } = require("express");
-const { VALIDAWARDTYPES } = require("../utils/constants");
+const uuid = require("uuid");
+const { S3, S3_BUCKET_NAME, VALIDAWARDTYPES } = require("../utils/constants");
 
 // Fetch posts and polls
 exports.findPosts = async (req, res) => {
@@ -222,23 +223,36 @@ exports.feedback = async (req, res) => {
 };
 
 exports.createPost = async (req, res) => {
-  const {
-    title,
-    content,
-    multimedia,
-    location,
-    type,
-    city,
-    allowMultipleVotes,
-    pollOptions,
-  } = req.body;
+  const file = req.file;
+  const { title, content, type, city, allowMultipleVotes, pollOptions } =
+    req.body;
   const user = req.user;
-  try {
-    const userId = user._id.toString();
-    const username = user.username;
-    let post;
-    if (type === "poll") {
-      post = await Post.create({
+  const isHome = req.query?.home;
+  let location;
+  const userId = user._id.toString();
+  const username = user.username;
+  let multimediaLink = null;
+
+  if (isHome) {
+    location = user.home_coordinates.coordinates;
+  } else {
+    location = user.current_coordinates.coordinates;
+  }
+
+  const createPost = async (multimedia) => {
+    try {
+      let formattedPollOptions = null;
+      if (type === "poll" && pollOptions) {
+        let parsedPollOptions = Array.isArray(pollOptions)
+          ? pollOptions
+          : JSON.parse(pollOptions);
+        formattedPollOptions = parsedPollOptions.map((option, index) => ({
+          option: option,
+          optionId: index + 1,
+        }));
+      }
+
+      const newPost = await Post.create({
         userid: userId,
         username: username,
         title: title,
@@ -249,32 +263,64 @@ exports.createPost = async (req, res) => {
         boos: 0,
         postlocation: { type: "POINT", coordinates: location },
         type: type,
-        poll_options: pollOptions,
+        poll_options: formattedPollOptions,
         city: city,
         allow_multiple_votes: allowMultipleVotes,
       });
-    } else {
-      post = await Post.create({
-        userid: userId,
-        username: username,
-        title: title,
-        body: content,
-        multimedia: multimedia,
-        createdat: Date.now(),
-        cheers: 0,
-        boos: 0,
-        postlocation: { type: "POINT", coordinates: location },
-        type: type,
-        city: city,
+
+      activityLogger.info("New post created");
+      res.status(200).json(newPost);
+    } catch (err) {
+      errorLogger.error("Create post is not working: ", err);
+
+      // If post creation fails, delete the uploaded file
+      if (multimedia) {
+        const params = {
+          Bucket: S3_BUCKET_NAME,
+          Key: multimedia.split("/").pop(),
+        };
+        S3.deleteObject(params, (err) => {
+          if (err) {
+            errorLogger.error(`Failed to delete uploaded file: ${err}`);
+          } else {
+            activityLogger.info(
+              `Successfully deleted uploaded file: ${multimedia}`
+            );
+          }
+        });
+      }
+
+      res.status(500).json({
+        msg: "Internal server error in create-post",
       });
     }
-    activityLogger.info("new Post created");
-    res.status(200).json(post);
-  } catch (err) {
-    errorLogger.error("Create post is not working: ", err);
-    res.status(500).json({
-      msg: "Internal server error in create-post",
+  };
+
+  if (file) {
+    const fileKey = `${uuid.v4()}-${file.originalname}`;
+    activityLogger.info(`Uploading file: ${fileKey}`);
+
+    const params = {
+      Bucket: S3_BUCKET_NAME,
+      Key: fileKey,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+      ACL: "public-read",
+    };
+
+    S3.upload(params, (err, data) => {
+      if (err) {
+        errorLogger.error("Error uploading file:", err);
+        return res
+          .status(500)
+          .json({ success: false, message: "Upload failed" });
+      }
+
+      activityLogger.info("File uploaded successfully. S3 URL:", data.Location);
+      createPost(data.Location);
     });
+  } else {
+    createPost(null);
   }
 };
 

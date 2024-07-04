@@ -25,4 +25,5 @@ router.route("/update-user-info").put(isAuthenticated, updateUserInfo);
 router.route("/find-me").get(isAuthenticated, findMe);
 router.route("/fetch-cities").get(fetchCities);
 router.route("/upload-file").post(singleFileUpload, uploadFile);
+
 module.exports = router;

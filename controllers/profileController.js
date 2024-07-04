@@ -1,5 +1,6 @@
 const { sequelize } = require("../config/database");
 const Post = require("../models/ContentModel");
+const Feedback = require("../models/FeedbackModel");
 const PollVote = require("../models/PollVoteModel");
 const Comment = require("../models/CommentModel");
 const Award = require("../models/AwardModel");
@@ -209,5 +210,27 @@ exports.getUserInfo = async (req, res) => {
       `Error in getUserInfo for user: ${userId}. Error: ${error}`
     );
     res.status(500).json({ msg: "Internal server error fetching user info" });
+  }
+};
+
+exports.submitFeedback = async (req, res) => {
+  const { feedbackText } = req.body;
+  const user = req.user;
+  if (!feedbackText) {
+    return res.status(400).json({ msg: "Feedback text is required" });
+  }
+
+  try {
+    const feedback = await Feedback.create({
+      userid: user._id.toString(),
+      feedback_text: feedbackText,
+      createdat: new Date(),
+    });
+
+    activityLogger.info(`Feedback submitted by user: ${user.username}`);
+    res.status(200).json({ msg: "Feedback submitted successfully" });
+  } catch (error) {
+    errorLogger.error(`Error submitting feedback: ${error}`);
+    res.status(500).json({ msg: "Internal server error submitting feedback" });
   }
 };
