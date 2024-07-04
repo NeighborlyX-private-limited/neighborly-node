@@ -1,6 +1,7 @@
 const { sequelize } = require("../config/database");
 const { DataTypes } = require("sequelize");
 const Award = require("./AwardModel");
+const Content = require("./ContentModel");
 
 const Comment = sequelize.define(
   "comments",
@@ -48,4 +49,5 @@ const Comment = sequelize.define(
 
 // Since a comment can have many awards
 Comment.hasMany(Award, { foreignKey: "commentid", as: "awards" });
+Comment.belongsTo(Content, { foreignKey: "contentid", as: "content" });
 module.exports = Comment;

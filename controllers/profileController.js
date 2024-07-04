@@ -123,12 +123,32 @@ exports.getUserAwards = async (req, res) => {
 exports.getUserComments = async (req, res) => {
   try {
     const userId = req.params.userId || req.user._id.toString();
+
     const comments = await Comment.findAll({
       where: { userid: userId },
+      include: [
+        {
+          model: Post,
+          as: "content",
+        },
+      ],
       order: [["createdat", "DESC"]],
     });
+
     activityLogger.info(`Fetched comments for user: ${userId}`);
-    res.status(200).json(comments);
+
+    const formattedComments = comments.map((comment) => ({
+      commentid: comment.commentid,
+      text: comment.body,
+      userid: comment.userid,
+      username: comment.username,
+      cheers: comment.cheers,
+      createdat: comment.createdat,
+      boos: comment.boos,
+      content: comment.content,
+    }));
+
+    res.status(200).json(formattedComments);
   } catch (err) {
     errorLogger.error(`Error fetching user comments: ${err.message}`);
     res

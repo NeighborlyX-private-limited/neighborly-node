@@ -274,6 +274,7 @@ exports.createPost = async (req, res) => {
       errorLogger.error("Create post is not working: ", err);
 
       // If post creation fails, delete the uploaded file
+      // This is not verified
       if (multimedia) {
         const params = {
           Bucket: S3_BUCKET_NAME,

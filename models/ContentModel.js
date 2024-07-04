@@ -1,6 +1,7 @@
 const { sequelize } = require("../config/database");
 const { DataTypes } = require("sequelize");
 const Award = require("./AwardModel");
+//const Comment = require("./CommentModel");
 
 const Content = sequelize.define(
   "content",
@@ -46,5 +47,5 @@ const Content = sequelize.define(
 );
 
 Content.hasMany(Award, { foreignKey: "contentid", as: "awards" });
-
+//Content.hasMany(Comment, { foreignKey: "contentid", as: "comments" });
 module.exports = Content;
