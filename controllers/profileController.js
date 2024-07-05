@@ -126,8 +126,13 @@ exports.getUserAwards = async (req, res) => {
 exports.getUserComments = async (req, res) => {
   try {
     const userId = req.query.userId || req.user._id.toString();
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = parseInt(req.query.pageSize) || 15;
 
-    const comments = await Comment.findAll({
+    const offset = (page - 1) * pageSize;
+    const limit = pageSize;
+
+    const { count, rows: comments } = await Comment.findAndCountAll({
       where: { userid: userId },
       include: [
         {
@@ -148,33 +153,73 @@ exports.getUserComments = async (req, res) => {
         },
       ],
       order: [["createdat", "DESC"]],
+      offset: offset,
+      limit: limit,
     });
 
     activityLogger.info(`Fetched comments for user: ${userId}`);
 
-    const formattedComments = comments.map((comment) => {
-      const postAwards = comment.content.awards.map(
-        (award) => award.award_type
-      );
-      const commentAwards = comment.awards.map((award) => award.award_type);
+    const formattedComments = await Promise.all(
+      comments.map(async (comment) => {
+        const postAwards = comment.content.awards.map(
+          (award) => award.award_type
+        );
+        const commentAwards = comment.awards.map((award) => award.award_type);
 
-      return {
-        commentid: comment.commentid,
-        text: comment.text,
-        userid: comment.userid,
-        username: comment.username,
-        cheers: comment.cheers,
-        createdat: comment.createdat,
-        boos: comment.boos,
-        content: {
-          ...comment.content.get({ plain: true }),
-          awards: postAwards,
-        },
-        awards: commentAwards,
-      };
+        let pollResults = [];
+        if (comment.content.type === "poll") {
+          const options = comment.content.poll_options;
+
+          // Fetch votes for all options in the poll
+          const pollVotes = await PollVote.findAll({
+            raw: true,
+            attributes: [
+              "optionid",
+              [sequelize.fn("SUM", sequelize.col("votes")), "votes"],
+            ],
+            where: {
+              contentid: comment.content.contentid,
+            },
+            group: ["optionid"],
+          });
+
+          const pollVotesMap = pollVotes.reduce((acc, vote) => {
+            acc[vote.optionid] = parseInt(vote.votes, 10);
+            return acc;
+          }, {});
+
+          pollResults = options.map((data) => ({
+            option: data.option,
+            optionId: data.optionId,
+            votes: pollVotesMap[data.optionId] || 0,
+          }));
+        }
+
+        return {
+          commentid: comment.commentid,
+          text: comment.text,
+          userid: comment.userid,
+          username: comment.username,
+          cheers: comment.cheers,
+          createdat: comment.createdat,
+          boos: comment.boos,
+          content: {
+            ...comment.content.get({ plain: true }),
+            awards: postAwards,
+            pollResults: pollResults,
+            poll_options: undefined, // Explicitly remove poll_options from the response
+          },
+          awards: commentAwards,
+        };
+      })
+    );
+
+    res.status(200).json({
+      totalItems: count,
+      totalPages: Math.ceil(count / pageSize),
+      currentPage: page,
+      comments: formattedComments,
     });
-
-    res.status(200).json(formattedComments);
   } catch (err) {
     errorLogger.error(`Error fetching user comments: ${err.message}`);
     res
