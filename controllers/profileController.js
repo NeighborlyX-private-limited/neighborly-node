@@ -283,7 +283,7 @@ exports.submitFeedback = async (req, res) => {
 
 exports.editUserInfo = async (req, res) => {
   const userId = req.user._id;
-  let { username, gender, bio } = req.body;
+  let { username, gender, bio, homeCoordinates } = req.body;
   const file = req.file;
 
   if (!userId) {
@@ -301,7 +301,9 @@ exports.editUserInfo = async (req, res) => {
     gender = gender.trim();
     bio = bio.trim();
     if (gender === "" || username === "") {
-      res.status(400).json({ message: "Username or Gender cannot be empty" });
+      return res
+        .status(400)
+        .json({ message: "Username or Gender cannot be empty" });
     }
     const duplicateUser = await User.findOne({
       username: username,
@@ -313,6 +315,32 @@ exports.editUserInfo = async (req, res) => {
     }
 
     let updatedFields = { username, gender, bio };
+
+    // Parse homeCoordinates if provided
+    if (homeCoordinates) {
+      try {
+        const coordinatesArray = JSON.parse(homeCoordinates);
+        if (
+          Array.isArray(coordinatesArray) &&
+          coordinatesArray.length === 2 &&
+          typeof coordinatesArray[0] === "number" &&
+          typeof coordinatesArray[1] === "number"
+        ) {
+          updatedFields.home_coordinates = {
+            type: "Point",
+            coordinates: coordinatesArray,
+          };
+        } else {
+          return res
+            .status(400)
+            .json({ message: "Invalid home coordinates format" });
+        }
+      } catch (e) {
+        return res
+          .status(400)
+          .json({ message: "Invalid home coordinates format" });
+      }
+    }
 
     if (file) {
       // Check and delete the old picture from S3 if it exists
@@ -352,6 +380,7 @@ exports.editUserInfo = async (req, res) => {
           gender: updatedUser.gender,
           bio: updatedUser.bio,
           picture: updatedUser.picture,
+          home_coordinates: updatedUser.home_coordinates, // Including home_coordinates in the response
         },
       });
     }
