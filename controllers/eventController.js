@@ -156,6 +156,46 @@ exports.joinEvent = async (req, res) => {
     }
 }
 
+exports.eventDetails = async(req,res)=>{
+    const eventId = (req.params['eventId']);
+    try {
+        
+        activityLogger.info('Event ID received: ${event.eventid}');
+        const event = await Event.findByPk(eventId, {
+            attributes: ['eventid', 'eventname', 'description', 'starttime', 'endtime', 'location', 'multimedia', 'userid'],
+        });
+
+console.log("userId: ", event.userid);
+const user = await User.findById(event.userid).lean();
+console.log(user);
+        if (!event) {
+            return res.status(404).json({ msg: 'Event not found' });
+        }
+           
+        // Format the response
+        const eventDetails = {
+            eventId: event.eventid,
+            title: event.eventname,
+            description: event.description,
+            date: event.starttime,
+            time: event.endtime,
+            location: event.location,
+            category: event.category,
+            multimedia: event.multimedia,  
+            username: user.username,
+            userProfilePic: user.picture
+        }; 
+
+        // Send the response
+        res.status(200).json(eventDetails);
+    } catch (err) {
+        errorLogger.error("Error fetching event details: ", err);
+        res.status(500).json({ msg: 'Internal server error' });
+    }
+    
+}
+
+
 exports.deleteEvent = async (req, res) => {
     const eventId = req.params.eventId;
 
