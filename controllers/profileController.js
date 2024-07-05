@@ -7,7 +7,7 @@ const Award = require("../models/AwardModel");
 const User = require("../models/userModel");
 const Group = require("../models/groupModel");
 const uuid = require("uuid");
-const { S3, S3_BUCKET_NAME} = require("../utils/constants");
+const { S3, S3_BUCKET_NAME } = require("../utils/constants");
 const { activityLogger, errorLogger } = require("../utils/logger");
 
 exports.getUserContent = async (req, res) => {
@@ -141,7 +141,7 @@ exports.getUserComments = async (req, res) => {
 
     const formattedComments = comments.map((comment) => ({
       commentid: comment.commentid,
-      text: comment.body,
+      text: comment.text,
       userid: comment.userid,
       username: comment.username,
       cheers: comment.cheers,
@@ -257,83 +257,82 @@ exports.submitFeedback = async (req, res) => {
   }
 };
 
-
 exports.editUserInfo = async (req, res) => {
   const userId = req.user._id;
   let { username, gender, bio } = req.body;
   const file = req.file;
 
   if (!userId) {
-      errorLogger.error("UserId not found");
-      return res.status(400).json({ message: "UserId is required" });
+    errorLogger.error("UserId not found");
+    return res.status(400).json({ message: "UserId is required" });
   }
 
   try {
-      
-      const existingUser = await User.findById(userId);
-      if (!existingUser) {
-          return res.status(404).json({ message: "User not found" });
+    const existingUser = await User.findById(userId);
+    if (!existingUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    username = username.trim();
+    gender = gender.trim();
+    bio = bio.trim();
+    if (gender === "" || username === "") {
+      res.status(400).json({ message: "Username or Gender cannot be empty" });
+    }
+    const duplicateUser = await User.findOne({
+      username: username,
+      _id: { $ne: userId },
+    });
+    if (duplicateUser) {
+      errorLogger.error("Username taken");
+      return res.status(400).json({ message: "Username already taken" });
+    }
+
+    let updatedFields = { username, gender, bio };
+
+    if (file) {
+      // Check and delete the old picture from S3 if it exists
+      if (existingUser.picture) {
+        const oldFileKey = existingUser.picture.split("/").pop(); // Assuming URL structure gives the key as the last segment
+        const deleteParams = {
+          Bucket: S3_BUCKET_NAME,
+          Key: oldFileKey,
+        };
+        await S3.deleteObject(deleteParams).promise();
       }
 
-      username = username.trim();
-      gender = gender.trim();
-      bio = bio.trim();
-      if(gender === "" || username === ""){
-        res.status(400).json({message:"Username or Gender cannot be empty"});
-      }
-      const duplicateUser = await User.findOne({ username: username, _id: { $ne: userId } });
-      if (duplicateUser) {
-          errorLogger.error("Username taken");
-          return res.status(400).json({ message: "Username already taken" });
-      }
+      // Upload the new picture to S3
+      const fileKey = `${uuid.v4()}-${file.originalname}`;
+      const uploadParams = {
+        Bucket: S3_BUCKET_NAME,
+        Key: fileKey,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+        ACL: "public-read",
+      };
+      activityLogger.info("Updated profile pic");
+      const uploadResult = await S3.upload(uploadParams).promise();
+      updatedFields.picture = uploadResult.Location;
+    }
 
-      
-      let updatedFields = { username, gender, bio };
-
-      
-      if (file) {
-          // Check and delete the old picture from S3 if it exists
-          if (existingUser.picture) {
-              const oldFileKey = existingUser.picture.split('/').pop(); // Assuming URL structure gives the key as the last segment
-              const deleteParams = {
-                  Bucket: S3_BUCKET_NAME,
-                  Key: oldFileKey
-              };
-              await S3.deleteObject(deleteParams).promise();
-          }
-
-          // Upload the new picture to S3
-          const fileKey = `${uuid.v4()}-${file.originalname}`;
-          const uploadParams = {
-              Bucket: S3_BUCKET_NAME,
-              Key: fileKey,
-              Body: file.buffer,
-              ContentType: file.mimetype,
-              ACL: 'public-read',
-          };
-          activityLogger.info("Updated profile pic");
-          const uploadResult = await S3.upload(uploadParams).promise();
-          updatedFields.picture = uploadResult.Location;
-      }
-
-
-      // Update the user in the database with new info
-      const updatedUser = await User.findByIdAndUpdate(userId, updatedFields, { new: true });
-      if (updatedUser) {
-          activityLogger.info("Profile updated");
-          return res.status(200).json({ 
-              message: "Profile updated successfully",
-              user: {
-                  username: updatedUser.username,
-                  gender: updatedUser.gender,
-                  bio: updatedUser.bio,
-                  picture: updatedUser.picture 
-              }
-          });
-          
-      }
+    // Update the user in the database with new info
+    const updatedUser = await User.findByIdAndUpdate(userId, updatedFields, {
+      new: true,
+    });
+    if (updatedUser) {
+      activityLogger.info("Profile updated");
+      return res.status(200).json({
+        message: "Profile updated successfully",
+        user: {
+          username: updatedUser.username,
+          gender: updatedUser.gender,
+          bio: updatedUser.bio,
+          picture: updatedUser.picture,
+        },
+      });
+    }
   } catch (error) {
-      errorLogger.error("Error updating user info:", error);
-      return res.status(500).json({ message: "Internal server error" });
+    errorLogger.error("Error updating user info:", error);
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
