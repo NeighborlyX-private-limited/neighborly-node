@@ -12,7 +12,8 @@ const { activityLogger, errorLogger } = require("../utils/logger");
 
 exports.getUserContent = async (req, res) => {
   try {
-    const userId = req.params.userId || req.user._id.toString();
+    const userId = req.query.userId || req.user._id.toString();
+
     const content = await Post.findAll({
       where: { userid: userId },
       order: [["createdat", "DESC"]],
