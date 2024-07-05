@@ -88,7 +88,7 @@ exports.getUserContent = async (req, res) => {
 // Fetch user awards
 exports.getUserAwards = async (req, res) => {
   try {
-    const userId = req.params.userId || req.user._id.toString();
+    const userId = req.query.userId || req.user._id.toString();
     const awards = await Award.findAll({
       where: { receiver_userid: userId },
       attributes: ["award_type"],
@@ -125,7 +125,7 @@ exports.getUserAwards = async (req, res) => {
 // Fetch user comments
 exports.getUserComments = async (req, res) => {
   try {
-    const userId = req.params.userId || req.user._id.toString();
+    const userId = req.query.userId || req.user._id.toString();
 
     const comments = await Comment.findAll({
       where: { userid: userId },
@@ -133,6 +133,18 @@ exports.getUserComments = async (req, res) => {
         {
           model: Post,
           as: "content",
+          include: [
+            {
+              model: Award,
+              as: "awards",
+              attributes: ["award_type"],
+            },
+          ],
+        },
+        {
+          model: Award,
+          as: "awards",
+          attributes: ["award_type"],
         },
       ],
       order: [["createdat", "DESC"]],
@@ -140,16 +152,27 @@ exports.getUserComments = async (req, res) => {
 
     activityLogger.info(`Fetched comments for user: ${userId}`);
 
-    const formattedComments = comments.map((comment) => ({
-      commentid: comment.commentid,
-      text: comment.text,
-      userid: comment.userid,
-      username: comment.username,
-      cheers: comment.cheers,
-      createdat: comment.createdat,
-      boos: comment.boos,
-      content: comment.content,
-    }));
+    const formattedComments = comments.map((comment) => {
+      const postAwards = comment.content.awards.map(
+        (award) => award.award_type
+      );
+      const commentAwards = comment.awards.map((award) => award.award_type);
+
+      return {
+        commentid: comment.commentid,
+        text: comment.body,
+        userid: comment.userid,
+        username: comment.username,
+        cheers: comment.cheers,
+        createdat: comment.createdat,
+        boos: comment.boos,
+        content: {
+          ...comment.content.get({ plain: true }),
+          awards: postAwards,
+        },
+        awards: commentAwards,
+      };
+    });
 
     res.status(200).json(formattedComments);
   } catch (err) {
@@ -162,7 +185,7 @@ exports.getUserComments = async (req, res) => {
 
 // Fetch user groups needs to be fixed along with all the group APIs
 exports.getUserGroups = async (req, res, next) => {
-  const userId = req.params.userId || req.user._id.toString();
+  const userId = req.query.userId || req.user._id.toString();
   activityLogger.info(`Fetching groups for user: ${userId}`);
   try {
     const user = await User.findById(userId).populate("groups");
@@ -184,7 +207,7 @@ exports.getUserGroups = async (req, res, next) => {
 };
 
 exports.getUserInfo = async (req, res) => {
-  const userId = req.params.userId || req.user._id.toString();
+  const userId = req.query.userId || req.user._id.toString();
   try {
     const user = await User.findById(userId).lean();
 
