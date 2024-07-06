@@ -367,8 +367,9 @@ exports.report = async (req, res) => {
   try {
     const { id, type, reason } = req.body;
     const userId = req.user._id;
+    let reportedUserId;
 
-    if (type === "post") {
+    if (type === "content") {
       const post = await Post.findOne({ where: { contentid: id } });
       if (!post) {
         return res.status(404).json({ msg: "Post not found" });
@@ -378,12 +379,13 @@ exports.report = async (req, res) => {
           .status(400)
           .json({ msg: "User cannot report their own post" });
       }
+      reportedUserId = post.userid;
 
       const report = await Report.create({
         userid: userId.toString(),
         contentid: id,
         report_reason: reason,
-        createdat: Date.now(),
+        reported_user_id: reportedUserId,
       });
       activityLogger.info(`Post with ID ${id} reported by user ${userId}`);
       return res.status(200).json(report);
@@ -397,11 +399,13 @@ exports.report = async (req, res) => {
           .status(400)
           .json({ msg: "User cannot report their own comment" });
       }
+      reportedUserId = comment.userid;
 
       const report = await Report.create({
         userid: userId.toString(),
         commentid: id,
         report_reason: reason,
+        reported_user_id: reportedUserId,
         createdat: Date.now(),
       });
       activityLogger.info(`Comment with ID ${id} reported by user ${userId}`);
