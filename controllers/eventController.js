@@ -307,3 +307,4 @@ exports.updateEvent = async (req, res) => {
         res.status(500).json({ message: "Failed to update the event due to an error" });
     }
 };
+
