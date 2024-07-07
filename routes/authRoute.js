@@ -10,6 +10,8 @@ const {
   googleAuth,
   verifyOTP,
   forgotPassword,
+  SendphoneOtp,
+  verifyPhoneOTP,
 } = require("../controllers/authController");
 
 require("../middlewares/passport");
@@ -26,5 +28,9 @@ router.route("/verify-otp").post(verifyOTP);
 router.route("/forgot-password").post(forgotPassword);
 
 router.route("/google/login").post(googleAuth);
+
+router.route("/SendphoneOtp").post(SendphoneOtp);
+router.route("/verifyPhoneOTP").post(verifyPhoneOTP);
+
 
 module.exports = router;
