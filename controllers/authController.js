@@ -7,7 +7,7 @@ const bcrypt = require("bcryptjs");
 const otpGenerator = require("otp-generator");
 const dotenv = require("dotenv");
 const { OAuth2Client } = require("google-auth-library");
-
+const textlocalApiKey = process.env.TEXTLOCAL_API_KEY;
 const {
   sendVerificationEmail,
   forgotPasswordEmail,
@@ -240,10 +240,7 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
-//user login from phone number 
-const textlocalApiKey = process.env.TEXTLOCAL_API_KEY;
-
-exports.SendphoneOtp = async(req,res,next) =>{
+exports.sendPhoneOTP = async(req,res,next) =>{
   const {phoneNumber} = req.body;
  if(!phoneNumber){
   errorLogger.error("phone number is required");
