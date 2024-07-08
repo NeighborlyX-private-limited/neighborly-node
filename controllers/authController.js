@@ -7,7 +7,7 @@ const bcrypt = require("bcryptjs");
 const otpGenerator = require("otp-generator");
 const dotenv = require("dotenv");
 const { OAuth2Client } = require("google-auth-library");
-
+const textlocalApiKey = process.env.TEXTLOCAL_API_KEY;
 const {
   sendVerificationEmail,
   forgotPasswordEmail,
@@ -239,4 +239,65 @@ exports.forgotPassword = async (req, res) => {
     errorLogger.error(`An error occured in forgotPassword:${error}`);
     res.status(500).json({ error: error.message });
   }
+};
+
+exports.sendPhoneOTP = async(req,res,next) =>{
+  const {phoneNumber} = req.body;
+ if(!phoneNumber){
+  errorLogger.error("phone number is required");
+  return next(new ErrorHandler("phone number is required",400));
+
+ }
+ //otp generation
+ const otp = math.floor(100000 + math.random()*900000);
+
+ //sending otp via textlocal
+
+ const textlocal = new Textlocal({apikey: textlocalApiKey});
+ const message = 'your OTP code is ${otp}';
+ 
+
+ textlocal.sendSms([phoneNumber],message, 'NEIBOR', async(err,response)=>{
+  if(err){
+    errorLogger.error('Failed to send OTP: ${otp}');
+    return next(new ErrorHandler('Failed to send OTP',500));
+  }
+ //save Otp and phone number to user documentation
+
+ let user = await User.findOne({phoneNumber});
+ if(!user){
+  user = new User({phoneNumber, otp});
+
+ }else{
+  user.otp =otp;
+ }
+ await user.save();
+ activityLogger.info('otpsent to PhoneNumber : ${phoneNumber}');
+ res.status(200).json({message:'OTP sent succesfully'});
+
+ });
+};
+
+//verify otp 
+exports.verifyPhoneOTP = async(req,res,next)=>{
+  const {phoneNumber,otp} =req.body;
+   
+  if(!phoneNumber || !otp){
+    errorLogger.error("Phone number and the Otp is required");
+    return next(new ErrorHandler ("phone number and otp are required", 400));
+
+  }
+  const user = await User.findOne({phoneNumber});
+
+  if(!user || user.otp!== otp){
+     errorLogger.error("Invalid Phone Number or Otp");
+     return next(new ErrorHandler("Invalid phone Number or Otp",401));
+  }
+// otp verified and successfully login
+user.otp = undefined;//clear OTP after verification
+await user.save();
+
+activityLogger.info('user with phone Number ${PhoneNumber} has logged in successfully');
+sendToken(user,200,res);
+
 };
