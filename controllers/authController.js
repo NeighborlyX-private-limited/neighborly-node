@@ -1,4 +1,5 @@
 const { generateUsername } = require("unique-username-generator");
+const axios = require("axios");
 const User = require("../models/userModel");
 const ErrorHandler = require("../utils/errorHandler");
 const sendToken = require("../utils/jwtToken");
@@ -11,8 +12,12 @@ const textlocalApiKey = process.env.TEXTLOCAL_API_KEY;
 const {
   sendVerificationEmail,
   forgotPasswordEmail,
+  otpgenerator,
 } = require("../utils/emailService");
-
+const {
+  MESSAGE_TEMPLATE,
+  MESSAGE_API_ENDPOINT,
+} = require("../utils/constants");
 const AVATAR_KEY = process.env.MULTI_AVATAR_API_KEY;
 
 // User Login
@@ -51,7 +56,7 @@ exports.loginUser = async (req, res, next) => {
 
 // User Register
 exports.registerUser = async (req, res) => {
-  const { password, email, dob, gender } = req.body;
+  const { password, email, phoneNumber } = req.body;
   let username = generateUsername() + Math.floor(Math.random() * 10000);
   while (await User.findOne({ username })) {
     username = generateUsername() + Math.floor(Math.random() * 10000);
@@ -61,15 +66,30 @@ exports.registerUser = async (req, res) => {
   }
   try {
     const picture = `https://api.multiavatar.com/${username}.png?apikey=${AVATAR_KEY}`;
-    const user = await User.create({
-      username: username,
-      password: password,
-      email: email.toLowerCase(),
-      picture: picture,
-      bio: null,
-      auth_type: "email",
-    });
-
+    let user;
+    if (email) {
+      user = await User.create({
+        username: username,
+        password: password,
+        email: email.toLowerCase(),
+        picture: picture,
+        bio: null,
+        auth_type: "email",
+      });
+    } else if (phoneNumber) {
+      user = await User.create({
+        username: username,
+        password: password,
+        phoneNumber: phoneNumber,
+        picture: picture,
+        bio: null,
+        auth_type: "phone",
+      });
+    } else {
+      return res
+        .status(400)
+        .json({ message: "Email or Phone number is required" });
+    }
     sendToken(user, 200, res);
   } catch (error) {
     errorLogger.error(
@@ -79,7 +99,7 @@ exports.registerUser = async (req, res) => {
     if (error.code === 11000 || error.code === 11001) {
       return res.status(400).json({
         error: "Duplicate Entry",
-        message: Object.keys(error.keyValue)[0] + " already exists.",
+        message: "Account already exists.",
       });
     }
     return res.status(400).json(error);
@@ -241,63 +261,66 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
-exports.sendPhoneOTP = async(req,res,next) =>{
-  const {phoneNumber} = req.body;
- if(!phoneNumber){
-  errorLogger.error("phone number is required");
-  return next(new ErrorHandler("phone number is required",400));
-
- }
- //otp generation
- const otp = math.floor(100000 + math.random()*900000);
-
- //sending otp via textlocal
-
- const textlocal = new Textlocal({apikey: textlocalApiKey});
- const message = 'your OTP code is ${otp}';
- 
-
- textlocal.sendSms([phoneNumber],message, 'NEIBOR', async(err,response)=>{
-  if(err){
-    errorLogger.error('Failed to send OTP: ${otp}');
-    return next(new ErrorHandler('Failed to send OTP',500));
+exports.sendPhoneOTP = async (req, res, next) => {
+  const { phoneNumber } = req.body;
+  if (!phoneNumber) {
+    errorLogger.error("phone number is required");
+    return next(new ErrorHandler("phone number is required", 400));
   }
- //save Otp and phone number to user documentation
 
- let user = await User.findOne({phoneNumber});
- if(!user){
-  user = new User({phoneNumber, otp});
+  const otp = otpgenerator();
+  const message = MESSAGE_TEMPLATE.replace("{{otp}}", otp);
+  const apiKey = process.env.TEXTLOCAL_API_KEY;
 
- }else{
-  user.otp =otp;
- }
- await user.save();
- activityLogger.info('otpsent to PhoneNumber : ${phoneNumber}');
- res.status(200).json({message:'OTP sent succesfully'});
+  const url = MESSAGE_API_ENDPOINT.replace("<apiKey>", apiKey)
+    .replace("<phoneNumber>", `91${phoneNumber}`)
+    .replace("<message>", encodeURIComponent(message));
 
- });
+  try {
+    const response = await axios.get(url);
+
+    if (response.data.status !== "success") {
+      throw new Error(response.data.errors[0].message);
+    }
+    activityLogger.info(
+      `Phone number OTP sent successfully for ${phoneNumber}`
+    );
+    let user = await User.findOne({ phoneNumber });
+    if (!user) {
+      user = new User({ phoneNumber, otp });
+    } else {
+      user.otp = otp;
+    }
+    await user.save();
+
+    activityLogger.info(`OTP sent to PhoneNumber: ${phoneNumber}`);
+    res.status(200).json({ message: "OTP sent successfully" });
+  } catch (err) {
+    errorLogger.error(`Failed to send OTP: ${err.message}`);
+    return next(new ErrorHandler("Failed to send OTP", 500));
+  }
 };
 
-//verify otp 
-exports.verifyPhoneOTP = async(req,res,next)=>{
-  const {phoneNumber,otp} =req.body;
-   
-  if(!phoneNumber || !otp){
+//verify otp
+exports.verifyPhoneOTP = async (req, res, next) => {
+  const { phoneNumber, otp } = req.body;
+
+  if (!phoneNumber || !otp) {
     errorLogger.error("Phone number and the Otp is required");
-    return next(new ErrorHandler ("phone number and otp are required", 400));
-
+    return next(new ErrorHandler("phone number and otp are required", 400));
   }
-  const user = await User.findOne({phoneNumber});
+  const user = await User.findOne({ phoneNumber });
 
-  if(!user || user.otp!== otp){
-     errorLogger.error("Invalid Phone Number or Otp");
-     return next(new ErrorHandler("Invalid phone Number or Otp",401));
+  if (!user || user.otp !== otp) {
+    errorLogger.error("Invalid Phone Number or Otp");
+    return next(new ErrorHandler("Invalid phone Number or Otp", 401));
   }
-// otp verified and successfully login
-user.otp = undefined;//clear OTP after verification
-await user.save();
+  user.isPhoneVerified = true;
+  user.otp = undefined; //clear OTP after verification
+  await user.save();
 
-activityLogger.info('user with phone Number ${PhoneNumber} has logged in successfully');
-sendToken(user,200,res);
-
+  activityLogger.info(
+    "user with phone Number ${PhoneNumber} has logged in successfully"
+  );
+  sendToken(user, 200, res);
 };

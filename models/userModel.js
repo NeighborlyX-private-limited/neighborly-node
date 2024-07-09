@@ -22,8 +22,17 @@ const userSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    required: [true, "Please enter email"],
     unique: true,
+    sparse: true,
+  },
+  phoneNumber: {
+    type: String,
+    unique: true,
+    sparse: true, // Allows the field to be unique but still allows documents without this field
+  },
+  isPhoneVerified: {
+    type: Boolean,
+    default: false,
   },
   current_coordinates: {
     type: {
@@ -59,7 +68,7 @@ const userSchema = new mongoose.Schema({
   ],
   karma: {
     type: Number,
-    default: 1000,
+    default: 0,
   },
   auth_type: {
     type: String,
@@ -76,6 +85,10 @@ const userSchema = new mongoose.Schema({
   },
   bio: {
     type: String,
+  },
+  isDeleted: {
+    type: Boolean,
+    default: false,
   },
 });
 
@@ -97,4 +110,5 @@ userSchema.methods.comparePassword = async function (password) {
 // Add 2dsphere index on current_coordinates
 userSchema.index({ current_coordinates: "2dsphere" });
 userSchema.index({ city: "2dsphere" });
+
 module.exports = mongoose.model("User", userSchema);

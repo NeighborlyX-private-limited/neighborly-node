@@ -1,4 +1,7 @@
 const User = require("../models/userModel");
+// const Post = require("../models/ContentModel");
+// const Comment = require("../models/CommentModel");
+// const Message = require("../models/messageModel");
 const sendToken = require("../utils/jwtToken");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const Group = require("../models/groupModel");
@@ -11,6 +14,7 @@ const {
   S3_BUCKET_NAME,
 } = require("../utils/constants");
 
+//TODO remove obsolete methods
 exports.uploadFile = async (req, res, next) => {
   const file = req.file;
   const fileKey = `${uuid.v4()}-${file.originalname}`;
@@ -105,6 +109,7 @@ exports.updateLocation = async (req, res, next) => {
   }
 };
 
+//TODO remove obsolete methods
 exports.loggedInUser = async (req, res, next) => {
   const user = req.user;
   if (user) {
@@ -148,6 +153,7 @@ exports.userinfo = async (req, res) => {
   res.status(200).json(user);
 };
 
+//TODO remove obsolete methods
 exports.deleteUser = async (req, res) => {
   try {
     const user = req.user;
@@ -225,6 +231,7 @@ exports.changePassword = async (req, res) => {
   }
 };
 
+//TODO move this into update user info
 exports.findMe = async (req, res) => {
   const user = req.user;
   try {
@@ -263,3 +270,38 @@ exports.updateUserInfo = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+// exports.deleteAccount = async (req, res) => {
+//   const userId = req.user._id.toString();
+
+//   try {
+//     await User.findByIdAndUpdate(userId, {
+//       isDeleted: true,
+//       username: "[deleted]",
+//       picture: null,
+//     });
+
+//     await Post.update({ username: "[deleted]" }, { where: { userid: userId } });
+//     await Comment.update(
+//       { username: "[deleted]" },
+//       { where: { userid: userId } }
+//     );
+//     //TODO message model needs to be heavily changed to make it resemble other models, then make this change
+//     //await Message.update({ username: '[deleted]' }, { where: { userid: userId } });
+
+//     // Remove user from groups
+//     const user = await User.findById(userId);
+//     user.groups.forEach(async (groupId) => {
+//       await Group.findByIdAndUpdate(groupId, { $pull: { members: userId } });
+//     });
+
+//     activityLogger.info(`User with ID ${userId} marked as deleted`);
+
+//     res.status(200).json({ msg: "User account deleted successfully" });
+//   } catch (err) {
+//     errorLogger.error("Error deleting user account: ", err);
+//     res
+//       .status(500)
+//       .json({ msg: "Internal server error deleting user account" });
+//   }
+// };

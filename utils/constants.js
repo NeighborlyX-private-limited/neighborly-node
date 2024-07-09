@@ -39,6 +39,14 @@ const VALIDAWARDTYPES = new Set([
   // Add more awards here as needed
 ]);
 
+const MESSAGE_TEMPLATE = `Dear User, 
+
+Your OTP for login is {{otp}}. This is valid for 15 minutes. Please do not share this OTP. 
+
+Regards,
+NeighborlyX Private Limited`;
+const MESSAGE_API_ENDPOINT = `https://api.textlocal.in/send/?apiKey=<apiKey>&sender=NEIBOR&numbers=<phoneNumber>&message=<message>`;
+
 module.exports = {
   CITY_TO_COORDINATE,
   COORDINATE_TO_CITY,
@@ -47,4 +55,6 @@ module.exports = {
   S3,
   S3_BUCKET_NAME,
   VALIDAWARDTYPES,
+  MESSAGE_TEMPLATE,
+  MESSAGE_API_ENDPOINT,
 };
