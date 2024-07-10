@@ -8,7 +8,6 @@ const {
   uploadFile,
   changePassword,
   deleteUser,
-  findMe,
   updateUserInfo,
   //deleteAccount,
 } = require("../controllers/userController");
@@ -23,7 +22,6 @@ router.route("/update-user-location").put(isAuthenticated, updateLocation);
 router.route("/change-password").put(changePassword);
 router.route("/delete-user").delete(isAuthenticated, deleteUser);
 router.route("/update-user-info").put(isAuthenticated, updateUserInfo);
-router.route("/find-me").get(isAuthenticated, findMe);
 router.route("/fetch-cities").get(fetchCities);
 router.route("/upload-file").post(singleFileUpload, uploadFile);
 //router.route("/delete-account").delete(isAuthenticated, deleteAccount);
