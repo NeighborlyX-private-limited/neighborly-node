@@ -231,6 +231,7 @@ exports.changePassword = async (req, res) => {
   }
 };
 
+
 exports.updateUserdob = async (req, res) => {
   const user = req.user;
   const { dob } = req.body;
@@ -263,9 +264,10 @@ exports.updateUserdob = async (req, res) => {
     } else {
         res.status(404).json({ message: "User not found" });
     }
+
   } catch (error) {
-    errorLogger.error(`An unexpected error occurred: ${error.message}`);
-    res.status(500).json({ message: "Internal server error" });
+      errorLogger.error(`An unexpected error occurred: ${error.message}`);
+      res.status(500).json({ message: "Internal server error" });
   }
 };
 // exports.deleteAccount = async (req, res) => {
