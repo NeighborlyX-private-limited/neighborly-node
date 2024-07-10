@@ -8,7 +8,6 @@ const {
   uploadFile,
   changePassword,
   deleteUser,
-
   updateUserdob,
   //deleteAccount,
 } = require("../controllers/userController");
