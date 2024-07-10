@@ -8,7 +8,7 @@ const {
   uploadFile,
   changePassword,
   deleteUser,
-  updateUserInfo,
+  updateUserdob,
   //deleteAccount,
 } = require("../controllers/userController");
 const { isAuthenticated } = require("../middlewares/auth");
@@ -21,7 +21,7 @@ router.route("/update-user-picture").put(isAuthenticated, updatePicture);
 router.route("/update-user-location").put(isAuthenticated, updateLocation);
 router.route("/change-password").put(changePassword);
 router.route("/delete-user").delete(isAuthenticated, deleteUser);
-router.route("/update-user-info").put(isAuthenticated, updateUserInfo);
+router.route("/update-user-dob").put(isAuthenticated, updateUserdob);
 router.route("/fetch-cities").get(fetchCities);
 router.route("/upload-file").post(singleFileUpload, uploadFile);
 //router.route("/delete-account").delete(isAuthenticated, deleteAccount);
