@@ -231,43 +231,36 @@ exports.changePassword = async (req, res) => {
   }
 };
 
-//TODO move this into update user info
-exports.findMe = async (req, res) => {
-  const user = req.user;
-  try {
-    const findme = await User.updateOne(
-      { _id: user._id },
-      { $set: { findMe: !user.findMe } }
-    );
-    activityLogger.info("Updated find me option as", !user.findMe);
-    res.status(200).json(findme);
-  } catch (err) {
-    errorLogger.error("There is an error in findMe API: ", err);
-    res.status(500).json({
-      msg: "Find me API crashed",
-    });
-  }
-};
-// Update user info API
 exports.updateUserInfo = async (req, res) => {
-  const user = req.user;
-  const { dob, gender } = req.body;
+  const user = req.user; // Assuming user is populated from the request, e.g., via middleware
+  const { dob, gender, toggleFindMe } = req.body; // Include toggleFindMe in the request to control the findMe setting
+
   try {
-    const { email } = user;
-    const update = await User.findOneAndUpdate(
-      { email },
-      { $set: { gender: gender, dob: dob } },
-      { new: true }
-    );
-    if (update) {
-      activityLogger.info(`Info updated for user ${user.username}`);
-      sendToken(user, 200, res);
-    } else {
-      res.status(404).json({ message: "User not found" });
-    }
+      const updatedFields = {
+          gender: gender,
+          dob: dob,
+      };
+
+      // Check if the request includes the toggle for findMe and update accordingly
+      if (typeof toggleFindMe !== 'undefined') {
+          updatedFields.findMe = !user.findMe; // Toggle the current state
+      }
+
+      const updatedUser = await User.findByIdAndUpdate(user._id, 
+          { $set: updatedFields },
+          { new: true }
+      );
+
+      if (updatedUser) {
+          activityLogger.info(`Info updated for user ${updatedUser.username}`);
+          // Assuming sendToken sends a response with a token and user info
+          sendToken(updatedUser, 200, res);
+      } else {
+          res.status(404).json({ message: "User not found" });
+      }
   } catch (error) {
-    errorLogger.error(`An unexpected error occurred: ${error.message}`);
-    res.status(500).json({ message: "Internal server error" });
+      errorLogger.error(`An unexpected error occurred: ${error.message}`);
+      res.status(500).json({ message: "Internal server error" });
   }
 };
 
