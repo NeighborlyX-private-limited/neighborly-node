@@ -13,6 +13,18 @@ const { raw } = require("express");
 const uuid = require("uuid");
 const { S3, S3_BUCKET_NAME, VALIDAWARDTYPES } = require("../utils/constants");
 
+const deleteCommentAndChildren = async (commentid) => {
+  const childComments = await Comment.findAll({
+    where: { parent_commentid: commentid },
+  });
+  // Delete the parent comment
+  await Comment.destroy({ where: { commentid: commentid } });
+  // Recursively delete child comments
+  for (const childComment of childComments) {
+    await deleteCommentAndChildren(childComment.commentid);
+  }
+};
+
 // Fetch posts and polls
 exports.findPosts = async (req, res) => {
   const isHome = req.query?.home;
@@ -328,32 +340,45 @@ exports.createPost = async (req, res) => {
 exports.deleteData = async (req, res) => {
   try {
     const { id, type } = req.params;
-    const userId = req.user._id;
+    const userId = req.user._id.toString();
 
     if (type === "post") {
       const post = await Post.findOne({ where: { contentid: id } });
       if (!post) {
         return res.status(404).json({ msg: "Post not found" });
       }
-      if (userId.toString() !== post.userid) {
+      if (userId !== post.userid) {
         return res.status(403).json({ msg: "Unauthorized user" });
       }
 
+      if (post.type === "poll") {
+        await PollVote.destroy({ where: { contentid: id } });
+      }
+
+      await Comment.destroy({ where: { contentid: id } });
       await Post.destroy({ where: { contentid: id } });
-      activityLogger.info(`Post with ID ${id} deleted by user ${userId}`);
-      return res.status(200).json({ msg: "Post deleted" });
+
+      activityLogger.info(
+        `Post with ID ${id} and related comments deleted by user ${userId}`
+      );
+      return res.status(200).json({ msg: "Post and related comments deleted" });
     } else if (type === "comment") {
       const comment = await Comment.findOne({ where: { commentid: id } });
       if (!comment) {
         return res.status(404).json({ msg: "Comment not found" });
       }
-      if (userId.toString() !== comment.userid) {
+      if (userId !== comment.userid) {
         return res.status(403).json({ msg: "Unauthorized user" });
       }
 
-      await Comment.destroy({ where: { commentid: id } });
-      activityLogger.info(`Comment with ID ${id} deleted by user ${userId}`);
-      return res.status(200).json({ msg: "Comment deleted" });
+      await deleteCommentAndChildren(id);
+
+      activityLogger.info(
+        `Comment with ID ${id} and related child comments deleted by user ${userId}`
+      );
+      return res
+        .status(200)
+        .json({ msg: "Comment and related child comments deleted" });
     } else {
       return res.status(400).json({ msg: "Invalid type specified" });
     }
