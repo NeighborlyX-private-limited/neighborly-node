@@ -328,7 +328,7 @@ exports.submitFeedback = async (req, res) => {
 
 exports.editUserInfo = async (req, res) => {
   const userId = req.user._id;
-  let { username, gender, bio, homeCoordinates } = req.body;
+  let { username, gender, bio, homeCoordinates, toggleFindMe  } = req.body;
   const file = req.file;
 
   if (!userId) {
@@ -361,7 +361,10 @@ exports.editUserInfo = async (req, res) => {
 
     let updatedFields = { username, gender, bio };
 
-    // Parse homeCoordinates if provided
+    if (toggleFindMe) {
+      updatedFields.findMe = !existingUser.findMe;
+  }
+
     if (homeCoordinates) {
       try {
         const coordinatesArray = JSON.parse(homeCoordinates);
@@ -388,9 +391,9 @@ exports.editUserInfo = async (req, res) => {
     }
 
     if (file) {
-      // Check and delete the old picture from S3 if it exists
+      
       if (existingUser.picture) {
-        const oldFileKey = existingUser.picture.split("/").pop(); // Assuming URL structure gives the key as the last segment
+        const oldFileKey = existingUser.picture.split("/").pop(); 
         const deleteParams = {
           Bucket: S3_BUCKET_NAME,
           Key: oldFileKey,
@@ -425,7 +428,8 @@ exports.editUserInfo = async (req, res) => {
           gender: updatedUser.gender,
           bio: updatedUser.bio,
           picture: updatedUser.picture,
-          home_coordinates: updatedUser.home_coordinates, // Including home_coordinates in the response
+          home_coordinates: updatedUser.home_coordinates,
+          findMe:updatedUser.findMe,
         },
       });
     }

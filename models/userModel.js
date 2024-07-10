@@ -90,6 +90,11 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  dobSet:{
+    type:Boolean,
+    default:false,
+    required:true
+  },
 });
 
 userSchema.pre("save", async function () {
