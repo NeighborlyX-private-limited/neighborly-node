@@ -231,39 +231,45 @@ exports.changePassword = async (req, res) => {
   }
 };
 
-exports.updateUserInfo = async (req, res) => {
-  const user = req.user; // Assuming user is populated from the request, e.g., via middleware
-  const { dob, gender, toggleFindMe } = req.body; // Include toggleFindMe in the request to control the findMe setting
+
+exports.updateUserdob = async (req, res) => {
+  const user = req.user;
+  const { dob } = req.body;
+
+  if (!user) {
+    return res.status(403).json({ message: "User is not authenticated" });
+  }
+
+  
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+    return res.status(400).json({ message: "Invalid date format. Use YYYY-MM-DD." });
+  }
 
   try {
-      const updatedFields = {
-          gender: gender,
-          dob: dob,
-      };
+    
+    if (user.dobSet) {
+      return res.status(403).json({ message: "DOB can only be set once." });
+    }
 
-      // Check if the request includes the toggle for findMe and update accordingly
-      if (typeof toggleFindMe !== 'undefined') {
-          updatedFields.findMe = !user.findMe; // Toggle the current state
-      }
+    const updatedFields = { dob, dobSet: true };
 
-      const updatedUser = await User.findByIdAndUpdate(user._id, 
-          { $set: updatedFields },
-          { new: true }
-      );
+    const updatedUser = await User.findByIdAndUpdate(user._id, 
+        { $set: updatedFields },
+        { new: true }
+    );
 
-      if (updatedUser) {
-          activityLogger.info(`Info updated for user ${updatedUser.username}`);
-          // Assuming sendToken sends a response with a token and user info
-          sendToken(updatedUser, 200, res);
-      } else {
-          res.status(404).json({ message: "User not found" });
-      }
+    if (updatedUser) {
+        activityLogger.info(`DOB updated for user ${updatedUser.username}`);
+        sendToken(updatedUser, 200, res);
+    } else {
+        res.status(404).json({ message: "User not found" });
+    }
+
   } catch (error) {
       errorLogger.error(`An unexpected error occurred: ${error.message}`);
       res.status(500).json({ message: "Internal server error" });
   }
 };
-
 // exports.deleteAccount = async (req, res) => {
 //   const userId = req.user._id.toString();
 
