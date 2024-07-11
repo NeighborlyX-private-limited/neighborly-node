@@ -26,7 +26,7 @@ exports.loginUser = async (req, res, next) => {
   let email = "";
   let username = "";
   let user;
-
+  
   const emailRegex = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;
 
   if (emailRegex.test(userId)) {
@@ -40,6 +40,11 @@ exports.loginUser = async (req, res, next) => {
   if (!user) {
     errorLogger.error(`Invalid email or password for ${user}`);
     return next(new ErrorHandler("Invalid Email or Password", 401));
+  }
+
+  if (user.isDeleted) {
+    errorLogger.error(`Attempt to login with a deleted account: ${userId}`);
+    return next(new ErrorHandler("This account has been deleted", 401));
   }
 
   const match = await user.comparePassword(password);
@@ -212,6 +217,23 @@ exports.googleAuth = async (req, res) => {
       res.status(400).json({
         message: "Email is not verified",
       });
+
+      let user = await User.findOne({ email: email.toLowerCase() });
+
+      if (user) {
+        
+        if (user.isDeleted) {
+          errorLogger.error(`Attempt to login with a deleted account: ${email}`);
+          return res.status(401).json({
+            message: "This account has been deleted",
+          });
+        }
+  
+        
+        activityLogger.info(`User ${user.username}(${user._id}) has logged in successfully via Google`);
+        return sendToken(user, 200, res);
+      }
+      
     }
     let username = generateUsername() + Math.floor(Math.random() * 10000);
     while (await User.findOne({ username })) {
@@ -313,6 +335,12 @@ exports.verifyPhoneOTP = async (req, res, next) => {
     errorLogger.error("Invalid Phone Number or Otp");
     return next(new ErrorHandler("Invalid phone Number or Otp", 401));
   }
+
+  if (user.isDeleted) {
+    errorLogger.error(`Attempt to login with a deleted account: ${phoneNumber}`);
+    return next(new ErrorHandler("This account has been deleted", 401));
+  }
+
   user.isPhoneVerified = true;
   user.otp = undefined; //clear OTP after verification
   await user.save();
