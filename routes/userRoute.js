@@ -9,7 +9,6 @@ const {
   changePassword,
   deleteUser,
   updateUserdob,
-  //deleteAccount,
 } = require("../controllers/userController");
 const { isAuthenticated } = require("../middlewares/auth");
 const { singleFileUpload } = require("../middlewares/fileUpload");
@@ -24,6 +23,5 @@ router.route("/delete-user").delete(isAuthenticated, deleteUser);
 router.route("/update-user-dob").put(isAuthenticated, updateUserdob);
 router.route("/fetch-cities").get(fetchCities);
 router.route("/upload-file").post(singleFileUpload, uploadFile);
-//router.route("/delete-account").delete(isAuthenticated, deleteAccount);
 
 module.exports = router;

@@ -23,16 +23,12 @@ const userSchema = new mongoose.Schema({
   email: {
     type: String,
     unique: true,
-    sparse: true,
+    sparse: true, // Allow multiple null values
   },
   phoneNumber: {
     type: String,
     unique: true,
-    sparse: true, // Allows the field to be unique but still allows documents without this field
-  },
-  isPhoneVerified: {
-    type: Boolean,
-    default: false,
+    sparse: true, // Allow multiple null values
   },
   current_coordinates: {
     type: {
@@ -90,10 +86,10 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
-  dobSet:{
-    type:Boolean,
-    default:false,
-    required:true
+  dobSet: {
+    type: Boolean,
+    default: false,
+    required: true,
   },
 });
 

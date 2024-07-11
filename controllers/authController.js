@@ -64,32 +64,31 @@ exports.registerUser = async (req, res) => {
       `Registration attempt for user with username ${username}.`
     );
   }
+
+  const existingUser = await User.findOne({
+    $or: [{ email: email ? email.toLowerCase() : null }, { phoneNumber }],
+  });
+
+  if (existingUser) {
+    errorLogger.error("Duplicate Entry: Account already exists.");
+    return res.status(400).json({
+      error: "Duplicate Entry",
+      message: "Account already exists.",
+    });
+  }
+
   try {
     const picture = `https://api.multiavatar.com/${username}.png?apikey=${AVATAR_KEY}`;
-    let user;
-    if (email) {
-      user = await User.create({
-        username: username,
-        password: password,
-        email: email.toLowerCase(),
-        picture: picture,
-        bio: null,
-        auth_type: "email",
-      });
-    } else if (phoneNumber) {
-      user = await User.create({
-        username: username,
-        password: password,
-        phoneNumber: phoneNumber,
-        picture: picture,
-        bio: null,
-        auth_type: "phone",
-      });
-    } else {
-      return res
-        .status(400)
-        .json({ message: "Email or Phone number is required" });
-    }
+    const user = await User.create({
+      username: username,
+      password: password,
+      email: email ? email.toLowerCase() : null,
+      phoneNumber: phoneNumber ? phoneNumber : null,
+      picture: picture,
+      bio: null,
+      auth_type: email ? "email" : "phone",
+    });
+
     sendToken(user, 200, res);
   } catch (error) {
     errorLogger.error(
@@ -99,7 +98,7 @@ exports.registerUser = async (req, res) => {
     if (error.code === 11000 || error.code === 11001) {
       return res.status(400).json({
         error: "Duplicate Entry",
-        message: "Account already exists.",
+        message: Object.keys(error.keyValue)[0] + " already exists.",
       });
     }
     return res.status(400).json(error);
@@ -267,7 +266,10 @@ exports.sendPhoneOTP = async (req, res, next) => {
     errorLogger.error("phone number is required");
     return next(new ErrorHandler("phone number is required", 400));
   }
-
+  let user = await User.findOne({ phoneNumber });
+  if (!user) {
+    return next(new ErrorHandler("User not found", 404));
+  }
   const otp = otpgenerator();
   const message = MESSAGE_TEMPLATE.replace("{{otp}}", otp);
   const apiKey = process.env.TEXTLOCAL_API_KEY;
@@ -286,11 +288,7 @@ exports.sendPhoneOTP = async (req, res, next) => {
       `Phone number OTP sent successfully for ${phoneNumber}`
     );
     let user = await User.findOne({ phoneNumber });
-    if (!user) {
-      user = new User({ phoneNumber, otp });
-    } else {
-      user.otp = otp;
-    }
+    user.otp = otp;
     await user.save();
 
     activityLogger.info(`OTP sent to PhoneNumber: ${phoneNumber}`);

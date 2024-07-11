@@ -1,5 +1,6 @@
 const { sequelize } = require("../config/database");
 const Post = require("../models/ContentModel");
+const Message = require("../models/messageModel");
 const Feedback = require("../models/FeedbackModel");
 const PollVote = require("../models/PollVoteModel");
 const Comment = require("../models/CommentModel");
@@ -327,8 +328,8 @@ exports.submitFeedback = async (req, res) => {
 };
 
 exports.editUserInfo = async (req, res) => {
-  const userId = req.user._id;
-  let { username, gender, bio, homeCoordinates, toggleFindMe  } = req.body;
+  const userId = req.user._id.toString();
+  let { username, gender, bio, homeCoordinates, toggleFindMe } = req.body;
   const file = req.file;
 
   if (!userId) {
@@ -342,9 +343,10 @@ exports.editUserInfo = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    username = username.trim();
-    gender = gender.trim();
-    bio = bio.trim();
+    if (username) username = username.trim();
+    if (gender) gender = gender.trim();
+    if (bio) bio = bio.trim();
+
     if (gender === "" || username === "") {
       return res
         .status(400)
@@ -363,7 +365,7 @@ exports.editUserInfo = async (req, res) => {
 
     if (toggleFindMe) {
       updatedFields.findMe = !existingUser.findMe;
-  }
+    }
 
     if (homeCoordinates) {
       try {
@@ -391,9 +393,8 @@ exports.editUserInfo = async (req, res) => {
     }
 
     if (file) {
-      
       if (existingUser.picture) {
-        const oldFileKey = existingUser.picture.split("/").pop(); 
+        const oldFileKey = existingUser.picture.split("/").pop();
         const deleteParams = {
           Bucket: S3_BUCKET_NAME,
           Key: oldFileKey,
@@ -419,6 +420,14 @@ exports.editUserInfo = async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(userId, updatedFields, {
       new: true,
     });
+    if (username && updatedUser) {
+      await Post.update({ username: username }, { where: { userid: userId } });
+      await Comment.update(
+        { username: username },
+        { where: { userid: userId } }
+      );
+      activityLogger.info("Updated username in Content and comment tables");
+    }
     if (updatedUser) {
       activityLogger.info("Profile updated");
       return res.status(200).json({
@@ -429,12 +438,47 @@ exports.editUserInfo = async (req, res) => {
           bio: updatedUser.bio,
           picture: updatedUser.picture,
           home_coordinates: updatedUser.home_coordinates,
-          findMe:updatedUser.findMe,
+          findMe: updatedUser.findMe,
         },
       });
     }
   } catch (error) {
     errorLogger.error("Error updating user info:", error);
     return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+exports.deleteAccount = async (req, res) => {
+  const userId = req.user._id.toString();
+
+  try {
+    await User.findByIdAndUpdate(userId, {
+      isDeleted: true,
+      username: "[deleted]",
+      picture: null,
+    });
+
+    await Post.update({ username: "[deleted]" }, { where: { userid: userId } });
+    await Comment.update(
+      { username: "[deleted]" },
+      { where: { userid: userId } }
+    );
+    //TODO message model needs to be heavily changed to make it resemble other models, then make this change
+    //await Message.update({ username: '[deleted]' }, { where: { userid: userId } });
+
+    // Remove user from groups
+    const user = await User.findById(userId);
+    user.groups.forEach(async (groupId) => {
+      await Group.findByIdAndUpdate(groupId, { $pull: { members: userId } });
+    });
+
+    activityLogger.info(`User with ID ${userId} marked as deleted`);
+
+    res.status(200).json({ msg: "User account deleted successfully" });
+  } catch (err) {
+    errorLogger.error("Error deleting user account: ", err);
+    res
+      .status(500)
+      .json({ msg: "Internal server error deleting user account" });
   }
 };
