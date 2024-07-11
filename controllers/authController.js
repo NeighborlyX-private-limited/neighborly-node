@@ -65,17 +65,17 @@ exports.registerUser = async (req, res) => {
     );
   }
 
-  const existingUser = await User.findOne({
-    $or: [{ email: email ? email.toLowerCase() : null }, { phoneNumber }],
-  });
-
-  if (existingUser) {
-    errorLogger.error("Duplicate Entry: Account already exists.");
-    return res.status(400).json({
-      error: "Duplicate Entry",
-      message: "Account already exists.",
-    });
-  }
+  // const existingUser = await User.findOne({
+  //   $or: [{ email: email ? email.toLowerCase() : null }, { phoneNumber }],
+  // });
+  // console.log(existingUser);
+  // if (existingUser) {
+  //   errorLogger.error("Duplicate Entry: Account already exists.");
+  //   return res.status(400).json({
+  //     error: "Duplicate Entry",
+  //     message: "Account already exists.",
+  //   });
+  // }
 
   try {
     const picture = `https://api.multiavatar.com/${username}.png?apikey=${AVATAR_KEY}`;
