@@ -286,6 +286,7 @@ exports.getUserInfo = async (req, res) => {
       email: user.email,
       picture: user.picture,
       phoneNumber: user.phoneNumber,
+      gender: user.gender,
       bio: user.bio || null, // Check for bio existence as for older users bio does not exist
       postCount: postCount,
       karma: user.karma,
