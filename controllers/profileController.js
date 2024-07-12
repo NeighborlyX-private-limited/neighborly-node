@@ -454,6 +454,7 @@ exports.deleteAccount = async (req, res) => {
   const userId = req.user._id.toString();
 
   try {
+
     await User.findByIdAndUpdate(userId, {
       isDeleted: true,
       username: "[deleted]",
