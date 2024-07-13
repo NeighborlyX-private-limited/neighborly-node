@@ -10,6 +10,7 @@ const Group = require("../models/groupModel");
 const uuid = require("uuid");
 const { S3, S3_BUCKET_NAME } = require("../utils/constants");
 const { activityLogger, errorLogger } = require("../utils/logger");
+const { content } = require("googleapis/build/src/apis/content");
 
 exports.getUserContent = async (req, res) => {
   try {
@@ -196,6 +197,8 @@ exports.getUserComments = async (req, res) => {
           }));
         }
 
+      const commenterDetails = await User.findById(comment.userid);
+       const contentProfilePicture = await User.findById(comment.content.userid);
         return {
           commentid: comment.commentid,
           text: comment.text,
@@ -208,9 +211,14 @@ exports.getUserComments = async (req, res) => {
             ...comment.content.get({ plain: true }),
             awards: postAwards,
             pollResults: pollResults,
+            contentProfilePicture : contentProfilePicture.picture,
             poll_options: undefined, // Explicitly remove poll_options from the response
+            
           },
+          commenterProfilePicture : commenterDetails.picture,
           awards: commentAwards,
+          
+         
         };
       })
     );
