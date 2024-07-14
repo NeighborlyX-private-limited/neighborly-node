@@ -99,12 +99,10 @@ exports.fetchComments = async (req, res) => {
 
     // Fetch user details for each comment
     const userIds = comments.rows.map((comment) => comment.userid);
-    console.log(userIds);
     const users = await User.find({ _id: { $in: userIds } }).select(
       "username picture"
     );
-    // const user = await User.findById(comments.userid).lean();
-     console.log(users);
+   
 
     // Map user details to comments
     const userMap = users.reduce((acc, user) => {
