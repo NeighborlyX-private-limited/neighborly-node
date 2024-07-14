@@ -102,6 +102,7 @@ exports.fetchComments = async (req, res) => {
     const users = await User.find({ _id: { $in: userIds } }).select(
       "username picture"
     );
+   
 
     // Map user details to comments
     const userMap = users.reduce((acc, user) => {
@@ -122,6 +123,7 @@ exports.fetchComments = async (req, res) => {
         boos: comment.boos,
         award_type: awards,
         user_picture: user ? user.picture : null,
+        userProfilePicture: user ? user.picture : null,
       };
     });
     activityLogger.info(`Fetched comments for post ID: ${postId}`);
