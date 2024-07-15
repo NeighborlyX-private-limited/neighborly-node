@@ -24,6 +24,7 @@ const Award = sequelize.define(
     contentid: DataTypes.INTEGER,
     commentid: DataTypes.INTEGER,
     created_at: DataTypes.DATE,
+    parentMesageId:DataTypes.INTEGER
   },
   {
     timestamps: false,

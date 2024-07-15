@@ -2,24 +2,24 @@
 const mongoose = require("mongoose");
 
 const messageSchema = new mongoose.Schema({
-  group_id: {
+  groupId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Group",
     required: true
   },
-  senderName: {
+  name: {
     type: String,
     required: true
   },
-  msg: {
+  message: {
     type: String,
     required: true,
   },
-  sent_at: {
+  sendAt: {
     type: Date,
     default: Date.now,
   },
-  read_by: [{
+  readBy: [{
     type: String,
     required: true,
   }],
@@ -27,8 +27,24 @@ const messageSchema = new mongoose.Schema({
     type: String
   },
   votes: {
-    type: Number,
-    default: 0,
+    votes: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref:"content_votes"
+    },
+  },
+  picture: {
+    type: String,
+  },
+  awards:{
+    awards:{
+      type:mongoose.Schema.Types.ObjectId,
+      ref:"awards",
+    },
+  },
+  parentMessageId: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
   },
 });
 
