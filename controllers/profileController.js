@@ -197,8 +197,8 @@ exports.getUserComments = async (req, res) => {
           }));
         }
 
-      const commenterDetails = await User.findById(comment.userid);
-       const contentProfilePicture = await User.findById(comment.content.userid);
+        const commenterDetails = await User.findById(comment.userid);
+        const userProfilePicture = await User.findById(comment.content.userid);
         return {
           commentid: comment.commentid,
           text: comment.text,
@@ -211,14 +211,11 @@ exports.getUserComments = async (req, res) => {
             ...comment.content.get({ plain: true }),
             awards: postAwards,
             pollResults: pollResults,
-            contentProfilePicture : contentProfilePicture.picture,
+            userProfilePicture: userProfilePicture.picture,
             poll_options: undefined, // Explicitly remove poll_options from the response
-            
           },
-          commenterProfilePicture : commenterDetails.picture,
+          commenterProfilePicture: commenterDetails.picture,
           awards: commentAwards,
-          
-         
         };
       })
     );
@@ -462,7 +459,6 @@ exports.deleteAccount = async (req, res) => {
   const userId = req.user._id.toString();
 
   try {
-
     await User.findByIdAndUpdate(userId, {
       isDeleted: true,
       username: "[deleted]",
