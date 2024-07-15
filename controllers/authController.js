@@ -26,7 +26,7 @@ exports.loginUser = async (req, res, next) => {
   let email = "";
   let username = "";
   let user;
-  
+
   const emailRegex = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;
 
   if (emailRegex.test(userId)) {
@@ -70,18 +70,6 @@ exports.registerUser = async (req, res) => {
     );
   }
 
-  // const existingUser = await User.findOne({
-  //   $or: [{ email: email ? email.toLowerCase() : null }, { phoneNumber }],
-  // });
-  // console.log(existingUser);
-  // if (existingUser) {
-  //   errorLogger.error("Duplicate Entry: Account already exists.");
-  //   return res.status(400).json({
-  //     error: "Duplicate Entry",
-  //     message: "Account already exists.",
-  //   });
-  // }
-
   try {
     const picture = `https://api.multiavatar.com/${username}.png?apikey=${AVATAR_KEY}`;
     const user = await User.create({
@@ -103,7 +91,7 @@ exports.registerUser = async (req, res) => {
     if (error.code === 11000 || error.code === 11001) {
       return res.status(400).json({
         error: "Duplicate Entry",
-        message: Object.keys(error.keyValue)[0] + " already exists.",
+        message: "Email/phone already exists.",
       });
     }
     return res.status(400).json(error);
@@ -221,19 +209,20 @@ exports.googleAuth = async (req, res) => {
       let user = await User.findOne({ email: email.toLowerCase() });
 
       if (user) {
-        
         if (user.isDeleted) {
-          errorLogger.error(`Attempt to login with a deleted account: ${email}`);
+          errorLogger.error(
+            `Attempt to login with a deleted account: ${email}`
+          );
           return res.status(401).json({
             message: "This account has been deleted",
           });
         }
-  
-        
-        activityLogger.info(`User ${user.username}(${user._id}) has logged in successfully via Google`);
+
+        activityLogger.info(
+          `User ${user.username}(${user._id}) has logged in successfully via Google`
+        );
         return sendToken(user, 200, res);
       }
-      
     }
     let username = generateUsername() + Math.floor(Math.random() * 10000);
     while (await User.findOne({ username })) {
@@ -337,7 +326,9 @@ exports.verifyPhoneOTP = async (req, res, next) => {
   }
 
   if (user.isDeleted) {
-    errorLogger.error(`Attempt to login with a deleted account: ${phoneNumber}`);
+    errorLogger.error(
+      `Attempt to login with a deleted account: ${phoneNumber}`
+    );
     return next(new ErrorHandler("This account has been deleted", 401));
   }
 
