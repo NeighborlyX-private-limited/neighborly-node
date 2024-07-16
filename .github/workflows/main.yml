@@ -15,6 +15,11 @@ jobs:
         uses: webfactory/ssh-agent@v0.5.3
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Debug secrets
+        run: |
+          echo "EC2_USER=${{ secrets.EC2_USER }}"
+          echo "EC2_HOST=${{ secrets.EC2_HOST }}"
+          echo "SSH_PRIVATE_KEY=${{ secrets.SSH_PRIVATE_KEY }}"
       - name: Run deployment script on EC2
         run: |
           echo "Running deployment script..."
