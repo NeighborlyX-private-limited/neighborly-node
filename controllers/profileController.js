@@ -295,6 +295,9 @@ exports.getUserInfo = async (req, res) => {
       bio: user.bio || null, // Check for bio existence as for older users bio does not exist
       postCount: postCount,
       karma: user.karma,
+      findMe: user.findMe,
+      isPhoneVerified: user.isPhoneVerified,
+      isEmailVerified: user.isVerified,
       awardsCount: Object.values(awardCounts).reduce((a, b) => a + b, 0),
       mostProminentAward: mostProminentAward,
       title: mostProminentAward || "",
@@ -336,7 +339,15 @@ exports.submitFeedback = async (req, res) => {
 
 exports.editUserInfo = async (req, res) => {
   const userId = req.user._id.toString();
-  let { username, gender, bio, homeCoordinates, toggleFindMe, phoneNumber } = req.body;
+  let {
+    username,
+    gender,
+    bio,
+    homeCoordinates,
+    toggleFindMe,
+    phoneNumber,
+    email,
+  } = req.body;
   const file = req.file;
 
   if (!userId) {
@@ -373,6 +384,11 @@ exports.editUserInfo = async (req, res) => {
     if (phoneNumber && phoneNumber !== existingUser.phoneNumber) {
       updatedFields.phoneNumber = phoneNumber;
       updatedFields.isPhoneVerified = false; // Reset phone verification status
+    }
+
+    if (email && email.toLowerCase() !== existingUser.email) {
+      updatedFields.email = email.toLowerCase();
+      updatedFields.isVerified = false; // Reset email verification status
     }
 
     if (toggleFindMe) {
@@ -451,8 +467,10 @@ exports.editUserInfo = async (req, res) => {
           picture: updatedUser.picture,
           home_coordinates: updatedUser.home_coordinates,
           findMe: updatedUser.findMe,
-          phoneNumber:updatedUser.phoneNumber,
-          isPhoneVerified:updatedUser.isPhoneVerified
+          email: updatedUser.email,
+          phoneNumber: updatedUser.phoneNumber,
+          isPhoneVerified: updatedUser.isPhoneVerified,
+          isVerified: updatedUser.isVerified,
         },
       });
     }
