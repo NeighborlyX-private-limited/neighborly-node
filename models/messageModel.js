@@ -1,10 +1,10 @@
-// messageModel.js
+// models/messageModel.js
 const mongoose = require("mongoose");
 
 const messageSchema = new mongoose.Schema({
   groupId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Group",
+    ref: "Group",  
     required: true
   },
   name: {
@@ -20,32 +20,28 @@ const messageSchema = new mongoose.Schema({
     default: Date.now,
   },
   readBy: [{
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,  
+    ref: 'User',  
     required: true,
   }],
   mediaLink: {
     type: String
   },
-  votes: {
-    votes: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref:"content_votes"
-    },
-  },
   picture: {
     type: String,
-  },
-  awards:{
-    awards:{
-      type:mongoose.Schema.Types.ObjectId,
-      ref:"awards",
-    },
-  },
+  },  
   parentMessageId: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true,
+    type: mongoose.Schema.Types.ObjectId,  
+    unique: true,  
+    required: true
   },
+  messageId: {
+    type: mongoose.Schema.Types.ObjectId,
+    unique: true,  
+    required: true
+  },
+}, {
+    timestamps: true  
 });
 
 const Message = mongoose.model("Message", messageSchema);

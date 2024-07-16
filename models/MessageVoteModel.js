@@ -8,14 +8,14 @@ const MessageVote = sequelize.define(
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true,
-      defaultValue: sequelize.literal("nextval('content_votes_voteid_seq')"),
+      defaultValue: sequelize.literal("nextval('message_votes_voteid_seq')"), // Ensure the sequence is created in PostgreSQL
     },
-    parentMessageId: {
+    messageId: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: "content",
-        key: "contentid",
+        model: "messages", // This should correspond to your messages table
+        key: "messageid",
       },
       onUpdate: "NO ACTION",
       onDelete: "CASCADE",
@@ -27,6 +27,7 @@ const MessageVote = sequelize.define(
     votetype: {
       type: DataTypes.STRING(50),
       allowNull: false,
+      enum: ['cheer', 'boo'], // Using ENUM to restrict votetype to 'cheer' or 'boo'
     },
     createdat: {
       type: DataTypes.DATE,
@@ -41,6 +42,7 @@ const MessageVote = sequelize.define(
   {
     timestamps: false,
     tableName: "message_votes",
+    modelName: 'MessageVote'
   }
 );
 
