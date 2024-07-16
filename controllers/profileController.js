@@ -336,7 +336,7 @@ exports.submitFeedback = async (req, res) => {
 
 exports.editUserInfo = async (req, res) => {
   const userId = req.user._id.toString();
-  let { username, gender, bio, homeCoordinates, toggleFindMe } = req.body;
+  let { username, gender, bio, homeCoordinates, toggleFindMe, phoneNumber } = req.body;
   const file = req.file;
 
   if (!userId) {
@@ -369,6 +369,11 @@ exports.editUserInfo = async (req, res) => {
     }
 
     let updatedFields = { username, gender, bio };
+
+    if (phoneNumber && phoneNumber !== existingUser.phoneNumber) {
+      updatedFields.phoneNumber = phoneNumber;
+      updatedFields.isPhoneVerified = false; // Reset phone verification status
+    }
 
     if (toggleFindMe) {
       updatedFields.findMe = !existingUser.findMe;
@@ -446,6 +451,8 @@ exports.editUserInfo = async (req, res) => {
           picture: updatedUser.picture,
           home_coordinates: updatedUser.home_coordinates,
           findMe: updatedUser.findMe,
+          phoneNumber:updatedUser.phoneNumber,
+          isPhoneVerified:updatedUser.isPhoneVerified
         },
       });
     }
