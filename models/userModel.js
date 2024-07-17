@@ -92,6 +92,10 @@ const userSchema = new mongoose.Schema({
     default: false,
     required: true,
   },
+  isPhoneVerified: {
+    type: Boolean,
+    default: false
+  },
   awards: {
     type: Object,
     default: {
