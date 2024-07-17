@@ -92,6 +92,16 @@ const userSchema = new mongoose.Schema({
     default: false,
     required: true,
   },
+  awards: {
+    type: Object,
+    default: {
+      "Local Legend": 10,
+      "Sunflower": 10,
+      "Streetlight": 10,
+      "Park Bench": 10,
+      "Map": 10
+    }
+  }
 });
 
 userSchema.pre("save", async function () {
