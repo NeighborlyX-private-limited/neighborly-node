@@ -71,6 +71,18 @@ exports.registerUser = async (req, res) => {
   }
 
   try {
+    const existingUser = await User.findOne({
+      $or: [{ email: email ? email.toLowerCase() : null }, { phoneNumber }],
+    });
+
+    if (existingUser) {
+      errorLogger.error("Duplicate Entry: Account already exists.");
+      return res.status(400).json({
+        error: "Duplicate Entry",
+        message: "Email/phone already exists.",
+      });
+    }
+
     const picture = `https://api.multiavatar.com/${username}.png?apikey=${AVATAR_KEY}`;
     const user = await User.create({
       username: username,
