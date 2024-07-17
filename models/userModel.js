@@ -95,11 +95,11 @@ const userSchema = new mongoose.Schema({
   awards: {
     type: Object,
     default: {
-      "Local Legend": 10,
-      "Sunflower": 10,
-      "Streetlight": 10,
-      "Park Bench": 10,
-      "Map": 10
+      "Local Legend": 2,
+      "Sunflower": 2,
+      "Streetlight": 2,
+      "Park Bench": 2,
+      "Map": 2
     }
   }
 });
