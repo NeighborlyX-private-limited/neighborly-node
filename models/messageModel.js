@@ -32,13 +32,6 @@ const messageSchema = new mongoose.Schema({
   },  
   parentMessageId: {
     type: mongoose.Schema.Types.ObjectId,  
-    unique: true,  
-    required: true
-  },
-  messageId: {
-    type: mongoose.Schema.Types.ObjectId,
-    unique: true,  
-    required: true
   },
 }, {
     timestamps: true  
