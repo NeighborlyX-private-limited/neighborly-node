@@ -25,8 +25,8 @@ const Award = sequelize.define(
     commentid: DataTypes.INTEGER,
     created_at: DataTypes.DATE,
     messageId: {
-      type: DataTypes.INTEGER,  
-      references: null,  
+      type: DataTypes.STRING(255),
+      allowNull: false,
     },
   },
   {
