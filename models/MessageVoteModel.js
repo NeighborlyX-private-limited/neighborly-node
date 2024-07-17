@@ -11,14 +11,8 @@ const MessageVote = sequelize.define(
       defaultValue: sequelize.literal("nextval('message_votes_voteid_seq')"), // Ensure the sequence is created in PostgreSQL
     },
     messageId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.STRING(255),
       allowNull: false,
-      references: {
-        model: "messages", // This should correspond to your messages table
-        key: "messageid",
-      },
-      onUpdate: "NO ACTION",
-      onDelete: "CASCADE",
     },
     userid: {
       type: DataTypes.STRING(255),
