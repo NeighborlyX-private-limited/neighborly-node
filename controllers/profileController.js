@@ -514,3 +514,10 @@ exports.deleteAccount = async (req, res) => {
       .json({ msg: "Internal server error deleting user account" });
   }
 };
+
+exports.getAwards = async(req, res) => {
+  const userId = req.query.userId || req.user._id.toString();
+  const user = await User.findById(userId);
+  const awards = user.awards;
+  res.status(200).json(awards);
+}
