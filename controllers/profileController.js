@@ -198,7 +198,7 @@ exports.getUserComments = async (req, res) => {
         }
 
         const commenterDetails = await User.findById(comment.userid);
-        const userProfilePicture = await User.findById(comment.content.userid);
+        
         return {
           commentid: comment.commentid,
           text: comment.text,
@@ -483,16 +483,23 @@ exports.editUserInfo = async (req, res) => {
 exports.deleteAccount = async (req, res) => {
   const userId = req.user._id.toString();
 
+  const deletedUsername = `[deleted]${req.user.username}`;
+
   try {
     await User.findByIdAndUpdate(userId, {
-      isDeleted: true,
-      username: "[deleted]",
-      picture: null,
+      $set: {
+        isDeleted: true,
+        username: deletedUsername,
+        picture: null
+      },
+      $unset: {
+        email: "",  
+        phoneNumber: ""  
+      }
     });
-
-    await Post.update({ username: "[deleted]" }, { where: { userid: userId } });
+    await Post.update({ username: deletedUsername }, { where: { userid: userId } });
     await Comment.update(
-      { username: "[deleted]" },
+      { username: deletedUsername },
       { where: { userid: userId } }
     );
     //TODO message model needs to be heavily changed to make it resemble other models, then make this change
