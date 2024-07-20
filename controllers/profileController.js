@@ -198,7 +198,7 @@ exports.getUserComments = async (req, res) => {
         }
 
         const commenterDetails = await User.findById(comment.userid);
-        const userProfilePicture = await User.findById(comment.content.userid);
+        console.log(comment.content.userid);
         return {
           commentid: comment.commentid,
           text: comment.text,
@@ -488,6 +488,8 @@ exports.deleteAccount = async (req, res) => {
       isDeleted: true,
       username: "[deleted]",
       picture: null,
+      email: null,  
+      phoneNumber: null
     });
 
     await Post.update({ username: "[deleted]" }, { where: { userid: userId } });
