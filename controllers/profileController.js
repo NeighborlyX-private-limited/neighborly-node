@@ -198,7 +198,7 @@ exports.getUserComments = async (req, res) => {
         }
 
         const commenterDetails = await User.findById(comment.userid);
-        
+        const userProfilePicture = await User.findById(comment.content.userid);
         return {
           commentid: comment.commentid,
           text: comment.text,
@@ -490,14 +490,17 @@ exports.deleteAccount = async (req, res) => {
       $set: {
         isDeleted: true,
         username: deletedUsername,
-        picture: null
+        picture: null,
       },
       $unset: {
-        email: "",  
-        phoneNumber: ""  
-      }
+        email: "",
+        phoneNumber: "",
+      },
     });
-    await Post.update({ username: deletedUsername }, { where: { userid: userId } });
+    await Post.update(
+      { username: deletedUsername },
+      { where: { userid: userId } }
+    );
     await Comment.update(
       { username: deletedUsername },
       { where: { userid: userId } }
@@ -522,9 +525,9 @@ exports.deleteAccount = async (req, res) => {
   }
 };
 
-exports.getAwards = async(req, res) => {
+exports.getAwards = async (req, res) => {
   const userId = req.query.userId || req.user._id.toString();
   const user = await User.findById(userId);
   const awards = user.awards;
   res.status(200).json(awards);
-}
+};
