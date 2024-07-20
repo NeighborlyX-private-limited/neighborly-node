@@ -198,7 +198,7 @@ exports.getUserComments = async (req, res) => {
         }
 
         const commenterDetails = await User.findById(comment.userid);
-        console.log(comment.content.userid);
+        
         return {
           commentid: comment.commentid,
           text: comment.text,
