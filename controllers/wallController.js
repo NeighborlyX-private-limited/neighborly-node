@@ -457,39 +457,50 @@ exports.giveAward = async (req, res) => {
 
     switch (awardType) {
       case "Local Legend":
-        if (user.awards['Local Legend'] <= 0)
-          isAvailable = false;
+        if (user.awards["Local Legend"] <= 0) isAvailable = false;
         else
-          await User.updateOne({ _id: user._id }, { $inc: { "awards.Local Legend": -1 } });
+          await User.updateOne(
+            { _id: user._id },
+            { $inc: { "awards.Local Legend": -1 } }
+          );
         break;
       case "Sunflower":
-        if (user.awards['Sunflower'] <= 0)
-          isAvailable = false;
+        if (user.awards["Sunflower"] <= 0) isAvailable = false;
         else
-          await User.updateOne({ _id: user._id }, { $inc: { "awards.Sunflower": -1 } });
+          await User.updateOne(
+            { _id: user._id },
+            { $inc: { "awards.Sunflower": -1 } }
+          );
         break;
       case "Streetlight":
-        if (user.awards['Streetlight'] <= 0)
-          isAvailable = false;
+        if (user.awards["Streetlight"] <= 0) isAvailable = false;
         else
-          await User.updateOne({ _id: user._id }, { $inc: { "awards.Streetlight": -1 } });
+          await User.updateOne(
+            { _id: user._id },
+            { $inc: { "awards.Streetlight": -1 } }
+          );
         break;
       case "Park Bench":
-        if (user.awards['Park Bench'] <= 0)
-          isAvailable = false;
+        if (user.awards["Park Bench"] <= 0) isAvailable = false;
         else
-          await User.updateOne({ _id: user._id }, { $inc: { "awards.Park Bench": -1 } });
+          await User.updateOne(
+            { _id: user._id },
+            { $inc: { "awards.Park Bench": -1 } }
+          );
         break;
       case "Map":
-        if (user.awards['Map'] <= 0)
-          isAvailable = false;
+        if (user.awards["Map"] <= 0) isAvailable = false;
         else
-          await User.updateOne({ _id: user._id }, { $inc: { "awards.Map": -1 } });
+          await User.updateOne(
+            { _id: user._id },
+            { $inc: { "awards.Map": -1 } }
+          );
         break;
-      default: return res.status(400).json({ msg: "Invalid award type" });
+      default:
+        return res.status(400).json({ msg: "Invalid award type" });
     }
     if (!isAvailable)
-      return res.status("400").json({ msg: "Award not available" });
+      return res.status(400).json({ msg: "Award not available" });
     if (type === "post") {
       const post = await Post.findOne({ where: { contentid: id } });
       if (!post) {
