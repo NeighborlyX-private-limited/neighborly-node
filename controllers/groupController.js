@@ -466,7 +466,7 @@ exports.fetchGroupDetails = async (req, res) => {
     const { groupId, name, description, isOpen, icon, displayname } = req.body;
     const group = await Group.findById(new ObjectId(groupId));
     const user = req.user;
-    let flag = false;
+    let flag = true;
     try {
       const admin_count = group.admin.length;
       const presentGroup = await Group.findOne({ displayname });
@@ -480,37 +480,10 @@ exports.fetchGroupDetails = async (req, res) => {
         }
       }
       if (flag) {
-        let updated;
-        if(name) {
-          updated = await Group.updateOne(
-            { _id: new ObjectId(groupId) },
-            { $set: { name: name} }
-          );
-        }
-        else if (description) {
-          updated = await Group.updateOne(
-            { _id: new ObjectId(groupId) },
-            { $set: { description: description } }
-          );
-        }
-        else if(displayname) {
-          updated = await Group.updateOne(
-            { _id: new ObjectId(groupId) },
-            { $set: { displayname: displayname } }
-          );
-        }
-        else if(isOpen) {
-          updated = await Group.updateOne(
-            { _id: new ObjectId(groupId) },
-            { $set: {isOpen: isOpen } }
-          );
-        }
-        else if(icon) {
-          updated = await Group.updateOne(
-            { _id: new ObjectId(groupId) },
-            { $set: { icon: icon } }
-          );
-        }
+        const updated = await Group.updateOne(
+          { _id: new ObjectId(groupId) },
+          { $set: { name: name, displayname: displayname, description: description, isOpen: isOpen, icon: icon } }
+        );
         activityLogger.info(`Group Details updated for group ${groupId}.`);
         res.status(200).json(updated);
       } else {
