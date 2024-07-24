@@ -71,30 +71,30 @@ exports.registerUser = async (req, res) => {
   }
 
   try {
-    const existingUser = await User.findOne({
-      $or: [{ email: email ? email.toLowerCase() : null }, { phoneNumber }],
-    });
-
-    if (existingUser) {
-      errorLogger.error("Duplicate Entry: Account already exists.");
-      return res.status(400).json({
-        error: "Duplicate Entry",
-        message: "Email/phone already exists.",
+    if (email) {
+      const picture = `https://api.multiavatar.com/${username}.png?apikey=${AVATAR_KEY}`;
+      const user = await User.create({
+        username: username,
+        password: password,
+        email: email.toLowerCase(),
+        picture: picture,
+        bio: null,
+        auth_type: email ? "email" : "phone",
       });
+      sendToken(user, 200, res);
     }
-
-    const picture = `https://api.multiavatar.com/${username}.png?apikey=${AVATAR_KEY}`;
-    const user = await User.create({
-      username: username,
-      password: password,
-      email: email ? email.toLowerCase() : null,
-      phoneNumber: phoneNumber ? phoneNumber : null,
-      picture: picture,
-      bio: null,
-      auth_type: email ? "email" : "phone",
-    });
-
-    sendToken(user, 200, res);
+    else if (phoneNumber) {
+      const picture = `https://api.multiavatar.com/${username}.png?apikey=${AVATAR_KEY}`;
+      const user = await User.create({
+        username: username,
+        password: password,
+        phoneNumber: phoneNumber,
+        picture: picture,
+        bio: null,
+        auth_type: email ? "email" : "phone",
+      });
+      sendToken(user, 200, res);
+    }
   } catch (error) {
     errorLogger.error(
       "An unexpected error occurred during user registration:",

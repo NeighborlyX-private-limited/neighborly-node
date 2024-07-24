@@ -12,10 +12,12 @@ const {
   submitFeedback,
   editUserInfo,
   deleteAccount,
+  getAwards
 } = require("../controllers/profileController");
 
 router.route("/user-content/:userId?").get(isAuthenticated, getUserContent);
 router.route("/user-awards/:userId?").get(isAuthenticated, getUserAwards);
+router.route("/awards/:userId?").get(isAuthenticated, getAwards);
 router.route("/user-comments/:userId?").get(isAuthenticated, getUserComments);
 router.route("/user-groups/:userId?").get(isAuthenticated, getUserGroups);
 router.route("/user-info/:userId?").get(isAuthenticated, getUserInfo);

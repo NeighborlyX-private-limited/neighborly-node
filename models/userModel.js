@@ -95,6 +95,16 @@ const userSchema = new mongoose.Schema({
   isPhoneVerified:{
     type:Boolean,
     default:false
+  },
+  awards: {
+    type: Object,
+    default: {
+      "Local Legend": 2,
+      "Sunflower": 2,
+      "Streetlight": 2,
+      "Park Bench": 2,
+      "Map": 2
+    }
   }
 });
 
