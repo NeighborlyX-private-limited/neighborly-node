@@ -466,7 +466,7 @@ exports.fetchGroupDetails = async (req, res) => {
     const { groupId, name, description, isOpen, icon, displayname } = req.body;
     const group = await Group.findById(new ObjectId(groupId));
     const user = req.user;
-    let flag = true;
+    let flag = false;
     try {
       const admin_count = group.admin.length;
       const presentGroup = await Group.findOne({ displayname });
