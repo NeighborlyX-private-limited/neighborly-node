@@ -10,7 +10,7 @@ const {otpgenerator} = require('../utils/emailService');
 
 exports.addUser = async (req, res) => {
   try {
-    
+
     const groupId = req.params["groupId"]; 
      
     const userId = req.query.userId || req.user._id.toString();
@@ -276,7 +276,7 @@ exports.createGroup = async (req, res) => {
     const group = await Group.create({
       name,
       displayname,
-      icon: icon || 'default_icon.png',
+      icon: icon,
       description,
       location,
       typeOf,
@@ -609,3 +609,34 @@ function isValidCoordinate(latitude, longitude) {
     longitude <= 180
   );
 }
+
+
+exports.searchGroups = async (req, res) => {
+  const query = req.body.searchQuery;
+
+  if (!query) {
+      errorLogger.error("Search query missing - cannot proceed with group search.");
+      return res.status(400).json({ message: "Please provide a search query." });
+  }
+
+  try {
+      const groups = await Group.find({
+          $or: [
+              { name: { $regex: query, $options: 'i' } },
+              { description: { $regex: query, $options: 'i' } },
+              { typeOf: { $regex: query, $options: 'i' } }
+          ]
+      }).select('id name description typeOf location').sort({ name: 'asc' });
+
+      if (groups.length > 0) {
+          activityLogger.info(`Found ${groups.length} groups matching the query '${query}'.`);
+          res.status(200).json(groups);
+      } else {
+          errorLogger.info(`No groups found for the query '${query}'.`);
+          res.status(404).json({ message: "No groups found matching your query." });
+      }
+  } catch (error) {
+      errorLogger.error('Error searching for groups: ' + error.message);
+      res.status(500).json({ message: "Error searching for groups." });
+  }
+};

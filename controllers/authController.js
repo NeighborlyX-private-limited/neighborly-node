@@ -76,7 +76,7 @@ exports.registerUser = async (req, res) => {
     });
 
     if (existingUser) {
-      errorLogger.error("Duplicate Entry: Account already exists.");
+      errorLogger.error(`Duplicate Entry: Account already exists ${existingUser.email}`);
       return res.status(400).json({
         error: "Duplicate Entry",
         message: "Email/phone already exists.",
