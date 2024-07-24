@@ -490,6 +490,7 @@ exports.deleteAccount = async (req, res) => {
       $set: {
         isDeleted: true,
         username: deletedUsername,
+
         picture: null
       },
       $unset: {
@@ -498,6 +499,7 @@ exports.deleteAccount = async (req, res) => {
       }
     });
     await Post.update({ username: deletedUsername }, { where: { userid: userId } });
+
     await Comment.update(
       { username: deletedUsername },
       { where: { userid: userId } }
@@ -520,4 +522,11 @@ exports.deleteAccount = async (req, res) => {
       .status(500)
       .json({ msg: "Internal server error deleting user account" });
   }
+};
+
+exports.getAwards = async (req, res) => {
+  const userId = req.query.userId || req.user._id.toString();
+  const user = await User.findById(userId);
+  const awards = user.awards;
+  res.status(200).json(awards);
 };

@@ -447,17 +447,60 @@ exports.report = async (req, res) => {
 exports.giveAward = async (req, res) => {
   try {
     const { id, type, awardType } = req.body;
-    const giverUserId = req.user._id;
+    const user = req.user;
 
     if (!id || !type || !awardType) {
       return res.status(400).json({ msg: "Missing required fields" });
     }
 
-    // Validate the award type using the constants file
-    if (!VALIDAWARDTYPES.has(awardType)) {
-      return res.status(400).json({ msg: "Invalid award type" });
-    }
+    var isAvailable = true;
 
+    switch (awardType) {
+      case "Local Legend":
+        if (user.awards["Local Legend"] <= 0) isAvailable = false;
+        else
+          await User.updateOne(
+            { _id: user._id },
+            { $inc: { "awards.Local Legend": -1 } }
+          );
+        break;
+      case "Sunflower":
+        if (user.awards["Sunflower"] <= 0) isAvailable = false;
+        else
+          await User.updateOne(
+            { _id: user._id },
+            { $inc: { "awards.Sunflower": -1 } }
+          );
+        break;
+      case "Streetlight":
+        if (user.awards["Streetlight"] <= 0) isAvailable = false;
+        else
+          await User.updateOne(
+            { _id: user._id },
+            { $inc: { "awards.Streetlight": -1 } }
+          );
+        break;
+      case "Park Bench":
+        if (user.awards["Park Bench"] <= 0) isAvailable = false;
+        else
+          await User.updateOne(
+            { _id: user._id },
+            { $inc: { "awards.Park Bench": -1 } }
+          );
+        break;
+      case "Map":
+        if (user.awards["Map"] <= 0) isAvailable = false;
+        else
+          await User.updateOne(
+            { _id: user._id },
+            { $inc: { "awards.Map": -1 } }
+          );
+        break;
+      default:
+        return res.status(400).json({ msg: "Invalid award type" });
+    }
+    if (!isAvailable)
+      return res.status(400).json({ msg: "Award not available" });
     if (type === "post") {
       const post = await Post.findOne({ where: { contentid: id } });
       if (!post) {
@@ -467,14 +510,14 @@ exports.giveAward = async (req, res) => {
       await Award.create({
         contentid: id,
         commentid: null,
-        giver_userid: giverUserId.toString(),
+        giver_userid: user._id.toString(),
         receiver_userid: post.userid,
         award_type: awardType,
         createdat: new Date(),
       });
 
       activityLogger.info(
-        `Award (${awardType}) given to post ID ${id} by user ${giverUserId}`
+        `Award (${awardType}) given to post ID ${id} by user ${user._id}`
       );
     } else if (type === "comment") {
       const comment = await Comment.findOne({ where: { commentid: id } });
@@ -485,14 +528,14 @@ exports.giveAward = async (req, res) => {
       await Award.create({
         contentid: null,
         commentid: id,
-        giver_userid: giverUserId.toString(),
+        giver_userid: user._id.toString(),
         receiver_userid: comment.userid,
         award_type: awardType,
         createdat: new Date(),
       });
 
       activityLogger.info(
-        `Award (${awardType}) given to comment ID ${id} by user ${giverUserId}`
+        `Award (${awardType}) given to comment ID ${id} by user ${user._id}`
       );
     } else {
       return res.status(400).json({ msg: "Invalid type specified" });
