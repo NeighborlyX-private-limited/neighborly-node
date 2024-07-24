@@ -196,9 +196,9 @@ exports.getUserComments = async (req, res) => {
             votes: pollVotesMap[data.optionId] || 0,
           }));
         }
-
         const commenterDetails = await User.findById(comment.userid);
         const userProfilePicture = await User.findById(comment.content.userid);
+        console.log(comment.content.userid);
         return {
           commentid: comment.commentid,
           text: comment.text,
