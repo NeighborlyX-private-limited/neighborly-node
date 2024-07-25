@@ -2,6 +2,7 @@ const opencage = require("opencage-api-client");
 const Message = require("../models/messageModel");
 const Group = require("../models/groupModel");
 const User = require("../models/userModel");
+const Report = require("../models/ReportModel");
 const mongoose = require("mongoose");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const { error } = require("winston");
@@ -233,6 +234,15 @@ exports.removeUser = async (req, res) => {
 };
 
 
+function getRandomColor() {
+  const letters = '0123456789ABCDEF';
+  let color = '#';
+  for (let i = 0; i < 6; i++) {
+    color += letters[Math.floor(Math.random() * 16)];
+  }
+  return color;
+}
+
 exports.createGroup = async (req, res) => {
   try {
     const {
@@ -272,11 +282,14 @@ exports.createGroup = async (req, res) => {
       displayname = name + code;
     }
 
+    // Use the provided icon or generate a random color if no icon is provided
+    const groupIcon = icon || getRandomColor();
+
     // Create the group
     const group = await Group.create({
       name,
       displayname,
-      icon: icon,
+      icon: groupIcon,
       description,
       location,
       typeOf,
@@ -638,5 +651,91 @@ exports.searchGroups = async (req, res) => {
   } catch (error) {
       errorLogger.error('Error searching for groups: ' + error.message);
       res.status(500).json({ message: "Error searching for groups." });
+  }
+};
+
+
+exports.leaveGroup = async (req, res) => {
+  try {
+    const { groupId } = req.params; // Get groupId from URL parameters
+    const userId = req.user._id; // Get the user ID from the authenticated user
+
+    activityLogger.info(`User with ID ${userId} attempting to leave group with ID ${groupId}.`);
+
+    // Find the group
+    const group = await Group.findById(groupId);
+    if (!group) {
+      errorLogger.info(`Group with ID ${groupId} not found.`);
+      return res.status(404).json({ message: "Group not found." });
+    }
+
+    // Check if the user is a member of the group
+    const memberIndex = group.members.findIndex(member => member.userId.toString() === userId.toString());
+    if (memberIndex === -1) {
+      errorLogger.info(`User with ID ${userId} is not a member of group with ID ${groupId}.`);
+      return res.status(400).json({ message: "User is not a member of this group." });
+    }
+
+    // Remove the user from the group's members
+    group.members.splice(memberIndex, 1);
+    
+    // Save the updated group
+    await group.save({ validateBeforeSave: false }); // Skip validation if it's causing issues
+
+    // Remove the group from the user's list of groups
+    const userUpdateResult = await User.updateOne(
+      { _id: userId },
+      { $pull: { groups: groupId } }
+    );
+
+    // Check if the user update was successful
+    if (userUpdateResult.modifiedCount > 0) {
+      activityLogger.info(`User with ID ${userId} successfully left group with ID ${groupId}.`);
+      res.status(200).json({ message: "Successfully left the group." });
+    } else {
+      errorLogger.info(`Failed to remove group from user's list. User ID ${userId}, Group ID ${groupId}.`);
+      res.status(400).json({ message: "Failed to leave the group." });
+    }
+  } catch (error) {
+    errorLogger.error("An unexpected error occurred during leaving group: " + error.message);
+    res.status(500).json({ message: "Internal Server Error", error: error.toString() });
+  }
+};
+
+exports.reportGroup = async (req, res) => {
+  try {
+    const { groupId, reason } = req.body;
+    const userId = req.user._id;
+
+    // Validate input
+    if (!groupId || !reason) {
+      return res.status(400).json({ msg: "Group ID and reason are required" });
+    }
+
+    // Find the group by ID
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ msg: "Group not found" });
+    }
+
+    // Check if the user is not the group admin
+    const isAdmin = group.admin.some(admin => admin.userId.toString() === userId.toString());
+    if (isAdmin) {
+      return res.status(400).json({ msg: "User cannot report a group they administer" });
+    }
+
+    // Create report for the group
+    const report = await Report.create({
+      userid: userId.toString(),
+      groupid: groupId,
+      report_reason: reason,
+    });
+
+    activityLogger.info(`Group with ID ${groupId} reported by user ${userId}`);
+    return res.status(200).json(report);
+
+  } catch (err) {
+    errorLogger.error("An unexpected error occurred during group reporting: ", err);
+    return res.status(500).json({ msg: "Internal server error in reportGroup" });
   }
 };
