@@ -655,52 +655,7 @@ exports.searchGroups = async (req, res) => {
 };
 
 
-exports.leaveGroup = async (req, res) => {
-  try {
-    const { groupId } = req.params; // Get groupId from URL parameters
-    const userId = req.user._id; // Get the user ID from the authenticated user
 
-    activityLogger.info(`User with ID ${userId} attempting to leave group with ID ${groupId}.`);
-
-    // Find the group
-    const group = await Group.findById(groupId);
-    if (!group) {
-      errorLogger.info(`Group with ID ${groupId} not found.`);
-      return res.status(404).json({ message: "Group not found." });
-    }
-
-    // Check if the user is a member of the group
-    const memberIndex = group.members.findIndex(member => member.userId.toString() === userId.toString());
-    if (memberIndex === -1) {
-      errorLogger.info(`User with ID ${userId} is not a member of group with ID ${groupId}.`);
-      return res.status(400).json({ message: "User is not a member of this group." });
-    }
-
-    // Remove the user from the group's members
-    group.members.splice(memberIndex, 1);
-    
-    // Save the updated group
-    await group.save({ validateBeforeSave: false }); // Skip validation if it's causing issues
-
-    // Remove the group from the user's list of groups
-    const userUpdateResult = await User.updateOne(
-      { _id: userId },
-      { $pull: { groups: groupId } }
-    );
-
-    // Check if the user update was successful
-    if (userUpdateResult.modifiedCount > 0) {
-      activityLogger.info(`User with ID ${userId} successfully left group with ID ${groupId}.`);
-      res.status(200).json({ message: "Successfully left the group." });
-    } else {
-      errorLogger.info(`Failed to remove group from user's list. User ID ${userId}, Group ID ${groupId}.`);
-      res.status(400).json({ message: "Failed to leave the group." });
-    }
-  } catch (error) {
-    errorLogger.error("An unexpected error occurred during leaving group: " + error.message);
-    res.status(500).json({ message: "Internal Server Error", error: error.toString() });
-  }
-};
 
 exports.reportGroup = async (req, res) => {
   try {

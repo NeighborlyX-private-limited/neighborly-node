@@ -15,7 +15,6 @@ const {
   deleteGroup,
   addAdmin,
   searchGroups,
-  leaveGroup,
   reportGroup
 } = require("../controllers/groupController");
 
@@ -27,7 +26,6 @@ router.route("/nearest-group").get(isAuthenticated, nearestGroup);
 router.route("/delete-group/:groupId").delete(isAuthenticated, deleteGroup);
 router.route("/create").post(isAuthenticated, createGroup);
 router.route("/search-group").get(isAuthenticated,searchGroups);
-router.route("/leave-group/:groupId?").post(isAuthenticated,leaveGroup);
 router.route("/report-group").post(isAuthenticated,reportGroup);
 router
   .route("/fetch-group-messages/:groupId")
