@@ -13,7 +13,8 @@ const {
   nearbyUsers,
   updateGroupDetails,
   deleteGroup,
-  addAdmin
+  addAdmin,
+  blockUser
 } = require("../controllers/groupController");
 
 router.route("/remove-user").post(isAuthenticated, removeUser);
@@ -31,5 +32,6 @@ router
   .get(isAuthenticated, fetchGroupDetails);
 router.route("/update-group-details").put(isAuthenticated, updateGroupDetails);
 router.route("/add-admin").post(isAuthenticated, addAdmin);
+router.route("/block-user").put(isAuthenticated, blockUser);
 
 module.exports = router;

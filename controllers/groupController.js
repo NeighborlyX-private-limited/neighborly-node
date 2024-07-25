@@ -606,6 +606,77 @@ exports.addAdmin = async (req, res) => {
   }
 };
 
+exports.blockUser = async (req, res) => { 
+  const {groupId, userId, block} = req.body;
+  try {
+    const foundUser = await User.findById({ _id: new ObjectId(userId) });
+    if(block) {
+      await Group.updateOne(
+        { _id: new ObjectId(groupId) },
+        {
+          $pull: {
+            members: {
+              user: {
+                userId: new ObjectId(userId),
+                userName: foundUser.username,
+                picture: foundUser.picture,
+                karma: foundUser.karma,
+              },
+            },
+          },
+        }
+      );
+      await Group.updateOne(
+        { _id: new ObjectId(groupId) },
+        {
+          $addToSet: {
+            blockList: {
+              userId: new ObjectId(userId),
+              userName: foundUser.username,
+              picture: foundUser.picture,
+              karma: foundUser.karma,
+            },
+          },
+        }
+      );
+    }
+    else {
+      await Group.updateOne(
+        { _id: new ObjectId(groupId) },
+        {
+          $pull: {
+            blockList: {
+              user: {
+                userId: new ObjectId(userId),
+                userName: foundUser.username,
+                picture: foundUser.picture,
+                karma: foundUser.karma,
+              },
+            },
+          },
+        }
+      );
+      await Group.updateOne(
+        { _id: new ObjectId(groupId) },
+        {
+          $addToSet: {
+            members: {
+              userId: new ObjectId(userId),
+              userName: foundUser.username,
+              picture: foundUser.picture,
+              karma: foundUser.karma,
+            },
+          },
+        }
+      );
+    }
+  } catch(error) {
+    res.status(500).json({
+      msg: "Error in blockUser"
+    });
+  }
+}
+
 // Function to validate coordinates
 function isValidCoordinate(latitude, longitude) {
   return (
