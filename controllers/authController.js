@@ -197,10 +197,15 @@ exports.logoutUser = async (req, res, next) => {
 exports.googleAuth = async (req, res) => {
   try {
     const { token } = req.body;
-    const client = new OAuth2Client();
+    if (!token) {
+      errorLogger.error("No token provided");
+      return res.status(400).json({ message: "No token provided" });
+    }
+
+    const client = new OAuth2Client(CLIENT_ID);
     const ticket = await client.verifyIdToken({
       idToken: token,
-      requiredAudience: process.env.CLIENT_ID,
+      audience: process.env.CLIENT_ID,
     });
     const payload = ticket.getPayload();
 
@@ -242,6 +247,7 @@ exports.googleAuth = async (req, res) => {
     }
     try {
       const picture = `https://api.multiavatar.com/${username}.png?apikey=${AVATAR_KEY}`;
+      const password = "default_password"; // Define a default password or a random one if needed
       const user = await User.create({
         username: username,
         password: password,
@@ -249,7 +255,7 @@ exports.googleAuth = async (req, res) => {
         picture: picture,
         auth_type: "email",
       });
-      activityLogger.info("User logged in successfully");
+      activityLogger.info(`User ${user.username}(${user._id}) has been created and logged in successfully via Google`);
       sendToken(user, 200, res);
     } catch (error) {
       errorLogger.error("Error in Oauth:", err);
