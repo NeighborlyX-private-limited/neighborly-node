@@ -114,7 +114,8 @@ exports.makeGroupPermanent = async (req, res) => {
 
 exports.removeUser = async (req, res) => {
   try {
-    const { userId, groupId } = req.body;
+    const { groupId } = req.params; 
+    const userId = req.user._id;
     activityLogger.info(
       `Removing user with ID ${userId} from group with ID ${groupId}.`
     );
@@ -653,8 +654,6 @@ exports.searchGroups = async (req, res) => {
       res.status(500).json({ message: "Error searching for groups." });
   }
 };
-
-
 
 
 exports.reportGroup = async (req, res) => {
