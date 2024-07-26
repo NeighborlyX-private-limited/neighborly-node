@@ -18,7 +18,7 @@ const {
   reportGroup
 } = require("../controllers/groupController");
 
-router.route("/remove-user/:groupId?").post(isAuthenticated, removeUser);
+router.route("/remove-user").post(isAuthenticated, removeUser);
 router.route("/make-group-permanent").put(isAuthenticated, makeGroupPermanent);
 router.route("/fetch-nearby-users").get(isAuthenticated, nearbyUsers);
 router.route("/add-user/:groupId?").post(isAuthenticated, addUser);

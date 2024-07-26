@@ -114,8 +114,7 @@ exports.makeGroupPermanent = async (req, res) => {
 
 exports.removeUser = async (req, res) => {
   try {
-    const { groupId } = req.params; 
-    const userId = req.user._id;
+    const { groupId,userId} = req.body
     activityLogger.info(
       `Removing user with ID ${userId} from group with ID ${groupId}.`
     );
