@@ -4,6 +4,12 @@ const authRoute = require("./routes/authRoute");
 const dummyRoute = require("./routes/dummyRoute");
 const dotenv = require("dotenv");
 const cookieParser = require("cookie-parser");
+//----------
+const passport = require("passport");
+// const GoogleStrategy = require("passport-google-oauth2").Strategy;
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+
+//----------
 const { connectDatabase } = require("./config/database");
 const errorMiddleware = require("./middlewares/error");
 const groupRoute = require("./routes/groupRoute");
@@ -21,6 +27,10 @@ const PORT = process.env.PORT;
 const API_PREFIX = process.env.API_PREFIX || "";
 const CORS_URL = process.env.CORS_URL || "http://localhost:5173";
 
+
+// Adding google oauth 
+
+
 app.use(
   session({
     resave: false,
@@ -28,6 +38,44 @@ app.use(
     secret: process.env.SESSION_SECRET,
   })
 );
+
+
+
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+
+
+// Adding google OAUTH 
+
+
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: process.env.CLIENT_ID,
+      clientSecret: process.env.CLIENT_SECRET,
+      callbackURL: "localhost:5000/authentication/google/callback",
+      passReqToCallback: true,
+    },
+    function (request, accessToken, refreshToken, profile, done) {
+      console.log("authenticate using gauth")
+      return done(null, profile);
+    }
+  )
+);
+passport.serializeUser(function (user, done) {
+  done(null, user);
+});
+passport.deserializeUser(function (user, done) {
+  done(null, user);
+});
+
+// End --------------------
+
+
+//----------------
+
 
 //Connecting Database
 connectDatabase();
