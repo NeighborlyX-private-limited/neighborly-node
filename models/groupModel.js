@@ -27,8 +27,10 @@ const groupSchema = new mongoose.Schema({
       default: [0, 0], // Default coordinates, update as needed
     },
   },
-  isOpen: {
-    type: Boolean,
+  typeOf: {  // Changed from 'type' to 'typeOf'
+    type: String,
+    enum: ["open", "close"],
+    required: [true]
   },
   radius: {
     type: Number,
