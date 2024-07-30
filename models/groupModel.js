@@ -62,6 +62,19 @@ const groupSchema = new mongoose.Schema({
       karma: Number,
     },
   ],
+
+  blockList: [
+    {
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+      },
+      userName: String,
+      picture: String,
+      karma: Number,
+    },
+  ]
 });
 
 // Auto-delete groups after 24 hours if not permanent

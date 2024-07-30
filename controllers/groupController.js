@@ -7,7 +7,21 @@ const mongoose = require("mongoose");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const { error } = require("winston");
 const ObjectId = mongoose.Types.ObjectId;
-const {otpgenerator} = require('../utils/emailService');
+const { otpgenerator } = require("../utils/emailService");
+
+function formatGroupCard(group) {
+  return {
+    isPublic: group.isOpen,
+    id: group._id,
+    name: group.name,
+    image: group.icon,
+    membersCount: group.members.length + group.admin.length,
+    userPictures: group.members
+      .concat(group.admin)
+      .slice(0, 3)
+      .map((member) => member.picture),
+  };
+}
 
 exports.addUser = async (req, res) => {
   try {
@@ -278,7 +292,11 @@ exports.createGroup = async (req, res) => {
     const code = otpgenerator();
     let displayname = name + code;
     while (await Group.findOne({ displayname })) {
-      code = otpGenerator.generate(4, { upperCaseAlphabets: false, lowerCaseAlphabets: false, specialChars: false });
+      code = otpGenerator.generate(4, {
+        upperCaseAlphabets: false,
+        lowerCaseAlphabets: false,
+        specialChars: false,
+      });
       displayname = name + code;
     }
 
@@ -465,39 +483,47 @@ exports.fetchGroupDetails = async (req, res) => {
   }
 };
 
-  exports.updateGroupDetails = async (req, res) => {
-    const { groupId, name, description, isOpen, icon, displayname } = req.body;
-    const group = await Group.findById(new ObjectId(groupId));
-    const user = req.user;
-    let flag = false;
-    try {
-      const admin_count = group.admin.length;
-      const presentGroup = await Group.findOne({ displayname });
-      if (presentGroup) {
-        throw new Error('Duplicate displayname');
-      }
-      for (let i = 0; i < admin_count; ++i) {
-        if (group.admin[i].userId.toString() == user._id.toString()) {
-          flag = true;
-          break;
-        }
-      }
-      if (flag) {
-        const updated = await Group.updateOne(
-          { _id: new ObjectId(groupId) },
-          { $set: { name: name, displayname: displayname, description: description, isOpen: isOpen, icon: icon } }
-        );
-        activityLogger.info(`Group Details updated for group ${groupId}.`);
-        res.status(200).json(updated);
-      } else {
-        throw new Error("Access denied");
-      }
-    } catch (err) {
-      res.status(403).json({
-        msg: err.message,
-      });
+exports.updateGroupDetails = async (req, res) => {
+  const { groupId, name, description, isOpen, icon, displayname } = req.body;
+  const group = await Group.findById(new ObjectId(groupId));
+  const user = req.user;
+  let flag = false;
+  try {
+    const admin_count = group.admin.length;
+    const presentGroup = await Group.findOne({ displayname });
+    if (presentGroup) {
+      throw new Error("Duplicate displayname");
     }
-  };
+    for (let i = 0; i < admin_count; ++i) {
+      if (group.admin[i].userId.toString() == user._id.toString()) {
+        flag = true;
+        break;
+      }
+    }
+    if (flag) {
+      const updated = await Group.updateOne(
+        { _id: new ObjectId(groupId) },
+        {
+          $set: {
+            name: name,
+            displayname: displayname,
+            description: description,
+            isOpen: isOpen,
+            icon: icon,
+          },
+        }
+      );
+      activityLogger.info(`Group Details updated for group ${groupId}.`);
+      res.status(200).json(updated);
+    } else {
+      throw new Error("Access denied");
+    }
+  } catch (err) {
+    res.status(403).json({
+      msg: err.message,
+    });
+  }
+};
 exports.deleteGroup = async (req, res) => {
   try {
     const user = req.user;
@@ -609,6 +635,76 @@ exports.addAdmin = async (req, res) => {
   }
 };
 
+exports.blockUser = async (req, res) => {
+  const { groupId, userId, block } = req.body;
+  try {
+    const foundUser = await User.findById({ _id: new ObjectId(userId) });
+    if (block) {
+      await Group.updateOne(
+        { _id: new ObjectId(groupId) },
+        {
+          $pull: {
+            members: {
+              user: {
+                userId: new ObjectId(userId),
+                userName: foundUser.username,
+                picture: foundUser.picture,
+                karma: foundUser.karma,
+              },
+            },
+          },
+        }
+      );
+      await Group.updateOne(
+        { _id: new ObjectId(groupId) },
+        {
+          $addToSet: {
+            blockList: {
+              userId: new ObjectId(userId),
+              userName: foundUser.username,
+              picture: foundUser.picture,
+              karma: foundUser.karma,
+            },
+          },
+        }
+      );
+    } else {
+      await Group.updateOne(
+        { _id: new ObjectId(groupId) },
+        {
+          $pull: {
+            blockList: {
+              user: {
+                userId: new ObjectId(userId),
+                userName: foundUser.username,
+                picture: foundUser.picture,
+                karma: foundUser.karma,
+              },
+            },
+          },
+        }
+      );
+      await Group.updateOne(
+        { _id: new ObjectId(groupId) },
+        {
+          $addToSet: {
+            members: {
+              userId: new ObjectId(userId),
+              userName: foundUser.username,
+              picture: foundUser.picture,
+              karma: foundUser.karma,
+            },
+          },
+        }
+      );
+    }
+  } catch (error) {
+    res.status(500).json({
+      msg: "Error in blockUser",
+    });
+  }
+};
+
 // Function to validate coordinates
 function isValidCoordinate(latitude, longitude) {
   return (
@@ -622,6 +718,7 @@ function isValidCoordinate(latitude, longitude) {
     longitude <= 180
   );
 }
+
 
 
 exports.searchGroups = async (req, res) => {
@@ -690,5 +787,63 @@ exports.reportGroup = async (req, res) => {
   } catch (err) {
     errorLogger.error("An unexpected error occurred during group reporting: ", err);
     return res.status(500).json({ msg: "Internal server error in reportGroup" });
+  }
+};
+=======
+exports.fetchUserGroups = async (req, res) => {
+  const userId = req.user._id;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const userGroups = await Group.find({
+      _id: { $in: user.groups },
+    }).select("isOpen name icon members admin");
+
+    const groupCards = userGroups.map((group) => formatGroupCard(group));
+
+    res.status(200).json(groupCards);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+exports.fetchNearbyGroups = async (req, res) => {
+  const userId = req.user._id;
+  const isHome = req.query.isHome === "true";
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const coordinates = isHome
+      ? user.home_coordinates.coordinates
+      : user.current_coordinates.coordinates;
+
+    const nearbyGroups = await Group.find({
+      _id: { $nin: user.groups },
+      location: {
+        $nearSphere: {
+          $geometry: {
+            type: "Point",
+            coordinates: coordinates,
+          },
+          $maxDistance: 5000, // 5 km in meters
+        },
+      },
+    }).select("isOpen name icon members admin");
+
+    const groupCards = nearbyGroups.map((group) => formatGroupCard(group));
+
+    res.status(200).json(groupCards);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Server error" });
   }
 };
