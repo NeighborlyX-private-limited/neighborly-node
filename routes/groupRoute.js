@@ -14,7 +14,7 @@ const {
   deleteGroup,
   addAdmin,
   searchGroups,
-  reportGroup
+  reportGroup,
   blockUser,
   fetchUserGroups,
   fetchNearbyGroups,
