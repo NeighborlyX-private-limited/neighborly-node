@@ -789,7 +789,7 @@ exports.reportGroup = async (req, res) => {
     return res.status(500).json({ msg: "Internal server error in reportGroup" });
   }
 };
-=======
+
 exports.fetchUserGroups = async (req, res) => {
   const userId = req.user._id;
 
