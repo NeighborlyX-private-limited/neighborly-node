@@ -6,6 +6,8 @@ const Report = require("../models/ReportModel");
 const mongoose = require("mongoose");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const { error } = require("winston");
+const { S3, S3_BUCKET_NAME } = require("../utils/constants");
+const uuid = require("uuid");
 const ObjectId = mongoose.Types.ObjectId;
 const { otpgenerator } = require("../utils/emailService");
 
@@ -845,5 +847,66 @@ exports.fetchNearbyGroups = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Server error" });
+  }
+};
+
+exports.storeMessage = async (req, res) => {
+  try {
+    const { groupId, message, parentMessageId } = req.body;  // Extract fields from form-data
+    const userId = req.user._id; 
+    const file = req.file;
+     
+    // Ensure the message field is present
+    if (!message) {
+      return res.status(400).json({ message: "Message field is required" });
+    }
+
+    let mediaLink = null;
+
+    // Handle file upload if a file is provided
+    if (file) {
+      const fileKey = `${uuid.v4()}-${file.originalname}`;
+      const uploadParams = {
+        Bucket: S3_BUCKET_NAME,
+        Key: fileKey,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+        ACL: "public-read",
+      };
+
+      try {
+        const uploadResult = await S3.upload(uploadParams).promise();
+        mediaLink = uploadResult.Location;
+      } catch (uploadError) {
+        errorLogger.error("Error uploading file to S3:", uploadError);
+        return res.status(500).json({ message: "Error uploading file", error: uploadError.message });
+      }
+    }
+
+    // Fetch the username from User model
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const messageData = {
+      groupId,               
+      name: user.username,   
+      message,               
+      mediaLink,             
+      parentMessageId,      
+      readBy: [userId],     
+    };
+
+    // Create and save the message
+    const newMessage = new Message(messageData);
+    await newMessage.save();
+
+    activityLogger.info(`Message stored in group ${groupId} by ${user.username}`);
+
+    res.status(201).json({ message: "Message stored successfully", data: newMessage });
+  } catch (error) {
+    errorLogger.error("Error saving message to database:", error);
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 };
