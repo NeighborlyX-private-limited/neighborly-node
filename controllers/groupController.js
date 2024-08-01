@@ -9,6 +9,7 @@ const { error } = require("winston");
 const { S3, S3_BUCKET_NAME } = require("../utils/constants");
 const uuid = require("uuid");
 const ObjectId = mongoose.Types.ObjectId;
+const validImageTypes = ["image/jpeg", "image/png", "image/gif"];
 const { otpgenerator } = require("../utils/emailService");
 
 function formatGroupCard(group) {
@@ -27,12 +28,13 @@ function formatGroupCard(group) {
 
 exports.addUser = async (req, res) => {
   try {
+    const groupId = req.params["groupId"];
 
-    const groupId = req.params["groupId"]; 
-     
     const userId = req.query.userId || req.user._id.toString();
 
-    activityLogger.info(`Adding user with ID ${userId} to group with ID ${groupId}.`);
+    activityLogger.info(
+      `Adding user with ID ${userId} to group with ID ${groupId}.`
+    );
 
     const group = await Group.findById(new ObjectId(groupId));
     if (!group) {
@@ -75,19 +77,28 @@ exports.addUser = async (req, res) => {
     );
 
     // Check if both updates were successful by inspecting modifiedCount
-    if (userAddedToGroup.modifiedCount > 0 && groupAddedInUser.modifiedCount > 0) {
+    if (
+      userAddedToGroup.modifiedCount > 0 &&
+      groupAddedInUser.modifiedCount > 0
+    ) {
       activityLogger.info("User added.");
-      res.status(200).json({ message: "User added to the group successfully." });
+      res
+        .status(200)
+        .json({ message: "User added to the group successfully." });
     } else {
-      res.status(400).json({ message: "Group not found or user already in the group." });
+      res
+        .status(400)
+        .json({ message: "Group not found or user already in the group." });
     }
   } catch (error) {
-    errorLogger.error("An unexpected error occurred during adding user to group:", error);
+    errorLogger.error(
+      "An unexpected error occurred during adding user to group:",
+      error
+    );
     console.error("Unexpected error:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
 
 exports.makeGroupPermanent = async (req, res) => {
   try {
@@ -130,7 +141,7 @@ exports.makeGroupPermanent = async (req, res) => {
 
 exports.removeUser = async (req, res) => {
   try {
-    const { groupId,userId} = req.body
+    const { groupId, userId } = req.body;
     activityLogger.info(
       `Removing user with ID ${userId} from group with ID ${groupId}.`
     );
@@ -249,10 +260,9 @@ exports.removeUser = async (req, res) => {
   }
 };
 
-
 function getRandomColor() {
-  const letters = '0123456789ABCDEF';
-  let color = '#';
+  const letters = "0123456789ABCDEF";
+  let color = "#";
   for (let i = 0; i < 6; i++) {
     color += letters[Math.floor(Math.random() * 16)];
   }
@@ -267,28 +277,43 @@ exports.createGroup = async (req, res) => {
       typeOf,
       radius = 3000,
       karma = 0,
-      icon
+      icon,
     } = req.body;
     const user = req.user;
-    const isHome = req.query.home === 'true'; // Convert query param to boolean
-    activityLogger.info("Attempting to create a group with the following data:", req.body);
+    const isHome = req.query.home === "true"; // Convert query param to boolean
+    activityLogger.info(
+      "Attempting to create a group with the following data:",
+      req.body
+    );
 
     let coordinates;
     if (isHome) {
-      if (!user.home_coordinates || !user.home_coordinates.coordinates || user.home_coordinates.coordinates.length !== 2) {
-        return res.status(400).json({ message: "User's home coordinates are not available or invalid." });
+      if (
+        !user.home_coordinates ||
+        !user.home_coordinates.coordinates ||
+        user.home_coordinates.coordinates.length !== 2
+      ) {
+        return res.status(400).json({
+          message: "User's home coordinates are not available or invalid.",
+        });
       }
       coordinates = user.home_coordinates.coordinates;
     } else {
-      if (!user.current_coordinates || !user.current_coordinates.coordinates || user.current_coordinates.coordinates.length !== 2) {
-        return res.status(400).json({ message: "User's current coordinates are not available or invalid." });
+      if (
+        !user.current_coordinates ||
+        !user.current_coordinates.coordinates ||
+        user.current_coordinates.coordinates.length !== 2
+      ) {
+        return res.status(400).json({
+          message: "User's current coordinates are not available or invalid.",
+        });
       }
       coordinates = user.current_coordinates.coordinates;
     }
 
     const location = {
       type: "Point",
-      coordinates: coordinates
+      coordinates: coordinates,
     };
 
     const code = otpgenerator();
@@ -315,18 +340,22 @@ exports.createGroup = async (req, res) => {
       typeOf,
       radius,
       karma,
-      admin: [{
-        userId: user._id,
-        userName: user.username,
-        karma: user.karma,
-        picture: user.picture,
-      }],
-      members: [{
-        userId: user._id,
-        userName: user.username,
-        karma: user.karma,
-        picture: user.picture,
-      }]
+      admin: [
+        {
+          userId: user._id,
+          userName: user.username,
+          karma: user.karma,
+          picture: user.picture,
+        },
+      ],
+      members: [
+        {
+          userId: user._id,
+          userName: user.username,
+          karma: user.karma,
+          picture: user.picture,
+        },
+      ],
     });
 
     // Add group to the user's list of groups
@@ -335,14 +364,19 @@ exports.createGroup = async (req, res) => {
       { $addToSet: { groups: group._id } }
     );
 
-    activityLogger.info(`Group ${group.name} created successfully with location based on ${isHome ? "home coordinates" : "current coordinates"}.`);
+    activityLogger.info(
+      `Group ${group.name} created successfully with location based on ${isHome ? "home coordinates" : "current coordinates"}.`
+    );
     res.status(200).json({ group });
   } catch (error) {
-    errorLogger.error("An unexpected error occurred during group creation: " + error);
-    res.status(500).json({ message: "Internal Server Error", error: error.toString() });
+    errorLogger.error(
+      "An unexpected error occurred during group creation: " + error
+    );
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.toString() });
   }
 };
-
 
 exports.nearbyUsers = async (req, res) => {
   const { latitude, longitude, karma_need } = req.query;
@@ -486,46 +520,76 @@ exports.fetchGroupDetails = async (req, res) => {
 };
 
 exports.updateGroupDetails = async (req, res) => {
-  const { groupId, name, description, isOpen, icon, displayname } = req.body;
-  const group = await Group.findById(new ObjectId(groupId));
+  const { groupId, name, description, typeOf, displayname } = req.body;
   const user = req.user;
-  let flag = false;
+  const file = req.file;
+
   try {
-    const admin_count = group.admin.length;
-    const presentGroup = await Group.findOne({ displayname });
-    if (presentGroup) {
-      throw new Error("Duplicate displayname");
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ msg: "Group not found" });
     }
-    for (let i = 0; i < admin_count; ++i) {
-      if (group.admin[i].userId.toString() == user._id.toString()) {
-        flag = true;
-        break;
+
+    const isAdmin = group.admin.some((admin) => admin.userId.equals(user._id));
+    if (!isAdmin) {
+      return res.status(403).json({ msg: "Access denied" });
+    }
+
+    const updates = {};
+    if (name) updates.name = name;
+    if (description) updates.description = description;
+    if (typeOf && ["open", "close"].includes(typeOf)) updates.typeOf = typeOf;
+    if (displayname && displayname !== group.displayname) {
+      const duplicate = await Group.findOne({
+        displayname,
+        _id: { $ne: groupId },
+      });
+      if (duplicate) {
+        return res.status(400).json({ msg: "Duplicate displayname" });
+      }
+      updates.displayname = displayname;
+    }
+
+    if (file) {
+      if (!validImageTypes.includes(file.mimetype)) {
+        return res
+          .status(400)
+          .json({ msg: "Invalid file type. Only image files are allowed." });
+      }
+      const fileKey = `${uuid.v4()}-${file.originalname}`;
+      const uploadParams = {
+        Bucket: S3_BUCKET_NAME,
+        Key: fileKey,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+        ACL: "public-read",
+      };
+
+      try {
+        const uploadResult = await S3.upload(uploadParams).promise();
+        updates.icon = uploadResult.Location;
+      } catch (uploadError) {
+        errorLogger.error("Error uploading file to S3:", uploadError);
+        return res.status(500).json({
+          message: "Error uploading icon",
+          error: uploadError.message,
+        });
       }
     }
-    if (flag) {
-      const updated = await Group.updateOne(
-        { _id: new ObjectId(groupId) },
-        {
-          $set: {
-            name: name,
-            displayname: displayname,
-            description: description,
-            isOpen: isOpen,
-            icon: icon,
-          },
-        }
-      );
-      activityLogger.info(`Group Details updated for group ${groupId}.`);
-      res.status(200).json(updated);
+
+    if (Object.keys(updates).length > 0) {
+      await Group.findByIdAndUpdate(groupId, { $set: updates }, { new: true });
+      activityLogger.info(`Group details updated for group ${groupId}`);
+      res.status(200).json({ msg: "Group details updated successfully" });
     } else {
-      throw new Error("Access denied");
+      res.status(400).json({ msg: "No updates provided" });
     }
   } catch (err) {
-    res.status(403).json({
-      msg: err.message,
-    });
+    errorLogger.error("Failed to update group details:", err);
+    res.status(500).json({ msg: err.message });
   }
 };
+
 exports.deleteGroup = async (req, res) => {
   try {
     const user = req.user;
@@ -721,38 +785,41 @@ function isValidCoordinate(latitude, longitude) {
   );
 }
 
-
-
 exports.searchGroups = async (req, res) => {
   const query = req.body.searchQuery;
 
   if (!query) {
-      errorLogger.error("Search query missing - cannot proceed with group search.");
-      return res.status(400).json({ message: "Please provide a search query." });
+    errorLogger.error(
+      "Search query missing - cannot proceed with group search."
+    );
+    return res.status(400).json({ message: "Please provide a search query." });
   }
 
   try {
-      const groups = await Group.find({
-          $or: [
-              { name: { $regex: query, $options: 'i' } },
-              { description: { $regex: query, $options: 'i' } },
-              { typeOf: { $regex: query, $options: 'i' } }
-          ]
-      }).select('id name description typeOf location').sort({ name: 'asc' });
+    const groups = await Group.find({
+      $or: [
+        { name: { $regex: query, $options: "i" } },
+        { description: { $regex: query, $options: "i" } },
+        { typeOf: { $regex: query, $options: "i" } },
+      ],
+    })
+      .select("id name description typeOf location")
+      .sort({ name: "asc" });
 
-      if (groups.length > 0) {
-          activityLogger.info(`Found ${groups.length} groups matching the query '${query}'.`);
-          res.status(200).json(groups);
-      } else {
-          errorLogger.info(`No groups found for the query '${query}'.`);
-          res.status(404).json({ message: "No groups found matching your query." });
-      }
+    if (groups.length > 0) {
+      activityLogger.info(
+        `Found ${groups.length} groups matching the query '${query}'.`
+      );
+      res.status(200).json(groups);
+    } else {
+      errorLogger.info(`No groups found for the query '${query}'.`);
+      res.status(404).json({ message: "No groups found matching your query." });
+    }
   } catch (error) {
-      errorLogger.error('Error searching for groups: ' + error.message);
-      res.status(500).json({ message: "Error searching for groups." });
+    errorLogger.error("Error searching for groups: " + error.message);
+    res.status(500).json({ message: "Error searching for groups." });
   }
 };
-
 
 exports.reportGroup = async (req, res) => {
   try {
@@ -771,9 +838,13 @@ exports.reportGroup = async (req, res) => {
     }
 
     // Check if the user is not the group admin
-    const isAdmin = group.admin.some(admin => admin.userId.toString() === userId.toString());
+    const isAdmin = group.admin.some(
+      (admin) => admin.userId.toString() === userId.toString()
+    );
     if (isAdmin) {
-      return res.status(400).json({ msg: "User cannot report a group they administer" });
+      return res
+        .status(400)
+        .json({ msg: "User cannot report a group they administer" });
     }
 
     // Create report for the group
@@ -785,10 +856,14 @@ exports.reportGroup = async (req, res) => {
 
     activityLogger.info(`Group with ID ${groupId} reported by user ${userId}`);
     return res.status(200).json(report);
-
   } catch (err) {
-    errorLogger.error("An unexpected error occurred during group reporting: ", err);
-    return res.status(500).json({ msg: "Internal server error in reportGroup" });
+    errorLogger.error(
+      "An unexpected error occurred during group reporting: ",
+      err
+    );
+    return res
+      .status(500)
+      .json({ msg: "Internal server error in reportGroup" });
   }
 };
 
@@ -852,10 +927,10 @@ exports.fetchNearbyGroups = async (req, res) => {
 
 exports.storeMessage = async (req, res) => {
   try {
-    const { groupId, message, parentMessageId } = req.body;  // Extract fields from form-data
-    const userId = req.user._id; 
+    const { groupId, message, parentMessageId } = req.body; // Extract fields from form-data
+    const userId = req.user._id;
     const file = req.file;
-     
+
     // Ensure the message field is present
     if (!message) {
       return res.status(400).json({ message: "Message field is required" });
@@ -879,7 +954,10 @@ exports.storeMessage = async (req, res) => {
         mediaLink = uploadResult.Location;
       } catch (uploadError) {
         errorLogger.error("Error uploading file to S3:", uploadError);
-        return res.status(500).json({ message: "Error uploading file", error: uploadError.message });
+        return res.status(500).json({
+          message: "Error uploading file",
+          error: uploadError.message,
+        });
       }
     }
 
@@ -890,23 +968,29 @@ exports.storeMessage = async (req, res) => {
     }
 
     const messageData = {
-      groupId,               
-      name: user.username,   
-      message,               
-      mediaLink,             
-      parentMessageId,      
-      readBy: [userId],     
+      groupId,
+      name: user.username,
+      message,
+      mediaLink,
+      parentMessageId,
+      readBy: [userId],
     };
 
     // Create and save the message
     const newMessage = new Message(messageData);
     await newMessage.save();
 
-    activityLogger.info(`Message stored in group ${groupId} by ${user.username}`);
+    activityLogger.info(
+      `Message stored in group ${groupId} by ${user.username}`
+    );
 
-    res.status(201).json({ message: "Message stored successfully", data: newMessage });
+    res
+      .status(201)
+      .json({ message: "Message stored successfully", data: newMessage });
   } catch (error) {
     errorLogger.error("Error saving message to database:", error);
-    res.status(500).json({ message: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 };
