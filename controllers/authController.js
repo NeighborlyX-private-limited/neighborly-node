@@ -196,7 +196,6 @@ exports.logoutUser = async (req, res, next) => {
 
 exports.googleAuth = async (req, res) => {
   try {
-    console.log("hello");
     const { token } = req.body;
     const ticket = await client.verifyIdToken({
       idToken: token,
