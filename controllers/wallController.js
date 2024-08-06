@@ -30,6 +30,8 @@ exports.findPosts = async (req, res) => {
   const isHome = req.query?.home;
   const user = req.user;
   const postId = req.params.postId; // Added to check if a specific post ID is provided
+  const limit = parseInt(req.query.limit, 10) || 100;
+  const offset = parseInt(req.query.offset, 10) || 0; 
   let posts;
   const ranges = [3000, 30000, 300000, 1000000, 2500000]; // Define the range increments in meters
   let location = null;
@@ -73,6 +75,8 @@ exports.findPosts = async (req, res) => {
           },
           include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
           order: [["createdat", "DESC"]],
+          limit,
+          offset,
         });
 
         if (posts.length > 0) {
