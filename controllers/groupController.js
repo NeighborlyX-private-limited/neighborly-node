@@ -1,5 +1,6 @@
 const opencage = require("opencage-api-client");
 const Message = require("../models/messageModel");
+const MessageVote = require("../models/MessageVoteModel");
 const Group = require("../models/groupModel");
 const User = require("../models/userModel");
 const Report = require("../models/ReportModel");
@@ -488,11 +489,32 @@ exports.fetchLastMessages = async (req, res) => {
 
     const skip = (page - 1) * limit;
 
-    const messages = await Message.find({ group_id: groupId })
+    const messages = await Message.find({ groupId: groupId })
       .sort({ sent_at: -1 }) // Sort by sent_at in descending order to get the latest messages first
       .skip(skip)
       .limit(limit);
-    res.status(200).json(messages);
+    const formatedMessages = await Promise.all(
+      messages.map(async(message) => {
+      const cheersCount = await MessageVote.count({
+        where: {
+          messageid: message._id.toString(),
+          votetype: 'cheer'
+        } 
+      });
+      const boosCount = await MessageVote.count({
+        where: {
+          messageid: message._id.toString(),
+          votetype: 'boo'
+        }
+      });
+      return {
+        message: message,
+        cheersCount: cheersCount,
+        boosCount: boosCount
+      };
+    })
+  );
+    return res.status(200).json(formatedMessages);
   } catch (error) {
     console.error("Error fetching messages:", error);
     errorLogger.error("An error occured while fetching messages:", error);
