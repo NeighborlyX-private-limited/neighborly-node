@@ -3,9 +3,11 @@ const User = require("../models/userModel");
 const Comment = require("../models/CommentModel");
 const Award = require("../models/AwardModel");
 const Report = require("../models/ReportModel");
+const Message = require("../models/messageModel");
 const PollVote = require("../models/PollVoteModel");
 const ContentVote = require("../models/ContentVoteModel");
 const CommentVote = require("../models/CommentVoteModel");
+const MessageVote = require("../models/MessageVoteModel");
 const { Op, where } = require("sequelize");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const { sequelize } = require("../config/database");
@@ -25,13 +27,26 @@ const deleteCommentAndChildren = async (commentid) => {
   }
 };
 
+const checkForNull = async (type, contentModel, contentIdField, id) => {
+  let doesExist = true;
+  if (type === "message") {
+    doesExist = await Message.findById(id);
+  } else {
+    doesExist = await contentModel.findOne({ where: { [contentIdField]: id } });
+  }
+  if (!doesExist) {
+    return false;
+  }
+  return true;
+};
+
 // Fetch posts and polls
 exports.findPosts = async (req, res) => {
   const isHome = req.query?.home;
   const user = req.user;
   const postId = req.params.postId; // Added to check if a specific post ID is provided
   const limit = parseInt(req.query.limit, 10) || 100;
-  const offset = parseInt(req.query.offset, 10) || 0; 
+  const offset = parseInt(req.query.offset, 10) || 0;
   let posts;
   const ranges = [3000, 30000, 300000, 1000000, 2500000]; // Define the range increments in meters
   let location = null;
@@ -161,32 +176,30 @@ exports.feedback = async (req, res) => {
     let oppositeVoteType = feedback === "cheer" ? "boo" : "cheer";
     let voteModel, contentModel, contentIdField;
 
-    if (type === "post") {
-      activityLogger.info(
-        `Processing Post feedback for ${id} from user ${userId}`
-      );
-      voteModel = ContentVote;
-      contentModel = Post;
-      contentIdField = "contentid";
-    } else if (type === "comment") {
-      activityLogger.info(
-        `Processing Comment feedback for ${id} from user ${userId}`
-      );
-      voteModel = CommentVote;
-      contentModel = Comment;
-      contentIdField = "commentid";
-    } else {
-      errorLogger.error("Invalid type specified, should be a comment or post");
-      return res.status(400).json({ msg: "Invalid type specified" });
+    switch (type) {
+      case "post":
+        voteModel = ContentVote;
+        contentModel = Post;
+        contentIdField = "contentid";
+        break;
+      case "comment":
+        voteModel = CommentVote;
+        contentModel = Comment;
+        contentIdField = "commentid";
+        break;
+      case "message":
+        voteModel = MessageVote;
+        contentModel = Message;
+        contentIdField = "messageid";
+        break;
+      default:
+        return res.status(400).json({ msg: "Invalid type specified" });
     }
 
-    const content = await contentModel.findOne({
-      where: { [contentIdField]: id },
-    });
+    const content = checkForNull(type, contentModel, contentIdField, id);
+
     if (!content) {
-      return res.status(404).json({
-        msg: `${type.charAt(0).toUpperCase() + type.slice(1)} not found`,
-      });
+      return res.status(404).json({ msg: "Content not found" });
     }
 
     const existingVote = await voteModel.findOne({
@@ -198,20 +211,24 @@ exports.feedback = async (req, res) => {
         // Reverse the vote
         activityLogger.info(`Reversing feedback for ${id} from user ${userId}`);
         await voteModel.destroy({ where: { voteid: existingVote.voteid } });
-        await contentModel.decrement(
-          { [voteType + "s"]: 1 },
-          { where: { [contentIdField]: id } }
-        );
+        if (type != "message") {
+          await contentModel.decrement(
+            { [voteType + "s"]: 1 },
+            { where: { [contentIdField]: id } }
+          );
+        }
         return res.status(200).json({ msg: "Vote reversed successfully" });
       } else {
         // Update the vote type
         activityLogger.info(`Updating feedback for ${id} from user ${userId}`);
         existingVote.votetype = voteType;
         await existingVote.save();
-        await contentModel.increment(
-          { [voteType + "s"]: 1, [oppositeVoteType + "s"]: -1 },
-          { where: { [contentIdField]: id } }
-        );
+        if (type != "message") {
+          await contentModel.increment(
+            { [voteType + "s"]: 1, [oppositeVoteType + "s"]: -1 },
+            { where: { [contentIdField]: id } }
+          );
+        }
         return res.status(200).json({ msg: "Vote updated successfully" });
       }
     } else {
@@ -223,10 +240,12 @@ exports.feedback = async (req, res) => {
         createdat: new Date(),
         processed: true,
       });
-      await contentModel.increment(
-        { [voteType + "s"]: 1 },
-        { where: { [contentIdField]: id } }
-      );
+      if (type != "message") {
+        await contentModel.increment(
+          { [voteType + "s"]: 1 },
+          { where: { [contentIdField]: id } }
+        );
+      }
       activityLogger.info(
         `Feedback (${feedback}) added to ${type} ID ${id} by user ${userId}`
       );

@@ -10,7 +10,7 @@ const MessageVote = sequelize.define(
       autoIncrement: true,
       defaultValue: sequelize.literal("nextval('message_votes_voteid_seq')"), // Ensure the sequence is created in PostgreSQL
     },
-    messageId: {
+    messageid: {
       type: DataTypes.STRING(255),
       allowNull: false,
     },
@@ -21,7 +21,7 @@ const MessageVote = sequelize.define(
     votetype: {
       type: DataTypes.STRING(50),
       allowNull: false,
-      enum: ['cheer', 'boo'], // Using ENUM to restrict votetype to 'cheer' or 'boo'
+      enum: ["cheer", "boo"], // Using ENUM to restrict votetype to 'cheer' or 'boo'
     },
     createdat: {
       type: DataTypes.DATE,
@@ -36,7 +36,7 @@ const MessageVote = sequelize.define(
   {
     timestamps: false,
     tableName: "message_votes",
-    modelName: 'MessageVote'
+    modelName: "MessageVote",
   }
 );
 
