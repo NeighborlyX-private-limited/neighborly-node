@@ -10,7 +10,7 @@ const MessageVote = sequelize.define(
       autoIncrement: true,
       defaultValue: sequelize.literal("nextval('message_votes_voteid_seq')"), // Ensure the sequence is created in PostgreSQL
     },
-    messageId: {
+    messageid: {
       type: DataTypes.STRING(255),
       allowNull: false,
     },
