@@ -570,3 +570,133 @@ exports.giveAward = async (req, res) => {
     return res.status(500).json({ msg: "Internal server error in giveAward" });
   }
 };
+
+exports.search = async(req, res) => {
+  const isHome = req.query?.home;
+  const user = req.user;
+  const limit = parseInt(req.query.limit, 10) || 100;
+  const offset = parseInt(req.query.offset, 10) || 0;
+  const searchword = req.query?.searchword;
+  let posts;
+  const ranges = [3000, 30000, 300000, 1000000, 2500000]; // Define the range increments in meters
+  let location = null;
+
+  try {
+    if (isHome) {
+      location = user.home_coordinates.coordinates;
+    } else {
+      location = user.current_coordinates.coordinates;
+    }
+      for (let range of ranges) {
+        posts = await Post.findAll({
+          where: {
+            [Op.and]: [{
+              postlocation: {
+                [Op.and]: [
+                  { [Op.ne]: null },
+                  sequelize.where(
+                    sequelize.fn(
+                      "ST_DWithin",
+                      sequelize.col("postlocation"),
+                      sequelize.fn(
+                        "ST_SetSRID",
+                        sequelize.fn("ST_Point", location[0], location[1]),
+                        4326
+                      ),
+                      range
+                    ),
+                    true
+                  ),
+                ],
+              }
+            }, {
+              [Op.or]: [{
+                username: {[Op.substring]: searchword}
+              }, {
+                title: {[Op.substring]: searchword}
+              }, {
+                body: {[Op.substring]: searchword}
+              }]
+            }]
+          },
+          include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
+          order: [["createdat", "DESC"]],
+          limit,
+          offset,
+        });
+
+        if (posts.length > 0) {
+          break; // Exit the loop if posts are found
+        }
+      }
+    if(posts.length > 0) {
+      const postsWithUserDetails = await Promise.all(
+        posts.map(async (post) => {
+          const user = await User.findById(post.userid).lean();
+          const commentCount = await Comment.count({
+            where: { contentid: post.contentid },
+          });
+
+          // Fetch detailed awards information
+          const awards = post.awards.map((award) => award.award_type);
+
+          if (post.type === "poll") {
+            const options = post.poll_options;
+
+            // Fetch votes for all options in the poll
+            const pollVotes = await PollVote.findAll({
+              raw: true,
+              attributes: [
+                "optionid",
+                [sequelize.fn("SUM", sequelize.col("votes")), "votes"],
+              ],
+              where: {
+                contentid: post.contentid,
+              },
+              group: ["optionid"],
+            });
+
+            const pollVotesMap = pollVotes.reduce((acc, vote) => {
+              acc[vote.optionid] = parseInt(vote.votes, 10);
+              return acc;
+            }, {});
+
+            const pollResults = options.map((data) => ({
+              option: data.option,
+              optionId: data.optionId,
+              votes: pollVotesMap[data.optionId] || 0,
+            }));
+
+            return {
+              ...post.get({ plain: true }),
+              userProfilePicture: user ? user.picture : null,
+              commentCount: commentCount,
+              awards: awards,
+              pollResults: pollResults,
+              poll_options: undefined, // Explicitly remove poll_options from the response
+            };
+          } else {
+            return {
+              ...post.get({ plain: true }),
+              userProfilePicture: user ? user.picture : null,
+              commentCount: commentCount,
+              awards: awards,
+            };
+          }
+        })
+      );
+      activityLogger.info("Posts and polls are searched");
+      res.status(200).json(postsWithUserDetails);
+    }
+
+    // TODO create the search for comments if no post is found. For that please add location in comments
+    else 
+    res.status(200).json([]);
+  } catch (err) {
+    errorLogger.error(err);
+    res.status(500).json({
+      msg: "Internal server error in search",
+    });
+  }
+};
+
