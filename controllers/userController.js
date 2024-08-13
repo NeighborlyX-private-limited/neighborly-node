@@ -11,7 +11,6 @@ const {
   S3_BUCKET_NAME,
 } = require("../utils/constants");
 
-//TODO remove obsolete methods
 exports.uploadFile = async (req, res, next) => {
   const file = req.file;
   const fileKey = `${uuid.v4()}-${file.originalname}`;
@@ -264,5 +263,17 @@ exports.updateUserdob = async (req, res) => {
   } catch (error) {
     errorLogger.error(`An unexpected error occurred: ${error.message}`);
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+exports.saveFcmToken = async (req, res) => {
+  try {
+    const { userId, fcmToken } = req.body;
+    await User.findByIdAndUpdate(userId, { fcmToken });
+    activityLogger.info(`FCM token saved for user ${userId}`);
+    res.status(200).json({ message: "FCM token saved successfully." });
+  } catch (error) {
+    errorLogger.error(`An unexpected error occurred: ${error.message}`);
+    res.status(500).json({ message: "Error saving FCM token." });
   }
 };

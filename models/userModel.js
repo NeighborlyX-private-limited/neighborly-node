@@ -105,6 +105,10 @@ const userSchema = new mongoose.Schema({
       "Park Bench": 2,
       "Map": 2
     }
+  },
+  fcmToken: {
+    type: String,
+    required: true
   }
 });
 
