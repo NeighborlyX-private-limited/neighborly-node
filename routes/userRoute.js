@@ -9,6 +9,7 @@ const {
   changePassword,
   deleteUser,
   updateUserdob,
+  saveFcmToken,
 } = require("../controllers/userController");
 const { isAuthenticated } = require("../middlewares/auth");
 const { singleFileUpload } = require("../middlewares/fileUpload");
@@ -23,5 +24,6 @@ router.route("/delete-user").delete(isAuthenticated, deleteUser);
 router.route("/update-user-dob").put(isAuthenticated, updateUserdob);
 router.route("/fetch-cities").get(fetchCities);
 router.route("/upload-file").post(singleFileUpload, uploadFile);
+router.route("/save-fcm-token").post(saveFcmToken);
 
 module.exports = router;
