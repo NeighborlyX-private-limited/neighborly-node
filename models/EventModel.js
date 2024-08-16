@@ -33,6 +33,22 @@ const Event = sequelize.define(
       type: DataTypes.STRING(24),
       allowNull: false,
     },
+    address: {
+      type: DataTypes.STRING(255), 
+      allowNull: true,
+    },
+    host: {
+      type: DataTypes.JSONB, 
+      allowNull: true,
+    },
+    isJoined: {
+      type: DataTypes.BOOLEAN, 
+      allowNull: true,
+    },
+    isMine: {
+      type: DataTypes.BOOLEAN, 
+      allowNull: true,
+    },
   },
   {
     timestamps: false,
