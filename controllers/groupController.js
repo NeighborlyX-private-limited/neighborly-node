@@ -15,15 +15,17 @@ const { otpgenerator } = require("../utils/emailService");
 
 function formatGroupCard(group) {
   return {
-    isPublic: group.isOpen,
     id: group._id,
+    isPublic: group.isOpen,
+    description: group.description,
+    createdAt: group.createdAt,
+    location: getCity(group.location),
+    karma: group.karma,
     name: group.name,
     image: group.icon,
     membersCount: group.members.length + group.admin.length,
-    userPictures: group.members
+    members: group.members
       .concat(group.admin)
-      .slice(0, 3)
-      .map((member) => member.picture),
   };
 }
 
@@ -1016,3 +1018,8 @@ exports.storeMessage = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
+
+// TODO Please make changes to get the city according to the coordinates of location
+function getCity (location) {
+  return "New Delhi"
+}

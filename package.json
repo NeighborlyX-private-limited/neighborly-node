@@ -27,6 +27,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.0.0",
     "multer": "^1.4.5-lts.1",
+    "neighborly-backend": "file:",
     "node-file-logger": "^0.9.5",
     "nodemailer": "^6.9.13",
     "nodemon": "^3.1.4",
