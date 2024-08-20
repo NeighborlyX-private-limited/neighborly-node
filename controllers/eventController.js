@@ -1,5 +1,6 @@
 const Event = require('../models/EventModel');
 const { Op, where } = require('sequelize');
+const {getCity} = require('../utils/commonUtils');
 const { activityLogger, errorLogger } = require("../utils/logger");
 const { sequelize } = require('../config/database');
 const Group = require('../models/groupModel');
@@ -13,10 +14,10 @@ exports.createEvent = async (req, res) => {
     const user = req.user;
     const isHome = req.query?.home;
     
-    // Use a new variable to determine the location
+    // Determine the location based on user preference
     let eventLocation = isHome ? user.home_coordinates.coordinates : user.current_coordinates.coordinates;
 
-    const  admin  = {
+    const admin = {
         userId: user._id,
         userName: user.username,
         picture: user.picture,
@@ -24,6 +25,7 @@ exports.createEvent = async (req, res) => {
     };
 
     try {
+        // Generate a unique display name for the group
         let code = otpgenerator();
         let displayname = name + code;
         while (await Group.findOne({ displayname })) {
@@ -31,6 +33,7 @@ exports.createEvent = async (req, res) => {
             displayname = name + code;
         }
 
+        // Create a new group
         const group = await Group.create({
             name: name,
             displayname: displayname,
@@ -42,11 +45,14 @@ exports.createEvent = async (req, res) => {
             radius: radius,
             isOpen: true,
             admin: [admin],
-            members: [],
+            members: [admin], // Add the admin to the group members
             karma: 1000,
-            typeOf:"open"
+            typeOf: "open"
         });
 
+        const city = getCity();
+
+        // Create a new event
         const event = await Event.create({
             userid: user._id.toString(),
             eventname: name,
@@ -56,13 +62,15 @@ exports.createEvent = async (req, res) => {
             endtime: Date.parse(endTime),
             createdat: Date.now(),
             multimedia: multimedia,
-            groupid: group._id.toString(), 
-            address: address, 
-            host: [admin], 
-            isJoined: true, 
-            isMine: true 
+            groupid: group._id.toString(),
+            address: address,
+            City:city,
+            host: [admin],
+            isJoined: true, // Since the user is the admin, they are considered joined
+            isMine: true    // Since the user is the admin, the event is considered theirs
         });
 
+        // Add the group to the user's groups list
         const groupAddedInUser = await User.updateOne(
             { _id: user._id },
             { $addToSet: { groups: group._id } }
@@ -76,10 +84,12 @@ exports.createEvent = async (req, res) => {
     } catch (err) {
         errorLogger.error('Some error in create events: ', err);
         res.status(400).json({
-            "msg": "Some thing wrong with create event",err
+            "msg": "Some thing wrong with create event",
+            err
         });
     }
 };
+
 
 
 exports.getNearbyEvents = async (req, res) => {
@@ -99,7 +109,7 @@ exports.getNearbyEvents = async (req, res) => {
             attributes: [
                 'eventid', 'userid', 'eventname', 'description', 'location', 
                 'starttime', 'endtime', 'createdat', 'multimedia', 'groupid','address',
-                'host','isJoined','isMine'
+                'host','City'
                 
             ],
             where: sequelize.where(
@@ -152,11 +162,6 @@ exports.joinEvent = async (req, res) => {
             }
         );
 
-        await Event.update(
-            { isJoined: true },
-            { where: { eventid: eventId } }
-        );
-
         activityLogger.info(`User ${user.username} joined event ${event.eventname}`);
         res.status(200).json({
             "msg": "user joined successfully"
@@ -171,27 +176,29 @@ exports.joinEvent = async (req, res) => {
 
 exports.eventDetails = async (req, res) => {
     const eventId = req.params['eventId'];
+    const userId = req.user.id;
     try {
        
         activityLogger.info(`Event ID received: ${eventId}`);
 
-        
-        const event = await Event.findByPk(eventId, {
-            attributes: ['eventid', 'eventname', 'description', 'starttime', 'endtime', 'location', 'multimedia', 'address', 'host', 'isMine', 'isJoined'],
-        });
+        const event = await Event.findByPk(eventId);
 
         if (!event) {
             return res.status(404).json({ msg: 'Event not found' });
         }
 
+        const group = await Group.findById(event.groupid);
+
+        const isJoined = group ? group.members.some(member => member.userId.toString() === userId.toString()) : false;
+
+        // Fetch user details
+        const user = await User.findById(event.userid).lean();
+
+        // Determine if the current user is the host
+        const isMine = event.host.some(host => host.userId.toString() === userId.toString());
+
         
-        const user = event.userid ? await User.findByPk(event.userid) : null;
 
-        if (user) {
-            user = user.toJSON(); 
-        }
-
-       
         const eventDetails = {
             eventId: event.eventid,
             title: event.eventname,
@@ -200,12 +207,11 @@ exports.eventDetails = async (req, res) => {
             time: event.endtime,
             location: event.location,
             multimedia: event.multimedia,
-            username: user ? user.username : null,
-            userProfilePic: user ? user.picture : null,
             address: event.address,
+            City: event.City,
             host: event.host,
-            isJoined: event.isJoined,
-            isMine: event.isMine
+            isJoined: isJoined,
+            isMine: isMine
         };
 
         // Send the response
@@ -281,7 +287,7 @@ exports.searchEvents = async (req, res) => {
                     }
                 ]
             },
-            attributes: ['eventid', 'eventname', 'starttime', 'location','address','isJoined','isMine','host'],
+            attributes: ['eventid', 'eventname', 'starttime', 'location','address','host'],
             order: [['starttime', 'ASC']]
         });
 
@@ -311,7 +317,7 @@ exports.updateEvent = async (req, res) => {
     }
 
     try {
-        // Attempt to update the event
+      
         const [updatedRows] = await Event.update(updateData, {
             where: { eventid: eventId }
         });
@@ -328,3 +334,49 @@ exports.updateEvent = async (req, res) => {
         res.status(500).json({ message: "Failed to update the event due to an error" });
     }
 };
+
+exports.getGoingEvents = async (req, res) => {
+    try {
+      const user = req.user;
+  
+   
+      const userGroups = await Group.find({
+        'members.userId': user._id
+      });
+  
+   
+      const groupIds = userGroups.map(group => group._id.toString());
+  
+     
+      const events = await Event.findAll({
+        where: {
+          groupid: {
+            [Op.in]: groupIds
+          }
+        }
+      });
+  
+      res.status(200).json(events);
+    } catch (err) {
+      errorLogger.error('Error fetching going events:', err);
+      res.status(500).json({ msg: 'Internal server error' });
+    }
+  };
+
+  exports.getMyEvents = async (req, res) => {
+    try {
+      const user = req.user;
+  
+      
+      const events = await Event.findAll({
+        where: {
+          userid: user._id.toString()
+        }
+      });
+  
+      res.status(200).json(events);
+    } catch (err) {
+      errorLogger.error('Error fetching my events:', err);
+      res.status(500).json({ msg: 'Internal server error' });
+    }
+  };

@@ -41,14 +41,9 @@ const Event = sequelize.define(
       type: DataTypes.JSONB, 
       allowNull: true,
     },
-    isJoined: {
-      type: DataTypes.BOOLEAN, 
-      allowNull: true,
-    },
-    isMine: {
-      type: DataTypes.BOOLEAN, 
-      allowNull: true,
-    },
+    City: {
+      type: DataTypes.STRING,
+    }
   },
   {
     timestamps: false,
