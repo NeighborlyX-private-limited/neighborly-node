@@ -198,7 +198,7 @@ exports.eventDetails = async (req, res) => {
             date: event.starttime,
             time: event.endtime,
             location: event.location,
-            multimedia: event.multimedia,
+            avatarUrl: event.avatarUrl,
             address: event.address,
             locationStr: event.locationStr,
             host: event.host,
