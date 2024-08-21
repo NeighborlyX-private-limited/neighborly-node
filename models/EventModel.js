@@ -28,11 +28,22 @@ const Event = sequelize.define(
     },
     endtime: DataTypes.DATE,
     createdat: DataTypes.DATE,
-    multimedia: DataTypes.STRING(255),
+    avatarUrl: DataTypes.STRING(255),
     groupid: {
       type: DataTypes.STRING(24),
       allowNull: false,
     },
+    address: {
+      type: DataTypes.STRING(255), 
+      allowNull: true,
+    },
+    host: {
+      type: DataTypes.JSONB, 
+      allowNull: true,
+    },
+    locationStr: {
+      type: DataTypes.STRING,
+    }
   },
   {
     timestamps: false,
