@@ -10,7 +10,7 @@ const ObjectId = mongoose.Types.ObjectId;
 const { otpgenerator } = require('../utils/emailService');
 
 exports.createEvent = async (req, res) => {
-    const { name, description, radius, startTime, endTime, multimedia, address } = req.body;
+    const { name, description, radius, startTime, endTime, avatarUrl, address } = req.body;
     const user = req.user;
     const isHome = req.query?.home;
     
@@ -61,13 +61,11 @@ exports.createEvent = async (req, res) => {
             starttime: Date.parse(startTime),
             endtime: Date.parse(endTime),
             createdat: Date.now(),
-            multimedia: multimedia,
+            avatarUrl:avatarUrl,
             groupid: group._id.toString(),
             address: address,
-            City:city,
+            locationStr:city,
             host: [admin],
-            isJoined: true, // Since the user is the admin, they are considered joined
-            isMine: true    // Since the user is the admin, the event is considered theirs
         });
 
         // Add the group to the user's groups list
@@ -106,12 +104,6 @@ exports.getNearbyEvents = async (req, res) => {
         activityLogger.info(`Coordinates: Latitude = ${lat}, Longitude = ${lon}, Radius = ${rad}`);
 
         const events = await Event.findAll({
-            attributes: [
-                'eventid', 'userid', 'eventname', 'description', 'location', 
-                'starttime', 'endtime', 'createdat', 'multimedia', 'groupid','address',
-                'host','City'
-                
-            ],
             where: sequelize.where(
                 sequelize.fn(
                     'ST_DWithin',
@@ -208,7 +200,7 @@ exports.eventDetails = async (req, res) => {
             location: event.location,
             multimedia: event.multimedia,
             address: event.address,
-            City: event.City,
+            locationStr: event.locationStr,
             host: event.host,
             isJoined: isJoined,
             isMine: isMine
@@ -287,7 +279,7 @@ exports.searchEvents = async (req, res) => {
                     }
                 ]
             },
-            attributes: ['eventid', 'eventname', 'starttime', 'location','address','host'],
+            
             order: [['starttime', 'ASC']]
         });
 
