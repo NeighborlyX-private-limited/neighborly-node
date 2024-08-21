@@ -91,14 +91,14 @@ exports.createEvent = async (req, res) => {
 
 
 exports.getNearbyEvents = async (req, res) => {
-    const { latitude, longitude, radius } = req.query;
-    const user = req.user; // Ensure the user object is available in the request
-    const isHome = req.query?.home === 'true'; // Correctly parse the boolean from query string
+    const { radius } = req.query;
+    const user = req.user; 
+    const isHome = req.query?.home === 'true'; 
 
     try {
         // Decide the location based on the user's choice
-        const lat = isHome ? user.home_coordinates.latitude : parseFloat(latitude);
-        const lon = isHome ? user.home_coordinates.longitude : parseFloat(longitude);
+        const lat = isHome ? user.home_coordinates.latitude : user.current_coordinates.latitude;
+        const lon = isHome ? user.home_coordinates.longitude : user.current_coordinates.longitude;
         const rad = parseInt(radius);
 
         activityLogger.info(`Coordinates: Latitude = ${lat}, Longitude = ${lon}, Radius = ${rad}`);
