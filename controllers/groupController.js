@@ -74,6 +74,7 @@ exports.addUser = async (req, res) => {
             userName: user.username,
             picture: user.picture,
             karma: user.karma,
+            fcmToken: user.fcmToken
           },
         },
       }
@@ -173,6 +174,7 @@ exports.removeUser = async (req, res) => {
               userName: foundUser.username,
               picture: foundUser.picture,
               karma: foundUser.karma,
+              fcmToken: foundUser.fcmToken
             },
           },
         }
@@ -219,6 +221,7 @@ exports.removeUser = async (req, res) => {
               userName: foundUser.username,
               picture: foundUser.picture,
               karma: foundUser.karma,
+              fcmToken: foundUser.fcmToken
             },
           },
         }
@@ -349,6 +352,7 @@ exports.createGroup = async (req, res) => {
           userName: user.username,
           karma: user.karma,
           picture: user.picture,
+          fcmToken: user.fcmToken
         },
       ],
       members: [
@@ -357,6 +361,7 @@ exports.createGroup = async (req, res) => {
           userName: user.username,
           karma: user.karma,
           picture: user.picture,
+          fcmToken: user.fcmToken
         },
       ],
     });
@@ -427,6 +432,7 @@ exports.nearbyUsers = async (req, res) => {
       userName: near_user.username,
       karma: near_user.karma,
       picture: near_user.picture,
+      fcmToken: near_user.fcmToken
     }));
 
     res.status(200).json({ list });
@@ -687,6 +693,7 @@ exports.addAdmin = async (req, res) => {
                   userName: foundUser.username,
                   picture: foundUser.picture,
                   karma: foundUser.karma,
+                  fcmToken: foundUser.fcmToken
                 },
               },
             },
@@ -701,6 +708,7 @@ exports.addAdmin = async (req, res) => {
                 userName: foundUser.username,
                 picture: foundUser.picture,
                 karma: foundUser.karma,
+                fcmToken: foundUser.fcmToken
               },
             },
           }
@@ -740,6 +748,7 @@ exports.blockUser = async (req, res) => {
                 userName: foundUser.username,
                 picture: foundUser.picture,
                 karma: foundUser.karma,
+                fcmToken: foundUser.fcmToken
               },
             },
           },
@@ -754,6 +763,7 @@ exports.blockUser = async (req, res) => {
               userName: foundUser.username,
               picture: foundUser.picture,
               karma: foundUser.karma,
+              fcmToken: foundUser.fcmToken
             },
           },
         }
@@ -769,6 +779,7 @@ exports.blockUser = async (req, res) => {
                 userName: foundUser.username,
                 picture: foundUser.picture,
                 karma: foundUser.karma,
+                fcmToken: foundUser.fcmToken
               },
             },
           },
@@ -783,6 +794,7 @@ exports.blockUser = async (req, res) => {
               userName: foundUser.username,
               picture: foundUser.picture,
               karma: foundUser.karma,
+              fcmToken: foundUser.fcmToken
             },
           },
         }
@@ -994,6 +1006,7 @@ exports.storeMessage = async (req, res) => {
     const messageData = {
       groupId,
       name: user.username,
+      userid: userId,
       message,
       mediaLink,
       parentMessageId,

@@ -11,6 +11,11 @@ const messageSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  userid: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true
+  },
   message: {
     type: String,
     required: true,
@@ -33,6 +38,14 @@ const messageSchema = new mongoose.Schema({
   parentMessageId: {
     type: mongoose.Schema.Types.ObjectId,  
   },
+  cheers: {
+    type: Number,
+    default: 0
+  },
+  boos: {
+    type: Number,
+    default: 0
+  }
 }, {
     timestamps: true  
 });
