@@ -5,9 +5,9 @@ const User = require("../models/userModel");
 exports.isAuthenticated = async (req, res, next) => {
   const { refreshToken } = req.cookies;
 
-  const accessToken = req.headers["authorization"];
+  const token = req.headers["authorization"];
 
-  if (!accessToken && !refreshToken) {
+  if (!token && !refreshToken) {
     return res.status(401).send("Access Denied. No token provided.");
   }
 
@@ -29,6 +29,7 @@ exports.isAuthenticated = async (req, res, next) => {
         process.env.JWT_SECRET
       );
       req.user = user;
+      req.header("Authorization", accesstoken);
       res.header("Authorization", accesstoken);
       next();
     } catch (error) {

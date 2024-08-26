@@ -51,6 +51,10 @@ const groupSchema = new mongoose.Schema({
       userName: String,
       picture: String,
       karma: Number,
+      fcmToken: {
+      type: String,
+      required: true
+    }
     },
   ],
   members: [
@@ -63,6 +67,10 @@ const groupSchema = new mongoose.Schema({
       userName: String,
       picture: String,
       karma: Number,
+      fcmToken: {
+        type: String,
+        required: true
+      }
     },
   ],
 
@@ -76,6 +84,10 @@ const groupSchema = new mongoose.Schema({
       userName: String,
       picture: String,
       karma: Number,
+      fcmToken: {
+        type: String,
+        required: true
+      }
     },
   ]
 });

@@ -8,12 +8,16 @@ const PollVote = require("../models/PollVoteModel");
 const ContentVote = require("../models/ContentVoteModel");
 const CommentVote = require("../models/CommentVoteModel");
 const MessageVote = require("../models/MessageVoteModel");
+const mongoose = require("mongoose");
+const ObjectId = mongoose.Types.ObjectId;
 const { Op, where } = require("sequelize");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const { sequelize } = require("../config/database");
 const { raw } = require("express");
 const uuid = require("uuid");
 const { S3, S3_BUCKET_NAME, VALIDAWARDTYPES } = require("../utils/constants");
+
+const notificationAPI = process.env.API_ENDPOINT + process.env.NOTIFICATION;
 
 const deleteCommentAndChildren = async (commentid) => {
   const childComments = await Comment.findAll({
@@ -28,16 +32,13 @@ const deleteCommentAndChildren = async (commentid) => {
 };
 
 const checkForNull = async (type, contentModel, contentIdField, id) => {
-  let doesExist = true;
+  let doesExist;
   if (type === "message") {
     doesExist = await Message.findById(id);
   } else {
     doesExist = await contentModel.findOne({ where: { [contentIdField]: id } });
   }
-  if (!doesExist) {
-    return false;
-  }
-  return true;
+  return doesExist;
 };
 
 // Fetch posts and polls
@@ -171,6 +172,8 @@ exports.feedback = async (req, res) => {
   try {
     const { id, type, feedback } = req.body;
     const userId = req.user._id;
+    const username = req.user.username;
+    let triggerType;
 
     let voteType = feedback === "cheer" ? "cheer" : "boo";
     let oppositeVoteType = feedback === "cheer" ? "boo" : "cheer";
@@ -181,27 +184,31 @@ exports.feedback = async (req, res) => {
         voteModel = ContentVote;
         contentModel = Post;
         contentIdField = "contentid";
+        triggerType = "PostTrigger";
         break;
       case "comment":
         voteModel = CommentVote;
         contentModel = Comment;
         contentIdField = "commentid";
+        triggerType = "CommenttTrigger";
         break;
       case "message":
         voteModel = MessageVote;
         contentModel = Message;
         contentIdField = "messageid";
+        triggerType = "MessageTrigger";
         break;
       default:
         return res.status(400).json({ msg: "Invalid type specified" });
     }
 
-    const content = checkForNull(type, contentModel, contentIdField, id);
+    const content = await checkForNull(type, contentModel, contentIdField, id);
 
     if (!content) {
       return res.status(404).json({ msg: "Content not found" });
     }
-
+    const contentOwner = await User.findById({ _id: new ObjectId(content.userid) });
+    const userToken = contentOwner.fcmToken;
     const existingVote = await voteModel.findOne({
       where: { [contentIdField]: id, userid: userId.toString() },
     });
@@ -245,6 +252,86 @@ exports.feedback = async (req, res) => {
           { [voteType + "s"]: 1 },
           { where: { [contentIdField]: id } }
         );
+        let count;
+        if(voteType === 'cheer')
+          count = content.cheers;
+        else
+          count = content.boos;
+        if (type === 'post' && (count % 5 == 0) ) {
+          await fetch(notificationAPI, {
+          method: "POST",
+          body: JSON.stringify({
+            token: userToken, //"dMVpqZWrHtPvqBHOYIsrnK:APA91bEoWJcOHLQFGyeDYYCaFqbldiLN1bwp6gE6FOUYLEySOELLevYS6_S7rvySmBLdQd7ZA6gnhaQgRPyterRwb8Vp0px8F2SsM9sl9s4Eq9hXVtPgm0wE3Vdbe8_JusSgpOKWBLin",
+            eventType: triggerType,
+            postId: id,
+            title: `Feedback for a ${type}`,
+            content: `${username} has ${voteType} your ${type}`,
+            notificationBody: `Someone ${voteType} your ${type}`,
+            notificationTitle: `Reaction on your ${type}`
+          }),
+          headers: {
+            Accept: 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            authorization: req.headers["authorization"],
+            Cookie: "refreshToken=" + req.cookies.refreshToken,
+          },
+        })
+        }
+        else if(count % 5 == 0) {
+          await fetch(notificationAPI, {
+          method: "POST",
+          body: JSON.stringify({
+            token: userToken, //"dMVpqZWrHtPvqBHOYIsrnK:APA91bEoWJcOHLQFGyeDYYCaFqbldiLN1bwp6gE6FOUYLEySOELLevYS6_S7rvySmBLdQd7ZA6gnhaQgRPyterRwb8Vp0px8F2SsM9sl9s4Eq9hXVtPgm0wE3Vdbe8_JusSgpOKWBLin",
+            eventType: triggerType,
+            commentId: id,
+            userid: content.userid.toString(), // owner of the comment
+            username: username, // One who put this feedback
+            title: `Feedback for a ${type}`,
+            content: `${username} has ${voteType} your ${type}`,
+            notificationBody: `Someone ${voteType} your ${type}`,
+            notificationTitle: `Reaction on your ${type}`
+          }),
+          headers: {
+            Accept: 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            authorization: req.headers["authorization"],
+            Cookie: "refreshToken=" + req.cookies.refreshToken,
+          },
+        });
+        }
+      }
+      else {
+        await Message.updateOne(
+          {_id: new ObjectId(id)},
+          {$inc: {[voteType+"s"]: 1}}
+        );
+        let count;
+        if (voteType === 'cheer')
+          count = content.cheers;
+        else
+          count = content.boos;
+        if(count%5 == 0) {
+          await fetch(notificationAPI, {
+            method: "POST",
+            body: JSON.stringify({
+              token: userToken, //"dMVpqZWrHtPvqBHOYIsrnK:APA91bEoWJcOHLQFGyeDYYCaFqbldiLN1bwp6gE6FOUYLEySOELLevYS6_S7rvySmBLdQd7ZA6gnhaQgRPyterRwb8Vp0px8F2SsM9sl9s4Eq9hXVtPgm0wE3Vdbe8_JusSgpOKWBLin",
+              eventType: triggerType,
+              messageId: id,
+              userid: content.userid.toString(), // Owner of the message
+              username: username, // One who put this feedback
+              title: `Feedback for a ${type}`,
+              content: `${username} has ${voteType} your ${type}`,
+              notificationBody: `Someone ${voteType} your ${type}`,
+              notificationTitle: `Reaction on your ${type}`
+            }),
+            headers: {
+              Accept: 'application/json, text/plain, */*',
+              'Content-Type': 'application/json',
+              authorization: req.headers["authorization"],
+              Cookie: "refreshToken=" + req.cookies.refreshToken,
+            },
+          })
+        }
       }
       activityLogger.info(
         `Feedback (${feedback}) added to ${type} ID ${id} by user ${userId}`
@@ -266,7 +353,6 @@ exports.createPost = async (req, res) => {
   let location;
   const userId = user._id.toString();
   const username = user.username;
-  let multimediaLink = null;
 
   if (isHome) {
     location = user.home_coordinates.coordinates;

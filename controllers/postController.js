@@ -2,11 +2,13 @@ const Post = require("../models/ContentModel");
 const User = require("../models/userModel");
 const Report = require("../models/ReportModel");
 const Comment = require("../models/CommentModel");
+const Content = require("../models/ContentModel");
 const Award = require("../models/AwardModel");
 const PollVote = require("../models/PollVoteModel");
 const { Op, where } = require("sequelize");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const { sequelize } = require("../config/database");
+const notificationAPI = process.env.API_ENDPOINT + process.env.NOTIFICATION;
 
 exports.fetchCommentThread = async (req, res) => {
   try {
@@ -145,21 +147,14 @@ exports.addComment = async (req, res) => {
   try {
     const { contentid, text, parentCommentid } = req.body;
     // Validate input parameters
-    userid = req.user._id;
-    username = req.user.username;
-    if (!contentid || !userid || !username || !text) {
+    const username = req.user.username;
+    if (!contentid || !text) {
       return res.status(400).json({ msg: "All fields are required" });
     }
 
-    // Check if the user exists
-    const user = await User.findById(userid);
-    if (!user) {
-      return res.status(404).json({ msg: "User not found" });
-    }
     // Create the new comment
     const newComment = await Comment.create({
       contentid: contentid,
-      userid: userid.toString(),
       parent_commentid: parentCommentid,
       username: username,
       text: text,
@@ -167,7 +162,33 @@ exports.addComment = async (req, res) => {
       boos: 0,
       createdat: new Date(),
     });
-
+    const content = await Content.findOne({
+      where: {
+        contentid: contentid
+      }
+    });
+    const contentUserId = content.userid;
+    const contentOwner = await User.findById(contentUserId);
+    const ownerToken = contentOwner.fcmToken;
+    await fetch(notificationAPI, {
+      method: "POST",
+      body: JSON.stringify({
+        token: ownerToken, //"dMVpqZWrHtPvqBHOYIsrnK:APA91bEoWJcOHLQFGyeDYYCaFqbldiLN1bwp6gE6FOUYLEySOELLevYS6_S7rvySmBLdQd7ZA6gnhaQgRPyterRwb8Vp0px8F2SsM9sl9s4Eq9hXVtPgm0wE3Vdbe8_JusSgpOKWBLin",
+        eventType: 'CommentTrigger',
+        commentId: id,
+        userid: contentUserId,
+        title: `Comment on your Post`,
+        content: `${username} has commented on your post.`,
+        notificationBody: `Someone commented on your Post`,
+        notificationTitle: `Comment on your Post`
+      }),
+      headers: {
+        Accept: 'application/json, text/plain, */*',
+        'Content-Type': 'application/json',
+        authorization: req.headers["authorization"],
+        Cookie: "refreshToken=" + req.cookies.refreshToken,
+      },
+    });
     activityLogger.info(
       `New comment added by user: ${username}, contentid: ${contentid}`
     );
