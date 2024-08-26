@@ -17,6 +17,8 @@ const { raw } = require("express");
 const uuid = require("uuid");
 const { S3, S3_BUCKET_NAME, VALIDAWARDTYPES } = require("../utils/constants");
 
+const notificationAPI = process.env.API_ENDPOINT + process.env.NOTIFICATION;
+
 const deleteCommentAndChildren = async (commentid) => {
   const childComments = await Comment.findAll({
     where: { parent_commentid: commentid },
@@ -256,7 +258,7 @@ exports.feedback = async (req, res) => {
         else
           count = content.boos;
         if (type === 'post' && (count % 5 == 0) ) {
-          await fetch('http://localhost:5003/notifications/notification', {
+          await fetch(notificationAPI, {
           method: "POST",
           body: JSON.stringify({
             token: userToken, //"dMVpqZWrHtPvqBHOYIsrnK:APA91bEoWJcOHLQFGyeDYYCaFqbldiLN1bwp6gE6FOUYLEySOELLevYS6_S7rvySmBLdQd7ZA6gnhaQgRPyterRwb8Vp0px8F2SsM9sl9s4Eq9hXVtPgm0wE3Vdbe8_JusSgpOKWBLin",
@@ -276,7 +278,7 @@ exports.feedback = async (req, res) => {
         })
         }
         else if(count % 5 == 0) {
-          await fetch('http://localhost:5003/notifications/notification', {
+          await fetch(notificationAPI, {
           method: "POST",
           body: JSON.stringify({
             token: userToken, //"dMVpqZWrHtPvqBHOYIsrnK:APA91bEoWJcOHLQFGyeDYYCaFqbldiLN1bwp6gE6FOUYLEySOELLevYS6_S7rvySmBLdQd7ZA6gnhaQgRPyterRwb8Vp0px8F2SsM9sl9s4Eq9hXVtPgm0wE3Vdbe8_JusSgpOKWBLin",
@@ -309,7 +311,7 @@ exports.feedback = async (req, res) => {
         else
           count = content.boos;
         if(count%5 == 0) {
-          await fetch('http://localhost:5003/notifications/notification', {
+          await fetch(notificationAPI, {
             method: "POST",
             body: JSON.stringify({
               token: userToken, //"dMVpqZWrHtPvqBHOYIsrnK:APA91bEoWJcOHLQFGyeDYYCaFqbldiLN1bwp6gE6FOUYLEySOELLevYS6_S7rvySmBLdQd7ZA6gnhaQgRPyterRwb8Vp0px8F2SsM9sl9s4Eq9hXVtPgm0wE3Vdbe8_JusSgpOKWBLin",

@@ -8,6 +8,7 @@ const PollVote = require("../models/PollVoteModel");
 const { Op, where } = require("sequelize");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const { sequelize } = require("../config/database");
+const notificationAPI = process.env.API_ENDPOINT + process.env.NOTIFICATION;
 
 exports.fetchCommentThread = async (req, res) => {
   try {
@@ -169,7 +170,7 @@ exports.addComment = async (req, res) => {
     const contentUserId = content.userid;
     const contentOwner = await User.findById(contentUserId);
     const ownerToken = contentOwner.fcmToken;
-    await fetch('http://localhost:5003/notifications/notification', {
+    await fetch(notificationAPI, {
       method: "POST",
       body: JSON.stringify({
         token: ownerToken, //"dMVpqZWrHtPvqBHOYIsrnK:APA91bEoWJcOHLQFGyeDYYCaFqbldiLN1bwp6gE6FOUYLEySOELLevYS6_S7rvySmBLdQd7ZA6gnhaQgRPyterRwb8Vp0px8F2SsM9sl9s4Eq9hXVtPgm0wE3Vdbe8_JusSgpOKWBLin",
