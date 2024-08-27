@@ -13,6 +13,8 @@ const ObjectId = mongoose.Types.ObjectId;
 const validImageTypes = ["image/jpeg", "image/png", "image/gif"];
 const { otpgenerator } = require("../utils/emailService");
 
+const notificationAPI = process.env.API_ENDPOINT + process.env.NOTIFICATION;
+
 function formatGroupCard(group) {
   return {
     id: group._id,
@@ -1013,6 +1015,12 @@ exports.storeMessage = async (req, res) => {
       readBy: [userId],
     };
 
+    const group = await Group.findById(groupId);
+
+    const recievers = group.members.concat(group.admin);
+
+    let userToken = recievers.filter(reciever => reciever._id.toString() !== userId.toString())
+    .map(data => data.fcmToken);
     // Create and save the message
     const newMessage = new Message(messageData);
     await newMessage.save();
@@ -1020,7 +1028,26 @@ exports.storeMessage = async (req, res) => {
     activityLogger.info(
       `Message stored in group ${groupId} by ${user.username}`
     );
-
+    await fetch(notificationAPI, {
+      method: "POST",
+      body: JSON.stringify({
+        token: userToken, //"dMVpqZWrHtPvqBHOYIsrnK:APA91bEoWJcOHLQFGyeDYYCaFqbldiLN1bwp6gE6FOUYLEySOELLevYS6_S7rvySmBLdQd7ZA6gnhaQgRPyterRwb8Vp0px8F2SsM9sl9s4Eq9hXVtPgm0wE3Vdbe8_JusSgpOKWBLin",
+        eventType: "MessageTrigger",
+        messageId: newMessage._id,
+        groupId: groupId,
+        username: user.username, // One who put this feedback
+        title: `Someone messaged to ${group.name}`,
+        content: `${user.username} has messaged`,
+        notificationBody: `Message from ${group.name}`,
+        notificationTitle: `${user.username} has messaged`
+      }),
+      headers: {
+        Accept: 'application/json, text/plain, */*',
+        'Content-Type': 'application/json',
+        authorization: req.headers["authorization"],
+        Cookie: "refreshToken=" + req.cookies.refreshToken,
+      },
+    })
     res
       .status(201)
       .json({ message: "Message stored successfully", data: newMessage });
