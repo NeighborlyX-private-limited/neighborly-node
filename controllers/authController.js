@@ -62,7 +62,7 @@ exports.loginUser = async (req, res, next) => {
 
 // User Register
 exports.registerUser = async (req, res) => {
-  const { password, email, phoneNumber } = req.body;
+  const { password, email, phoneNumber, fcmToken } = req.body;
   let username = generateUsername() + Math.floor(Math.random() * 10000);
   while (await User.findOne({ username })) {
     username = generateUsername() + Math.floor(Math.random() * 10000);
@@ -81,6 +81,7 @@ exports.registerUser = async (req, res) => {
         picture: picture,
         bio: null,
         auth_type: email ? "email" : "phone",
+        fcmToken: fcmToken
       });
       sendToken(user, 200, res);
     } else if (phoneNumber) {
@@ -92,6 +93,7 @@ exports.registerUser = async (req, res) => {
         picture: picture,
         bio: null,
         auth_type: email ? "email" : "phone",
+        fcmToken: fcmToken
       });
       sendToken(user, 200, res);
     }
