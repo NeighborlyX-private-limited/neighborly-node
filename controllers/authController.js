@@ -197,12 +197,14 @@ exports.logoutUser = async (req, res, next) => {
 
 exports.googleAuth = async (req, res) => {
   try {
-    const { token, device } = req.body;
+    const { token, device, fcmToken } = req.body;
     let clientId;
     if(device === 'ios')
       clientId = process.env.IOS_CLIENT_ID;
     else if(device === 'android')
       clientId = process.env.ANDROID_CLIENT_ID;
+    else
+      clientId = process.env.WEB_CLIENT_ID;
     const client = new OAuth2Client(clientId);
     const ticket = await client.verifyIdToken({
       idToken: token,
@@ -254,19 +256,20 @@ exports.googleAuth = async (req, res) => {
         email: email.toLowerCase(),
         picture: picture,
         auth_type: "google",
+        fcmToken: fcmToken
       });
       activityLogger.info("User created and logged in successfully via Google");
       return sendToken(user, 200, res);
     } catch (error) {
       errorLogger.error("Error in Oauth:", error);
       return res.status(500).json({
-        message: "Internal Server Error",
+        message: "Unable to register a user",
       });
     }
   } catch (err) {
     errorLogger.error("Error in Oauth:", err);
-    return res.status(500).json({
-      message: "Internal Server Error",
+    return res.status(400).json({
+      message: "Token or audience is invalid",
     });
   }
 };
