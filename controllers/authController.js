@@ -8,7 +8,6 @@ const bcrypt = require("bcryptjs");
 const otpGenerator = require("otp-generator");
 const dotenv = require("dotenv");
 const { OAuth2Client } = require("google-auth-library");
-const client = new OAuth2Client(process.env.CLIENT_ID);
 const textlocalApiKey = process.env.TEXTLOCAL_API_KEY;
 const {
   sendVerificationEmail,
@@ -204,6 +203,7 @@ exports.googleAuth = async (req, res) => {
       clientId = process.env.IOS_CLIENT_ID;
     else if(device === 'android')
       clientId = process.env.ANDROID_CLIENT_ID;
+    const client = new OAuth2Client(clientId);
     const ticket = await client.verifyIdToken({
       idToken: token,
       audience: clientId,
