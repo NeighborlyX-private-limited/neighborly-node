@@ -260,13 +260,13 @@ exports.googleAuth = async (req, res) => {
     } catch (error) {
       errorLogger.error("Error in Oauth:", error);
       return res.status(500).json({
-        message: "Internal Server Error",
+        message: "Unable to register a user",
       });
     }
   } catch (err) {
     errorLogger.error("Error in Oauth:", err);
-    return res.status(500).json({
-      message: "Internal Server Error",
+    return res.status(400).json({
+      message: "Token or audience is invalid",
     });
   }
 };
