@@ -197,7 +197,7 @@ exports.logoutUser = async (req, res, next) => {
 
 exports.googleAuth = async (req, res) => {
   try {
-    const { token, device } = req.body;
+    const { token, device, fcmToken } = req.body;
     let clientId;
     if(device === 'ios')
       clientId = process.env.IOS_CLIENT_ID;
@@ -256,6 +256,7 @@ exports.googleAuth = async (req, res) => {
         email: email.toLowerCase(),
         picture: picture,
         auth_type: "google",
+        fcmToken: fcmToken
       });
       activityLogger.info("User created and logged in successfully via Google");
       return sendToken(user, 200, res);
