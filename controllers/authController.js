@@ -198,10 +198,15 @@ exports.logoutUser = async (req, res, next) => {
 
 exports.googleAuth = async (req, res) => {
   try {
-    const { token } = req.body;
+    const { token, device } = req.body;
+    let clientId;
+    if(device === 'ios')
+      clientId = process.env.IOS_CLIENT_ID;
+    else if(device === 'android')
+      clientId = process.env.ANDROID_CLIENT_ID;
     const ticket = await client.verifyIdToken({
       idToken: token,
-      audience: process.env.CLIENT_ID,
+      audience: clientId,
     });
     const payload = ticket.getPayload();
 
