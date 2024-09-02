@@ -1,7 +1,6 @@
 const express = require("express");
 const { isAuthenticated } = require("../middlewares/auth");
 const router = express.Router();
-const passport = require("passport");
 const {
   loginUser,
   registerUser,
@@ -13,11 +12,6 @@ const {
   sendPhoneOTP,
   verifyPhoneOTP,
 } = require("../controllers/authController");
-
-require("../middlewares/passport");
-
-router.use(passport.initialize());
-router.use(passport.session());
 
 router.route("/login").post(loginUser);
 router.route("/register").post(registerUser);
