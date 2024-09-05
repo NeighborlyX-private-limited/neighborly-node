@@ -282,7 +282,7 @@ exports.createGroup = async (req, res) => {
     const {
       name,
       description,
-      typeOf,
+      isOpen,
       radius = 3000,
       karma = 0,
       icon,
@@ -345,7 +345,7 @@ exports.createGroup = async (req, res) => {
       icon: groupIcon,
       description,
       location,
-      typeOf,
+      isOpen,
       radius,
       karma,
       admin: [
@@ -357,15 +357,7 @@ exports.createGroup = async (req, res) => {
           fcmToken: user.fcmToken
         },
       ],
-      members: [
-        {
-          userId: user._id,
-          userName: user.username,
-          karma: user.karma,
-          picture: user.picture,
-          fcmToken: user.fcmToken
-        },
-      ],
+      members: [],
     });
 
     // Add group to the user's list of groups
