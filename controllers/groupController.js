@@ -357,15 +357,7 @@ exports.createGroup = async (req, res) => {
           fcmToken: user.fcmToken
         },
       ],
-      members: [
-        {
-          userId: user._id,
-          userName: user.username,
-          karma: user.karma,
-          picture: user.picture,
-          fcmToken: user.fcmToken
-        },
-      ],
+      members: [],
     });
 
     // Add group to the user's list of groups
