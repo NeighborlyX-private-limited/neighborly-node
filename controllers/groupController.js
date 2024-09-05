@@ -282,7 +282,7 @@ exports.createGroup = async (req, res) => {
     const {
       name,
       description,
-      typeOf,
+      isOpen,
       radius = 3000,
       karma = 0,
       icon,
@@ -345,7 +345,7 @@ exports.createGroup = async (req, res) => {
       icon: groupIcon,
       description,
       location,
-      typeOf,
+      isOpen,
       radius,
       karma,
       admin: [
