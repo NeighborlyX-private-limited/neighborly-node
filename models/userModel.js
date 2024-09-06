@@ -63,6 +63,12 @@ const userSchema = new mongoose.Schema({
       ref: "Group",
     },
   ],
+  mutedGroups: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Group",
+    },
+  ],
   karma: {
     type: Number,
     default: 0,

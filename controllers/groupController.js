@@ -76,7 +76,8 @@ exports.addUser = async (req, res) => {
             userName: user.username,
             picture: user.picture,
             karma: user.karma,
-            fcmToken: user.fcmToken
+            fcmToken: user.fcmToken,
+            mutedGroups: user.mutedGroups
           },
         },
       }
@@ -148,6 +149,7 @@ exports.makeGroupPermanent = async (req, res) => {
 exports.removeUser = async (req, res) => {
   try {
     const { groupId, userId } = req.body;
+    const user = req.user;
     activityLogger.info(
       `Removing user with ID ${userId} from group with ID ${groupId}.`
     );
@@ -155,6 +157,19 @@ exports.removeUser = async (req, res) => {
     const foundUser = await User.findById(new ObjectId(userId));
 
     const group = await Group.findById(new ObjectId(groupId));
+    if (user._id.toString() !== userId) {
+      let check = false;
+      for (let element of group.admin) {
+        if(element.userId.toString() === user._id.toString()) {
+          check = true;
+          break;
+        }
+      }
+      if(!check)
+        return res.status(403).json({
+          msg: "Forbidden"
+        });
+    }
     let flag = false;
     let result1, result2;
 
@@ -176,7 +191,8 @@ exports.removeUser = async (req, res) => {
               userName: foundUser.username,
               picture: foundUser.picture,
               karma: foundUser.karma,
-              fcmToken: foundUser.fcmToken
+              fcmToken: foundUser.fcmToken,
+              mutedGroups: foundUser.mutedGroups
             },
           },
         }
@@ -223,7 +239,8 @@ exports.removeUser = async (req, res) => {
               userName: foundUser.username,
               picture: foundUser.picture,
               karma: foundUser.karma,
-              fcmToken: foundUser.fcmToken
+              fcmToken: foundUser.fcmToken,
+              mutedGroups: foundUser.mutedGroups
             },
           },
         }
@@ -354,7 +371,8 @@ exports.createGroup = async (req, res) => {
           userName: user.username,
           karma: user.karma,
           picture: user.picture,
-          fcmToken: user.fcmToken
+          fcmToken: user.fcmToken,
+          mutedGroups: user.mutedGroups
         },
       ],
       members: [],
@@ -426,7 +444,8 @@ exports.nearbyUsers = async (req, res) => {
       userName: near_user.username,
       karma: near_user.karma,
       picture: near_user.picture,
-      fcmToken: near_user.fcmToken
+      fcmToken: near_user.fcmToken,
+      mutedGroups: near_user.mutedGroups
     }));
 
     res.status(200).json({ list });
@@ -687,7 +706,8 @@ exports.addAdmin = async (req, res) => {
                   userName: foundUser.username,
                   picture: foundUser.picture,
                   karma: foundUser.karma,
-                  fcmToken: foundUser.fcmToken
+                  fcmToken: foundUser.fcmToken,
+                  mutedGroups: foundUser.mutedGroups
                 },
               },
             },
@@ -702,7 +722,8 @@ exports.addAdmin = async (req, res) => {
                 userName: foundUser.username,
                 picture: foundUser.picture,
                 karma: foundUser.karma,
-                fcmToken: foundUser.fcmToken
+                fcmToken: foundUser.fcmToken,
+                mutedGroups: foundUser.mutedGroups
               },
             },
           }
@@ -742,7 +763,8 @@ exports.blockUser = async (req, res) => {
                 userName: foundUser.username,
                 picture: foundUser.picture,
                 karma: foundUser.karma,
-                fcmToken: foundUser.fcmToken
+                fcmToken: foundUser.fcmToken,
+                mutedGroups: foundUser.mutedGroups
               },
             },
           },
@@ -757,7 +779,8 @@ exports.blockUser = async (req, res) => {
               userName: foundUser.username,
               picture: foundUser.picture,
               karma: foundUser.karma,
-              fcmToken: foundUser.fcmToken
+              fcmToken: foundUser.fcmToken,
+              mutedGroups: foundUser.mutedGroups
             },
           },
         }
@@ -773,7 +796,8 @@ exports.blockUser = async (req, res) => {
                 userName: foundUser.username,
                 picture: foundUser.picture,
                 karma: foundUser.karma,
-                fcmToken: foundUser.fcmToken
+                fcmToken: foundUser.fcmToken,
+                mutedGroups: foundUser.mutedGroups
               },
             },
           },
@@ -788,7 +812,8 @@ exports.blockUser = async (req, res) => {
               userName: foundUser.username,
               picture: foundUser.picture,
               karma: foundUser.karma,
-              fcmToken: foundUser.fcmToken
+              fcmToken: foundUser.fcmToken,
+              mutedGroups: foundUser.mutedGroups
             },
           },
         }
@@ -1012,7 +1037,17 @@ exports.storeMessage = async (req, res) => {
     const recievers = group.members.concat(group.admin);
 
     let userToken = recievers.filter(reciever => reciever._id.toString() !== userId.toString())
-    .map(data => data.fcmToken);
+    .map(data => {
+      let x = true;
+      for(const element of data.mutedGroups) {
+        if(element.toString() === groupId) {
+          x = false;
+          break;
+        }
+      }
+      if(x)
+        return data.fcmToken;
+    });
     // Create and save the message
     const newMessage = new Message(messageData);
     await newMessage.save();
@@ -1050,6 +1085,172 @@ exports.storeMessage = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
+
+exports.muteGroup = async (req, res) =>{
+  try {
+    const userId = req.user._id;
+    const {groupId, mute} = req.body;
+
+    const group = await Group.findById({ _id: new ObjectId(groupId) });
+    let flag = false;
+    for (const element of group.admin) {
+      if (element.userId.toString() === userId.toString()) {
+        flag = true;
+        break;
+      }
+    }
+    if(mute)
+    {if (flag) {
+      await Group.updateOne(
+        { _id: new ObjectId(groupId) },
+        {
+          $addToSet: {
+            "admin.$[elem].mutedGroups": new ObjectId(groupId)
+          }
+        },
+        {
+          arrayFilters: [{ "elem.userId": userId }]
+        }
+      );
+    }
+    else {
+      await Group.updateOne(
+        { _id: new ObjectId(groupId) },
+        {
+          $addToSet: {
+            "members.$[elem].mutedGroups": new ObjectId(groupId)
+          }
+        },
+        {
+          arrayFilters: [{ "elem.userId": userId }]
+        }
+      );
+    }
+    const response = await User.updateOne(
+      { _id: new ObjectId(userId) },
+      {
+        $addToSet: {
+          mutedGroups: new ObjectId(groupId)
+        },
+      }
+    );
+    res.status(204).json({
+      msg: `Group ${group.displayname} is muted`
+    });}
+    else {
+      if (flag) {
+        await Group.updateOne(
+          { _id: new ObjectId(groupId) },
+          { $pull: {
+            "admin.$[elem].mutedGroups": new ObjectId(groupId)
+          }
+        },
+          {
+            arrayFilters: [{"elem.userId": userId}]
+          }
+        );
+      }
+      else {
+        await Group.updateOne(
+          { _id: new ObjectId(groupId) },
+          {
+            $pull: {
+              "members.$[elem].mutedGroups": new ObjectId(groupId)
+            }
+          },
+          {
+            arrayFilters: [{ "elem.userId": userId }]
+          }
+        );
+      }
+      const response = await User.updateOne(
+        { _id: new ObjectId(userId) },
+        {
+          $pull: {
+            mutedGroups: new ObjectId(groupId)
+          },
+        }
+      );
+      res.status(204).json({
+        msg: `Group ${group.displayname} is unmuted`
+      });
+    }
+  } catch(err) {
+    errorLogger.error("Error in muteGroup: ", err);
+    res.status(500). json({
+      msg: "Error in mute Group"
+    });
+  }
+}
+
+exports.removeAdmin = async (req, res) => {
+  try {
+    const user = req.user;
+    const { adminId, groupId } = req.body;
+    if (user._id.toString() === adminId)
+      return res.status(403).json({
+        msg: "Admin can not remove itself"
+      });
+    const group = await Group.findById(groupId);
+    let isAdmin = false;
+    for (let adm of group.admin) {
+      if (adm.userId, toString() === user._id.toString()) {
+        isAdmin = true;
+        break;
+      }
+    }
+    if (isAdmin) {
+      let adminPresent = false;
+      for (let adm of group.admin) {
+        if (adm.userId, toString() === adminId) {
+          adminPresent = true;
+          break;
+        }
+      }
+      if (adminPresent) {
+        await Group.updateOne(
+          { _id: new ObjectId(groupId) },
+          {
+            $pull: {
+              admin: {
+
+                userId: new ObjectId(userId),
+                userName: foundUser.username,
+                picture: foundUser.picture,
+                karma: foundUser.karma,
+                fcmToken: foundUser.fcmToken,
+                mutedGroups: foundUser.mutedGroups
+              },
+            },
+          }
+        );
+        await Group.updateOne(
+          { _id: new ObjectId(groupId) },
+          {
+            $addToSet: {
+              members: {
+                userId: new ObjectId(userId),
+                userName: foundUser.username,
+                picture: foundUser.picture,
+                karma: foundUser.karma,
+                fcmToken: foundUser.fcmToken,
+                mutedGroups: foundUser.mutedGroups
+              },
+            },
+          }
+        );
+      }
+    }
+    return res.status(204).json({
+      msg: "Admin removed successfully"
+    });
+  } catch(err) {
+    errorLogger.error("There is error in removeAdmin: ", err);
+    return res.status(500).json({
+      msg: "Some error in remove admin"
+    });
+  }
+}
 
 // TODO Please make changes to get the city according to the coordinates of location
 function getCity (location) {
