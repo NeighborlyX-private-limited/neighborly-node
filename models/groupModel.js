@@ -54,7 +54,13 @@ const groupSchema = new mongoose.Schema({
       fcmToken: {
       type: String,
       required: true
-    }
+    },
+      mutedGroups: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Group",
+        },
+      ]
     },
   ],
   members: [
@@ -70,7 +76,13 @@ const groupSchema = new mongoose.Schema({
       fcmToken: {
         type: String,
         required: true
-      }
+      },
+      mutedGroups: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Group",
+        },
+      ]
     },
   ],
 
@@ -87,7 +99,13 @@ const groupSchema = new mongoose.Schema({
       fcmToken: {
         type: String,
         required: true
-      }
+      },
+      mutedGroups: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Group",
+        },
+      ]
     },
   ]
 });

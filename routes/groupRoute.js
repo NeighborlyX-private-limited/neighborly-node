@@ -20,6 +20,8 @@ const {
   fetchUserGroups,
   fetchNearbyGroups,
   storeMessage,
+  muteGroup,
+  removeAdmin
 } = require("../controllers/groupController");
 
 router.route("/remove-user").post(isAuthenticated, removeUser);
@@ -44,8 +46,10 @@ router
   .route("/update-group-details")
   .post(isAuthenticated, singleFileUpload, updateGroupDetails);
 router.route("/add-admin").post(isAuthenticated, addAdmin);
+router.route("/remove-admin").put(isAuthenticated, removeAdmin);
 router.route("/block-user").put(isAuthenticated, blockUser);
 router.route("/user-groups").get(isAuthenticated, fetchUserGroups);
 router.route("/nearby-groups").get(isAuthenticated, fetchNearbyGroups);
+router.route("/mute-group").put(isAuthenticated, muteGroup);
 
 module.exports = router;
