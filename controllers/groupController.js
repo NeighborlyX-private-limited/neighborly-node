@@ -30,6 +30,15 @@ function formatGroupCard(group) {
   };
 }
 
+function getRandomColor() {
+  const letters = "0123456789ABCDEF";
+  let color = "#";
+  for (let i = 0; i < 6; i++) {
+    color += letters[Math.floor(Math.random() * 16)];
+  }
+  return color;
+}
+
 exports.addUser = async (req, res) => {
   try {
     var { groupId, userId } = req.body;
@@ -283,15 +292,6 @@ exports.removeUser = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
-function getRandomColor() {
-  const letters = "0123456789ABCDEF";
-  let color = "#";
-  for (let i = 0; i < 6; i++) {
-    color += letters[Math.floor(Math.random() * 16)];
-  }
-  return color;
-}
 
 exports.createGroup = async (req, res) => {
   try {

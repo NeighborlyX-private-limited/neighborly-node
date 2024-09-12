@@ -11,6 +11,7 @@ const wallRoute = require("./routes/wallRoute");
 const eventRoute = require("./routes/eventRoute");
 const postRoute = require("./routes/postRoute");
 const profileRoute = require("./routes/profileRoute");
+const chatRoute = require("./routes/chatRoute");
 const cors = require("cors");
 const session = require("express-session");
 const { activityLogger, errorLogger } = require("./utils/logger");
@@ -54,6 +55,7 @@ app.use(`${API_PREFIX}/wall`, wallRoute);
 app.use(`${API_PREFIX}/event`, eventRoute);
 app.use(`${API_PREFIX}/posts`, postRoute);
 app.use(`${API_PREFIX}/profile`, profileRoute);
+app.use(`${API_PREFIX}/chat`, chatRoute);
 
 app.use(errorMiddleware);
 
