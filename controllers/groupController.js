@@ -32,10 +32,10 @@ function formatGroupCard(group) {
 
 exports.addUser = async (req, res) => {
   try {
-    const groupId = req.params["groupId"];
-
-    const userId = req.query.userId || req.user._id.toString();
-
+    var { groupId, userId } = req.body;
+    if (!userId) {
+      userId = req.user._id;
+    }
     activityLogger.info(
       `Adding user with ID ${userId} to group with ID ${groupId}.`
     );
