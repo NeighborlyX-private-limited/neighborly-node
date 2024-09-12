@@ -26,8 +26,7 @@ function formatGroupCard(group) {
     name: group.name,
     image: group.icon,
     membersCount: group.members.length + group.admin.length,
-    members: group.members
-      .concat(group.admin)
+    members: group.members.concat(group.admin),
   };
 }
 
@@ -77,7 +76,7 @@ exports.addUser = async (req, res) => {
             picture: user.picture,
             karma: user.karma,
             fcmToken: user.fcmToken,
-            mutedGroups: user.mutedGroups
+            mutedGroups: user.mutedGroups,
           },
         },
       }
@@ -160,14 +159,14 @@ exports.removeUser = async (req, res) => {
     if (user._id.toString() !== userId) {
       let check = false;
       for (let element of group.admin) {
-        if(element.userId.toString() === user._id.toString()) {
+        if (element.userId.toString() === user._id.toString()) {
           check = true;
           break;
         }
       }
-      if(!check)
+      if (!check)
         return res.status(403).json({
-          msg: "Forbidden"
+          msg: "Forbidden",
         });
     }
     let flag = false;
@@ -192,7 +191,7 @@ exports.removeUser = async (req, res) => {
               picture: foundUser.picture,
               karma: foundUser.karma,
               fcmToken: foundUser.fcmToken,
-              mutedGroups: foundUser.mutedGroups
+              mutedGroups: foundUser.mutedGroups,
             },
           },
         }
@@ -240,7 +239,7 @@ exports.removeUser = async (req, res) => {
               picture: foundUser.picture,
               karma: foundUser.karma,
               fcmToken: foundUser.fcmToken,
-              mutedGroups: foundUser.mutedGroups
+              mutedGroups: foundUser.mutedGroups,
             },
           },
         }
@@ -372,7 +371,7 @@ exports.createGroup = async (req, res) => {
           karma: user.karma,
           picture: user.picture,
           fcmToken: user.fcmToken,
-          mutedGroups: user.mutedGroups
+          mutedGroups: user.mutedGroups,
         },
       ],
       members: [],
@@ -445,7 +444,7 @@ exports.nearbyUsers = async (req, res) => {
       karma: near_user.karma,
       picture: near_user.picture,
       fcmToken: near_user.fcmToken,
-      mutedGroups: near_user.mutedGroups
+      mutedGroups: near_user.mutedGroups,
     }));
 
     res.status(200).json({ list });
@@ -515,26 +514,26 @@ exports.fetchLastMessages = async (req, res) => {
       .skip(skip)
       .limit(limit);
     const formatedMessages = await Promise.all(
-      messages.map(async(message) => {
-      const cheersCount = await MessageVote.count({
-        where: {
-          messageid: message._id.toString(),
-          votetype: 'cheer'
-        } 
-      });
-      const boosCount = await MessageVote.count({
-        where: {
-          messageid: message._id.toString(),
-          votetype: 'boo'
-        }
-      });
-      return {
-        message: message,
-        cheersCount: cheersCount,
-        boosCount: boosCount
-      };
-    })
-  );
+      messages.map(async (message) => {
+        const cheersCount = await MessageVote.count({
+          where: {
+            messageid: message._id.toString(),
+            votetype: "cheer",
+          },
+        });
+        const boosCount = await MessageVote.count({
+          where: {
+            messageid: message._id.toString(),
+            votetype: "boo",
+          },
+        });
+        return {
+          message: message,
+          cheersCount: cheersCount,
+          boosCount: boosCount,
+        };
+      })
+    );
     return res.status(200).json(formatedMessages);
   } catch (error) {
     console.error("Error fetching messages:", error);
@@ -707,7 +706,7 @@ exports.addAdmin = async (req, res) => {
                   picture: foundUser.picture,
                   karma: foundUser.karma,
                   fcmToken: foundUser.fcmToken,
-                  mutedGroups: foundUser.mutedGroups
+                  mutedGroups: foundUser.mutedGroups,
                 },
               },
             },
@@ -723,7 +722,7 @@ exports.addAdmin = async (req, res) => {
                 picture: foundUser.picture,
                 karma: foundUser.karma,
                 fcmToken: foundUser.fcmToken,
-                mutedGroups: foundUser.mutedGroups
+                mutedGroups: foundUser.mutedGroups,
               },
             },
           }
@@ -764,7 +763,7 @@ exports.blockUser = async (req, res) => {
                 picture: foundUser.picture,
                 karma: foundUser.karma,
                 fcmToken: foundUser.fcmToken,
-                mutedGroups: foundUser.mutedGroups
+                mutedGroups: foundUser.mutedGroups,
               },
             },
           },
@@ -780,7 +779,7 @@ exports.blockUser = async (req, res) => {
               picture: foundUser.picture,
               karma: foundUser.karma,
               fcmToken: foundUser.fcmToken,
-              mutedGroups: foundUser.mutedGroups
+              mutedGroups: foundUser.mutedGroups,
             },
           },
         }
@@ -797,7 +796,7 @@ exports.blockUser = async (req, res) => {
                 picture: foundUser.picture,
                 karma: foundUser.karma,
                 fcmToken: foundUser.fcmToken,
-                mutedGroups: foundUser.mutedGroups
+                mutedGroups: foundUser.mutedGroups,
               },
             },
           },
@@ -813,7 +812,7 @@ exports.blockUser = async (req, res) => {
               picture: foundUser.picture,
               karma: foundUser.karma,
               fcmToken: foundUser.fcmToken,
-              mutedGroups: foundUser.mutedGroups
+              mutedGroups: foundUser.mutedGroups,
             },
           },
         }
@@ -982,18 +981,16 @@ exports.fetchNearbyGroups = async (req, res) => {
 
 exports.storeMessage = async (req, res) => {
   try {
-    const { groupId, message, parentMessageId } = req.body; // Extract fields from form-data
+    const { groupId, message, parentMessageId } = req.body;
     const userId = req.user._id;
     const file = req.file;
 
-    // Ensure the message field is present
     if (!message) {
       return res.status(400).json({ message: "Message field is required" });
     }
 
     let mediaLink = null;
 
-    // Handle file upload if a file is provided
     if (file) {
       const fileKey = `${uuid.v4()}-${file.originalname}`;
       const uploadParams = {
@@ -1016,7 +1013,6 @@ exports.storeMessage = async (req, res) => {
       }
     }
 
-    // Fetch the username from User model
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -1033,48 +1029,57 @@ exports.storeMessage = async (req, res) => {
     };
 
     const group = await Group.findById(groupId);
-
     const recievers = group.members.concat(group.admin);
-
-    let userToken = recievers.filter(reciever => reciever._id.toString() !== userId.toString())
-    .map(data => {
-      let x = true;
-      for(const element of data.mutedGroups) {
-        if(element.toString() === groupId) {
-          x = false;
-          break;
+    let userToken = recievers
+      .filter((reciever) => reciever._id.toString() !== userId.toString())
+      .map((data) => {
+        let x = true;
+        for (const element of data.mutedGroups) {
+          if (element.toString() === groupId) {
+            x = false;
+            break;
+          }
         }
-      }
-      if(x)
-        return data.fcmToken;
-    });
-    // Create and save the message
+        if (x) return data.fcmToken;
+      });
+
     const newMessage = new Message(messageData);
     await newMessage.save();
 
     activityLogger.info(
       `Message stored in group ${groupId} by ${user.username}`
     );
-    await fetch(notificationAPI, {
-      method: "POST",
-      body: JSON.stringify({
-        token: userToken, //"dMVpqZWrHtPvqBHOYIsrnK:APA91bEoWJcOHLQFGyeDYYCaFqbldiLN1bwp6gE6FOUYLEySOELLevYS6_S7rvySmBLdQd7ZA6gnhaQgRPyterRwb8Vp0px8F2SsM9sl9s4Eq9hXVtPgm0wE3Vdbe8_JusSgpOKWBLin",
-        eventType: "MessageTrigger",
-        messageId: newMessage._id,
-        groupId: groupId,
-        username: user.username, // One who put this feedback
-        title: `Someone messaged to ${group.name}`,
-        content: `${user.username} has messaged`,
-        notificationBody: `Message from ${group.name}`,
-        notificationTitle: `${user.username} has messaged`
-      }),
-      headers: {
-        Accept: 'application/json, text/plain, */*',
-        'Content-Type': 'application/json',
-        authorization: req.headers["authorization"],
-        Cookie: "refreshToken=" + req.cookies.refreshToken,
-      },
-    })
+
+    // Check if notificationAPI is valid before calling it
+    if (notificationAPI && typeof notificationAPI === "string") {
+      try {
+        await fetch(notificationAPI, {
+          method: "POST",
+          body: JSON.stringify({
+            token: userToken,
+            eventType: "MessageTrigger",
+            messageId: newMessage._id,
+            groupId: groupId,
+            username: user.username,
+            title: `Someone messaged to ${group.name}`,
+            content: `${user.username} has messaged`,
+            notificationBody: `Message from ${group.name}`,
+            notificationTitle: `${user.username} has messaged`,
+          }),
+          headers: {
+            Accept: "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            authorization: req.headers["authorization"],
+            Cookie: "refreshToken=" + req.cookies.refreshToken,
+          },
+        });
+      } catch (fetchError) {
+        errorLogger.error("Failed to send notification:", fetchError);
+      }
+    } else {
+      activityLogger.info("Notification API is not available. Skipping...");
+    }
+
     res
       .status(201)
       .json({ message: "Message stored successfully", data: newMessage });
@@ -1086,10 +1091,10 @@ exports.storeMessage = async (req, res) => {
   }
 };
 
-exports.muteGroup = async (req, res) =>{
+exports.muteGroup = async (req, res) => {
   try {
     const userId = req.user._id;
-    const {groupId, mute} = req.body;
+    const { groupId, mute } = req.body;
 
     const group = await Group.findById({ _id: new ObjectId(groupId) });
     let flag = false;
@@ -1099,67 +1104,66 @@ exports.muteGroup = async (req, res) =>{
         break;
       }
     }
-    if(mute)
-    {if (flag) {
-      await Group.updateOne(
-        { _id: new ObjectId(groupId) },
-        {
-          $addToSet: {
-            "admin.$[elem].mutedGroups": new ObjectId(groupId)
-          }
-        },
-        {
-          arrayFilters: [{ "elem.userId": userId }]
-        }
-      );
-    }
-    else {
-      await Group.updateOne(
-        { _id: new ObjectId(groupId) },
-        {
-          $addToSet: {
-            "members.$[elem].mutedGroups": new ObjectId(groupId)
-          }
-        },
-        {
-          arrayFilters: [{ "elem.userId": userId }]
-        }
-      );
-    }
-    const response = await User.updateOne(
-      { _id: new ObjectId(userId) },
-      {
-        $addToSet: {
-          mutedGroups: new ObjectId(groupId)
-        },
-      }
-    );
-    res.status(204).json({
-      msg: `Group ${group.displayname} is muted`
-    });}
-    else {
+    if (mute) {
       if (flag) {
         await Group.updateOne(
           { _id: new ObjectId(groupId) },
-          { $pull: {
-            "admin.$[elem].mutedGroups": new ObjectId(groupId)
-          }
-        },
           {
-            arrayFilters: [{"elem.userId": userId}]
+            $addToSet: {
+              "admin.$[elem].mutedGroups": new ObjectId(groupId),
+            },
+          },
+          {
+            arrayFilters: [{ "elem.userId": userId }],
+          }
+        );
+      } else {
+        await Group.updateOne(
+          { _id: new ObjectId(groupId) },
+          {
+            $addToSet: {
+              "members.$[elem].mutedGroups": new ObjectId(groupId),
+            },
+          },
+          {
+            arrayFilters: [{ "elem.userId": userId }],
           }
         );
       }
-      else {
+      const response = await User.updateOne(
+        { _id: new ObjectId(userId) },
+        {
+          $addToSet: {
+            mutedGroups: new ObjectId(groupId),
+          },
+        }
+      );
+      res.status(204).json({
+        msg: `Group ${group.displayname} is muted`,
+      });
+    } else {
+      if (flag) {
         await Group.updateOne(
           { _id: new ObjectId(groupId) },
           {
             $pull: {
-              "members.$[elem].mutedGroups": new ObjectId(groupId)
-            }
+              "admin.$[elem].mutedGroups": new ObjectId(groupId),
+            },
           },
           {
-            arrayFilters: [{ "elem.userId": userId }]
+            arrayFilters: [{ "elem.userId": userId }],
+          }
+        );
+      } else {
+        await Group.updateOne(
+          { _id: new ObjectId(groupId) },
+          {
+            $pull: {
+              "members.$[elem].mutedGroups": new ObjectId(groupId),
+            },
+          },
+          {
+            arrayFilters: [{ "elem.userId": userId }],
           }
         );
       }
@@ -1167,21 +1171,21 @@ exports.muteGroup = async (req, res) =>{
         { _id: new ObjectId(userId) },
         {
           $pull: {
-            mutedGroups: new ObjectId(groupId)
+            mutedGroups: new ObjectId(groupId),
           },
         }
       );
       res.status(204).json({
-        msg: `Group ${group.displayname} is unmuted`
+        msg: `Group ${group.displayname} is unmuted`,
       });
     }
-  } catch(err) {
+  } catch (err) {
     errorLogger.error("Error in muteGroup: ", err);
-    res.status(500). json({
-      msg: "Error in mute Group"
+    res.status(500).json({
+      msg: "Error in mute Group",
     });
   }
-}
+};
 
 exports.removeAdmin = async (req, res) => {
   try {
@@ -1189,12 +1193,12 @@ exports.removeAdmin = async (req, res) => {
     const { adminId, groupId } = req.body;
     if (user._id.toString() === adminId)
       return res.status(403).json({
-        msg: "Admin can not remove itself"
+        msg: "Admin can not remove itself",
       });
     const group = await Group.findById(groupId);
     let isAdmin = false;
     for (let adm of group.admin) {
-      if (adm.userId, toString() === user._id.toString()) {
+      if ((adm.userId, toString() === user._id.toString())) {
         isAdmin = true;
         break;
       }
@@ -1202,7 +1206,7 @@ exports.removeAdmin = async (req, res) => {
     if (isAdmin) {
       let adminPresent = false;
       for (let adm of group.admin) {
-        if (adm.userId, toString() === adminId) {
+        if ((adm.userId, toString() === adminId)) {
           adminPresent = true;
           break;
         }
@@ -1213,13 +1217,12 @@ exports.removeAdmin = async (req, res) => {
           {
             $pull: {
               admin: {
-
                 userId: new ObjectId(userId),
                 userName: foundUser.username,
                 picture: foundUser.picture,
                 karma: foundUser.karma,
                 fcmToken: foundUser.fcmToken,
-                mutedGroups: foundUser.mutedGroups
+                mutedGroups: foundUser.mutedGroups,
               },
             },
           }
@@ -1234,7 +1237,7 @@ exports.removeAdmin = async (req, res) => {
                 picture: foundUser.picture,
                 karma: foundUser.karma,
                 fcmToken: foundUser.fcmToken,
-                mutedGroups: foundUser.mutedGroups
+                mutedGroups: foundUser.mutedGroups,
               },
             },
           }
@@ -1242,17 +1245,17 @@ exports.removeAdmin = async (req, res) => {
       }
     }
     return res.status(204).json({
-      msg: "Admin removed successfully"
+      msg: "Admin removed successfully",
     });
-  } catch(err) {
+  } catch (err) {
     errorLogger.error("There is error in removeAdmin: ", err);
     return res.status(500).json({
-      msg: "Some error in remove admin"
+      msg: "Some error in remove admin",
     });
   }
-}
+};
 
 // TODO Please make changes to get the city according to the coordinates of location
-function getCity (location) {
-  return "New Delhi"
+function getCity(location) {
+  return "New Delhi";
 }
