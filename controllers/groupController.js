@@ -500,48 +500,6 @@ exports.nearestGroup = async (req, res) => {
   }
 };
 
-//added paging to scroll in the messages
-exports.fetchLastMessages = async (req, res) => {
-  try {
-    const groupId = req.params["groupId"];
-    const page = parseInt(req.query.page) || 1; // Default page 1
-    const limit = parseInt(req.query.limit) || 10; // Default 10 messages
-
-    const skip = (page - 1) * limit;
-
-    const messages = await Message.find({ groupId: groupId })
-      .sort({ sent_at: -1 }) // Sort by sent_at in descending order to get the latest messages first
-      .skip(skip)
-      .limit(limit);
-    const formatedMessages = await Promise.all(
-      messages.map(async (message) => {
-        const cheersCount = await MessageVote.count({
-          where: {
-            messageid: message._id.toString(),
-            votetype: "cheer",
-          },
-        });
-        const boosCount = await MessageVote.count({
-          where: {
-            messageid: message._id.toString(),
-            votetype: "boo",
-          },
-        });
-        return {
-          message: message,
-          cheersCount: cheersCount,
-          boosCount: boosCount,
-        };
-      })
-    );
-    return res.status(200).json(formatedMessages);
-  } catch (error) {
-    console.error("Error fetching messages:", error);
-    errorLogger.error("An error occured while fetching messages:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-};
-
 exports.fetchGroupDetails = async (req, res) => {
   try {
     const groupId = req.params["groupId"];

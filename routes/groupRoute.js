@@ -8,7 +8,6 @@ const {
   addUser,
   makeGroupPermanent,
   removeUser,
-  fetchLastMessages,
   fetchGroupDetails,
   nearbyUsers,
   updateGroupDetails,
@@ -21,7 +20,7 @@ const {
   fetchNearbyGroups,
   storeMessage,
   muteGroup,
-  removeAdmin
+  removeAdmin,
 } = require("../controllers/groupController");
 
 router.route("/remove-user").post(isAuthenticated, removeUser);
@@ -36,9 +35,6 @@ router.route("/report-group").post(isAuthenticated, reportGroup);
 router
   .route("/store-message")
   .post(isAuthenticated, singleFileUpload, storeMessage);
-router
-  .route("/fetch-group-messages/:groupId")
-  .get(isAuthenticated, fetchLastMessages);
 router
   .route("/fetch-group-details/:groupId")
   .get(isAuthenticated, fetchGroupDetails);
