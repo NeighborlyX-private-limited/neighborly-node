@@ -13,11 +13,13 @@ const ObjectId = mongoose.Types.ObjectId;
 exports.fetchUserChats = async (req, res) => {
   try {
     const userId = req.user._id;
+    activityLogger.info(`Fetching chats for user with ID: ${userId}`);
 
     const user = await User.findById(new ObjectId(userId)).select(
       "groups mutedGroups"
     );
     if (!user) {
+      activityLogger.info(`User with ID: ${userId} not found`);
       return res.status(404).json({ message: "User not found." });
     }
 
@@ -36,6 +38,8 @@ exports.fetchUserChats = async (req, res) => {
 
       const isMuted = user.mutedGroups.includes(groupId);
 
+      activityLogger.info(`Fetched chat details for group with ID: ${groupId}`);
+
       return {
         id: group._id,
         name: group.name,
@@ -50,9 +54,15 @@ exports.fetchUserChats = async (req, res) => {
 
     const chatDetails = await Promise.all(chatDetailsPromises);
 
+    activityLogger.info(
+      `Fetched ${chatDetails.length} chat(s) for user with ID: ${userId}`
+    );
     return res.status(200).json(chatDetails);
   } catch (error) {
-    errorLogger.error("Error fetching user chats", error);
+    errorLogger.error(
+      `Error fetching user chats for user with ID: ${req.user._id}`,
+      error
+    );
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
@@ -65,17 +75,25 @@ exports.fetchLastMessages = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10; // Default 10 messages
     const skip = (page - 1) * limit;
 
+    activityLogger.info(
+      `Fetching last messages for group with ID: ${groupId} for user: ${userId} (page: ${page}, limit: ${limit})`
+    );
+
     const messages = await Message.find({ groupId: groupId })
       .sort({ sent_at: -1 })
       .skip(skip)
       .limit(limit);
 
-    const group = await Group.findById(groupId).select("admins");
+    const group = await Group.findById(groupId).select("admin");
+    if (!group) {
+      activityLogger.info(`Group with ID: ${groupId} not found`);
+      return res.status(404).json({ error: "Group not found." });
+    }
 
-    // Format messages
+    const admin = group.admin || []; // Ensure admin is an array even if undefined
+
     const formattedMessages = await Promise.all(
       messages.map(async (message) => {
-        // Fetch cheers and boos count from Postgres (MessageVote table)
         const cheersCount = await MessageVote.count({
           where: {
             messageid: message._id.toString(),
@@ -90,7 +108,6 @@ exports.fetchLastMessages = async (req, res) => {
           },
         });
 
-        // Fetch the user's vote (booOrCheer)
         const userVote = await MessageVote.findOne({
           where: {
             messageid: message._id.toString(),
@@ -98,28 +115,25 @@ exports.fetchLastMessages = async (req, res) => {
           },
         });
 
-        // Check if the message is mine
         const isMine = message.userid.toString() === userId.toString();
-
-        // Check if the message is read by the user
         const isRead = message.readBy.includes(userId);
 
-        // Get author's details (from the User model)
         const author = await User.findById(message.userid).select(
           "username picture karma"
         );
 
-        // Count replies (messages with parentMessageId equal to the message's _id)
         const repliesCount = await Message.countDocuments({
           parentMessageId: message._id,
         });
 
-        // Check if the author is an admin
-        const isAdmin = group.admins.some(
+        const isAdmin = admin.some(
           (admin) => admin.userId.toString() === message.userid.toString()
         );
 
-        // Format the message
+        activityLogger.info(
+          `Formatted message with ID: ${message._id} for group: ${groupId}`
+        );
+
         return {
           id: message._id,
           text: message.message,
@@ -135,7 +149,7 @@ exports.fetchLastMessages = async (req, res) => {
           },
           repliesCount: repliesCount,
           isAdmin: isAdmin,
-          isPinned: false, // For now, setting isPinned to false
+          isPinned: false,
           cheers: cheersCount,
           boos: boosCount,
           booOrCheer: userVote ? userVote.votetype : null,
@@ -143,10 +157,15 @@ exports.fetchLastMessages = async (req, res) => {
       })
     );
 
+    activityLogger.info(
+      `Fetched ${formattedMessages.length} message(s) for group with ID: ${groupId} for user: ${userId}`
+    );
     return res.status(200).json(formattedMessages);
   } catch (error) {
-    console.error("Error fetching messages:", error);
-    errorLogger.error("An error occurred while fetching messages:", error);
+    errorLogger.error(
+      `Error fetching messages for group with ID: ${req.params["groupId"]} for user: ${req.user._id}`,
+      error
+    );
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
