@@ -25,8 +25,10 @@ exports.fetchUserChats = async (req, res) => {
 
     const chatDetailsPromises = user.groups.map(async (groupId) => {
       const group = await Group.findById(new ObjectId(groupId));
+      // Only fetch the last top-level message (parentMessageId should be null)
       const lastMessage = await Message.findOne({
         groupId: new ObjectId(groupId),
+        parentMessageId: null,
       })
         .sort({ sendAt: -1 })
         .limit(1);
@@ -67,7 +69,7 @@ exports.fetchUserChats = async (req, res) => {
   }
 };
 
-exports.fetchLastMessages = async (req, res) => {
+exports.fetchGroupMessages = async (req, res) => {
   try {
     const groupId = req.params["groupId"];
     const userId = req.user._id;
@@ -84,7 +86,7 @@ exports.fetchLastMessages = async (req, res) => {
       groupId: groupId,
       parentMessageId: null, // Exclude replies (parentMessageId is null)
     })
-      .sort({ sent_at: -1 })
+      .sort({ sendAt: -1 })
       .skip(skip)
       .limit(limit);
 

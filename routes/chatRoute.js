@@ -4,14 +4,14 @@ const { isAuthenticated } = require("../middlewares/auth");
 
 const {
   fetchUserChats,
-  fetchLastMessages,
+  fetchGroupMessages,
   fetchMessageThread,
 } = require("../controllers/chatController");
 
 router.route("/fetch-user-chats").get(isAuthenticated, fetchUserChats);
 router
   .route("/fetch-group-messages/:groupId")
-  .get(isAuthenticated, fetchLastMessages);
+  .get(isAuthenticated, fetchGroupMessages);
 router
   .route("/fetch-message-thread/:messageId")
   .get(isAuthenticated, fetchMessageThread);
