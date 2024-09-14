@@ -62,7 +62,10 @@ exports.fetchLastMessages = async (req, res) => {
     const groupId = req.params["groupId"];
     const page = parseInt(req.query.page) || 1; // Default page 1
     const limit = parseInt(req.query.limit) || 10; // Default 10 messages
-
+    const user = req.user;
+    const group = await Group.findById(groupId);
+    let isAdmin = false;
+    let author;
     const skip = (page - 1) * limit;
 
     const messages = await Message.find({ groupId: groupId })
@@ -71,6 +74,26 @@ exports.fetchLastMessages = async (req, res) => {
       .limit(limit);
     const formatedMessages = await Promise.all(
       messages.map(async (message) => {
+        const messageVote = await MessageVote.findOne({where: {
+          userid: user._id.toString()
+        }})
+        const otherMessages = await Message.find({ parentMessageId: message._id});
+        const repliesCount = otherMessages.length;
+        for (let admin of group.admin) {
+          if (admin.userId.toString() === message.userid.toString()) {
+            isAdmin = true;
+            author = admin;
+            break;
+          }
+        }
+        if (!isAdmin) {
+          for (let member of group.members) {
+            if (member.userId.toString() === message.userid.toString()) {
+              author = member;
+              break;
+            }
+          }
+        }
         const cheersCount = await MessageVote.count({
           where: {
             messageid: message._id.toString(),
@@ -84,9 +107,16 @@ exports.fetchLastMessages = async (req, res) => {
           },
         });
         return {
-          message: message,
-          cheersCount: cheersCount,
-          boosCount: boosCount,
+          id: message._id.toString(),
+          text: message.message,
+          date: message.sendAt,
+          isMine: user._id.toString() === message.userid.toString(),
+          repliesCount,
+          isAdmin,
+          author,
+          cheers: cheersCount,
+          boos: boosCount,
+          booOrCheer: messageVote.votetype
         };
       })
     );
@@ -97,3 +127,28 @@ exports.fetchLastMessages = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
+exports.updateReadBy = async(req, res) => {
+  try {
+    const { messageId, groupId, userId } = req.body;
+    const message = await Message.findById(messageId);
+    let updatedMessage;
+    if(groupId === message.groupId.toString()) {
+      updatedMessage = await Message.updateOne(
+        { _id: new ObjectId(messageId) },
+        {
+          $addToSet: {
+            readBy: new ObjectId(userId)
+          }
+        }
+      );
+      res.status(201).json(updatedMessage);
+    }
+    else {
+      throw new Error("User is not member of group");
+    }
+  } catch(err) {
+    errorLogger.error("An error occured while updating readBy:", err);
+    res.status(500).json({ error: err.message});
+  }
+}
