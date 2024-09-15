@@ -4,8 +4,6 @@ const { isAuthenticated } = require("../middlewares/auth");
 
 const {
   fetchUserChats,
-  fetchLastMessages,
-  updateReadBy
   fetchGroupMessages,
   fetchMessageThread,
 } = require("../controllers/chatController");
@@ -13,9 +11,6 @@ const {
 router.route("/fetch-user-chats").get(isAuthenticated, fetchUserChats);
 router
   .route("/fetch-group-messages/:groupId")
-  .get(isAuthenticated, fetchLastMessages);
-
-  router.route("/update-readby").put(updateReadBy);
   .get(isAuthenticated, fetchGroupMessages);
 router
   .route("/fetch-message-thread/:messageId")
