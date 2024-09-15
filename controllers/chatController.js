@@ -288,28 +288,3 @@ exports.fetchMessageThread = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
-
-exports.updateReadBy = async(req, res) => {
-  try {
-    const { messageId, groupId, userId } = req.body;
-    const message = await Message.findById(messageId);
-    let updatedMessage;
-    if(groupId === message.groupId.toString()) {
-      updatedMessage = await Message.updateOne(
-        { _id: new ObjectId(messageId) },
-        {
-          $addToSet: {
-            readBy: new ObjectId(userId)
-          }
-        }
-      );
-      res.status(201).json(updatedMessage);
-    }
-    else {
-      throw new Error("User is not member of group");
-    }
-  } catch(err) {
-    errorLogger.error("An error occured while updating readBy:", err);
-    res.status(500).json({ error: err.message});
-  }
-}
