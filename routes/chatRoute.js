@@ -6,6 +6,7 @@ const {
   fetchUserChats,
   fetchGroupMessages,
   fetchMessageThread,
+  updateReadBy,
 } = require("../controllers/chatController");
 
 router.route("/fetch-user-chats").get(isAuthenticated, fetchUserChats);
@@ -15,4 +16,5 @@ router
 router
   .route("/fetch-message-thread/:messageId")
   .get(isAuthenticated, fetchMessageThread);
+router.route("/update-readby").put(updateReadBy);
 module.exports = router;
