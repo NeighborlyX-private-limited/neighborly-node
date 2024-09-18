@@ -51,7 +51,9 @@ exports.updateLocation = async (req, res, next) => {
     const cityLocation = body?.cityLocation;
     const homeLocation = body?.homeLocation;
     let updatedCoordinates;
+    let locationName;
     if (homeLocation) {
+      locationName = "Home";
       // If homeLocation is provided, it should be an array with [lat, lng]
       activityLogger.info(
         "Updating user's home location based on coordinates: " + homeLocation
@@ -63,6 +65,7 @@ exports.updateLocation = async (req, res, next) => {
         },
       });
     } else if (userLocation) {
+      locationName = "Current";
       // If userLocation is provided, it should be an array with [lat, lng]
       activityLogger.info(
         "Updating user's location based on coordinates: " + userLocation
@@ -75,6 +78,7 @@ exports.updateLocation = async (req, res, next) => {
         },
       });
     } else if (cityLocation && CITY_TO_COORDINATE[cityLocation.toLowerCase()]) {
+      locationName = "City";
       // If cityLocation is provided, look up the coordinates and update
       activityLogger.info(
         "Updating user's location based on city: " + cityLocation
@@ -90,11 +94,11 @@ exports.updateLocation = async (req, res, next) => {
     } else {
       throw new Error("Invalid location data provided");
     }
-    activityLogger.info("User location update successful");
+    activityLogger.info(`User's ${locationName} location update successful`);
     res.status(200).json({
       success: true,
       user_coordinates: updatedCoordinates,
-      message: "Location updated successfully",
+      message: `User's ${locationName} updated successfully`,
     });
   } catch (error) {
     errorLogger.error(error);
