@@ -80,7 +80,7 @@ exports.registerUser = async (req, res) => {
         picture: picture,
         bio: null,
         auth_type: email ? "email" : "phone",
-        fcmToken: fcmToken
+        fcmToken: fcmToken,
       });
       sendToken(user, 200, res);
     } else if (phoneNumber) {
@@ -92,7 +92,7 @@ exports.registerUser = async (req, res) => {
         picture: picture,
         bio: null,
         auth_type: email ? "email" : "phone",
-        fcmToken: fcmToken
+        fcmToken: fcmToken,
       });
       sendToken(user, 200, res);
     }
@@ -163,7 +163,7 @@ exports.verifyOTP = async (req, res) => {
     );
     if (verificationFor === "email-verify") {
       activityLogger.info("Email verified successfully for " + email);
-      res.status(200).json({ message: "Email verified successfully" });
+      sendToken(user, 200, res);
     } else if (verificationFor === "forgot-password") {
       activityLogger.info(
         "Password changed OTP verified. Proceeding to change password for " +
@@ -199,12 +199,9 @@ exports.googleAuth = async (req, res) => {
   try {
     const { token, device, fcmToken } = req.body;
     let clientId;
-    if(device === 'ios')
-      clientId = process.env.IOS_CLIENT_ID;
-    else if(device === 'android')
-      clientId = process.env.ANDROID_CLIENT_ID;
-    else
-      clientId = process.env.WEB_CLIENT_ID;
+    if (device === "ios") clientId = process.env.IOS_CLIENT_ID;
+    else if (device === "android") clientId = process.env.ANDROID_CLIENT_ID;
+    else clientId = process.env.WEB_CLIENT_ID;
     const client = new OAuth2Client(clientId);
     const ticket = await client.verifyIdToken({
       idToken: token,
@@ -256,7 +253,7 @@ exports.googleAuth = async (req, res) => {
         email: email.toLowerCase(),
         picture: picture,
         auth_type: "google",
-        fcmToken: fcmToken
+        fcmToken: fcmToken,
       });
       activityLogger.info("User created and logged in successfully via Google");
       return sendToken(user, 200, res);
