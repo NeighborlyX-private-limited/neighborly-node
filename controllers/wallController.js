@@ -146,21 +146,24 @@ exports.findPosts = async (req, res) => {
           }, {});
 
           // Check if the user has voted on this poll
-          const userPollVote = await PollVote.findOne({
+          const userPollVotes = await PollVote.findAll({
             where: {
               contentid: post.contentid,
               userid: userId,
             },
-            attributes: ["optionid"], // The ID of the option the user voted for
+            attributes: ["optionid"], // The IDs of the options the user voted for
           });
+
+          // Create a set of option IDs the user has voted for
+          const userVotedOptions = new Set(
+            userPollVotes.map((vote) => vote.optionid)
+          );
 
           const pollResults = options.map((data) => ({
             option: data.option,
             optionId: data.optionId,
             votes: pollVotesMap[data.optionId] || 0,
-            userVoted: userPollVote
-              ? userPollVote.optionid === data.optionId // If the user's voted option matches this optionId
-              : false, // If user didn't vote for this option
+            userVoted: userVotedOptions.has(data.optionId), // If the user voted for this option
           }));
 
           return {
