@@ -45,6 +45,7 @@ const checkForNull = async (type, contentModel, contentIdField, id) => {
 exports.findPosts = async (req, res) => {
   const isHome = req.query?.home;
   const user = req.user;
+  const userId = req.user._id.toString(); // Assuming user ID is in req.user
   const postId = req.params.postId; // Added to check if a specific post ID is provided
   const limit = parseInt(req.query.limit, 10) || 100;
   const offset = parseInt(req.query.offset, 10) || 0;
@@ -112,6 +113,17 @@ exports.findPosts = async (req, res) => {
         // Fetch detailed awards information
         const awards = post.awards.map((award) => award.award_type);
 
+        // Fetch user feedback (cheer/boo) for each post
+        const userVote = await ContentVote.findOne({
+          where: {
+            contentid: post.contentid,
+            userid: userId,
+          },
+          attributes: ["votetype"], // This assumes "votetype" can be "cheer" or "boo"
+        });
+
+        const userFeedback = userVote ? userVote.votetype : null;
+
         if (post.type === "poll") {
           const options = post.poll_options;
 
@@ -133,10 +145,22 @@ exports.findPosts = async (req, res) => {
             return acc;
           }, {});
 
+          // Check if the user has voted on this poll
+          const userPollVote = await PollVote.findOne({
+            where: {
+              contentid: post.contentid,
+              userid: userId,
+            },
+            attributes: ["optionid"], // The ID of the option the user voted for
+          });
+
           const pollResults = options.map((data) => ({
             option: data.option,
             optionId: data.optionId,
             votes: pollVotesMap[data.optionId] || 0,
+            userVoted: userPollVote
+              ? userPollVote.optionid === data.optionId // If the user's voted option matches this optionId
+              : false, // If user didn't vote for this option
           }));
 
           return {
@@ -145,6 +169,7 @@ exports.findPosts = async (req, res) => {
             commentCount: commentCount,
             awards: awards,
             pollResults: pollResults,
+            userFeedback: userFeedback,
             poll_options: undefined, // Explicitly remove poll_options from the response
           };
         } else {
@@ -153,6 +178,7 @@ exports.findPosts = async (req, res) => {
             userProfilePicture: user ? user.picture : null,
             commentCount: commentCount,
             awards: awards,
+            userFeedback: userFeedback,
           };
         }
       })
@@ -207,7 +233,9 @@ exports.feedback = async (req, res) => {
     if (!content) {
       return res.status(404).json({ msg: "Content not found" });
     }
-    const contentOwner = await User.findById({ _id: new ObjectId(content.userid) });
+    const contentOwner = await User.findById({
+      _id: new ObjectId(content.userid),
+    });
     const userToken = contentOwner.fcmToken;
     const existingVote = await voteModel.findOne({
       where: { [contentIdField]: id, userid: userId.toString() },
@@ -253,64 +281,58 @@ exports.feedback = async (req, res) => {
           { where: { [contentIdField]: id } }
         );
         let count;
-        if(voteType === 'cheer')
-          count = content.cheers;
-        else
-          count = content.boos;
-        if (type === 'post' && (count % 5 == 0) ) {
+        if (voteType === "cheer") count = content.cheers;
+        else count = content.boos;
+        if (type === "post" && count % 5 == 0) {
           await fetch(notificationAPI, {
-          method: "POST",
-          body: JSON.stringify({
-            token: userToken, //"dMVpqZWrHtPvqBHOYIsrnK:APA91bEoWJcOHLQFGyeDYYCaFqbldiLN1bwp6gE6FOUYLEySOELLevYS6_S7rvySmBLdQd7ZA6gnhaQgRPyterRwb8Vp0px8F2SsM9sl9s4Eq9hXVtPgm0wE3Vdbe8_JusSgpOKWBLin",
-            eventType: triggerType,
-            postId: id,
-            title: `Feedback for a ${type}`,
-            content: `${username} has ${voteType} your ${type}`,
-            notificationBody: `Someone ${voteType} your ${type}`,
-            notificationTitle: `Reaction on your ${type}`
-          }),
-          headers: {
-            Accept: 'application/json, text/plain, */*',
-            'Content-Type': 'application/json',
-            authorization: req.headers["authorization"],
-            Cookie: "refreshToken=" + req.cookies.refreshToken,
-          },
-        })
-        }
-        else if(count % 5 == 0) {
+            method: "POST",
+            body: JSON.stringify({
+              token: userToken, //"dMVpqZWrHtPvqBHOYIsrnK:APA91bEoWJcOHLQFGyeDYYCaFqbldiLN1bwp6gE6FOUYLEySOELLevYS6_S7rvySmBLdQd7ZA6gnhaQgRPyterRwb8Vp0px8F2SsM9sl9s4Eq9hXVtPgm0wE3Vdbe8_JusSgpOKWBLin",
+              eventType: triggerType,
+              postId: id,
+              title: `Feedback for a ${type}`,
+              content: `${username} has ${voteType} your ${type}`,
+              notificationBody: `Someone ${voteType} your ${type}`,
+              notificationTitle: `Reaction on your ${type}`,
+            }),
+            headers: {
+              Accept: "application/json, text/plain, */*",
+              "Content-Type": "application/json",
+              authorization: req.headers["authorization"],
+              Cookie: "refreshToken=" + req.cookies.refreshToken,
+            },
+          });
+        } else if (count % 5 == 0) {
           await fetch(notificationAPI, {
-          method: "POST",
-          body: JSON.stringify({
-            token: userToken, //"dMVpqZWrHtPvqBHOYIsrnK:APA91bEoWJcOHLQFGyeDYYCaFqbldiLN1bwp6gE6FOUYLEySOELLevYS6_S7rvySmBLdQd7ZA6gnhaQgRPyterRwb8Vp0px8F2SsM9sl9s4Eq9hXVtPgm0wE3Vdbe8_JusSgpOKWBLin",
-            eventType: triggerType,
-            commentId: id,
-            userid: content.userid.toString(), // owner of the comment
-            username: username, // One who put this feedback
-            title: `Feedback for a ${type}`,
-            content: `${username} has ${voteType} your ${type}`,
-            notificationBody: `Someone ${voteType} your ${type}`,
-            notificationTitle: `Reaction on your ${type}`
-          }),
-          headers: {
-            Accept: 'application/json, text/plain, */*',
-            'Content-Type': 'application/json',
-            authorization: req.headers["authorization"],
-            Cookie: "refreshToken=" + req.cookies.refreshToken,
-          },
-        });
+            method: "POST",
+            body: JSON.stringify({
+              token: userToken, //"dMVpqZWrHtPvqBHOYIsrnK:APA91bEoWJcOHLQFGyeDYYCaFqbldiLN1bwp6gE6FOUYLEySOELLevYS6_S7rvySmBLdQd7ZA6gnhaQgRPyterRwb8Vp0px8F2SsM9sl9s4Eq9hXVtPgm0wE3Vdbe8_JusSgpOKWBLin",
+              eventType: triggerType,
+              commentId: id,
+              userid: content.userid.toString(), // owner of the comment
+              username: username, // One who put this feedback
+              title: `Feedback for a ${type}`,
+              content: `${username} has ${voteType} your ${type}`,
+              notificationBody: `Someone ${voteType} your ${type}`,
+              notificationTitle: `Reaction on your ${type}`,
+            }),
+            headers: {
+              Accept: "application/json, text/plain, */*",
+              "Content-Type": "application/json",
+              authorization: req.headers["authorization"],
+              Cookie: "refreshToken=" + req.cookies.refreshToken,
+            },
+          });
         }
-      }
-      else {
+      } else {
         await Message.updateOne(
-          {_id: new ObjectId(id)},
-          {$inc: {[voteType+"s"]: 1}}
+          { _id: new ObjectId(id) },
+          { $inc: { [voteType + "s"]: 1 } }
         );
         let count;
-        if (voteType === 'cheer')
-          count = content.cheers;
-        else
-          count = content.boos;
-        if(count%5 == 0) {
+        if (voteType === "cheer") count = content.cheers;
+        else count = content.boos;
+        if (count % 5 == 0) {
           await fetch(notificationAPI, {
             method: "POST",
             body: JSON.stringify({
@@ -322,15 +344,15 @@ exports.feedback = async (req, res) => {
               title: `Feedback for a ${type}`,
               content: `${username} has ${voteType} your ${type}`,
               notificationBody: `Someone ${voteType} your ${type}`,
-              notificationTitle: `Reaction on your ${type}`
+              notificationTitle: `Reaction on your ${type}`,
             }),
             headers: {
-              Accept: 'application/json, text/plain, */*',
-              'Content-Type': 'application/json',
+              Accept: "application/json, text/plain, */*",
+              "Content-Type": "application/json",
               authorization: req.headers["authorization"],
               Cookie: "refreshToken=" + req.cookies.refreshToken,
             },
-          })
+          });
         }
       }
       activityLogger.info(
@@ -657,7 +679,7 @@ exports.giveAward = async (req, res) => {
   }
 };
 
-exports.search = async(req, res) => {
+exports.search = async (req, res) => {
   const isHome = req.query?.home;
   const user = req.user;
   const limit = parseInt(req.query.limit, 10) || 100;
@@ -673,10 +695,11 @@ exports.search = async(req, res) => {
     } else {
       location = user.current_coordinates.coordinates;
     }
-      for (let range of ranges) {
-        posts = await Post.findAll({
-          where: {
-            [Op.and]: [{
+    for (let range of ranges) {
+      posts = await Post.findAll({
+        where: {
+          [Op.and]: [
+            {
               postlocation: {
                 [Op.and]: [
                   { [Op.ne]: null },
@@ -694,28 +717,34 @@ exports.search = async(req, res) => {
                     true
                   ),
                 ],
-              }
-            }, {
-              [Op.or]: [{
-                username: {[Op.substring]: searchword}
-              }, {
-                title: {[Op.substring]: searchword}
-              }, {
-                body: {[Op.substring]: searchword}
-              }]
-            }]
-          },
-          include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
-          order: [["createdat", "DESC"]],
-          limit,
-          offset,
-        });
+              },
+            },
+            {
+              [Op.or]: [
+                {
+                  username: { [Op.substring]: searchword },
+                },
+                {
+                  title: { [Op.substring]: searchword },
+                },
+                {
+                  body: { [Op.substring]: searchword },
+                },
+              ],
+            },
+          ],
+        },
+        include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
+        order: [["createdat", "DESC"]],
+        limit,
+        offset,
+      });
 
-        if (posts.length > 0) {
-          break; // Exit the loop if posts are found
-        }
+      if (posts.length > 0) {
+        break; // Exit the loop if posts are found
       }
-    if(posts.length > 0) {
+    }
+    if (posts.length > 0) {
       const postsWithUserDetails = await Promise.all(
         posts.map(async (post) => {
           const user = await User.findById(post.userid).lean();
@@ -776,8 +805,7 @@ exports.search = async(req, res) => {
     }
 
     // TODO create the search for comments if no post is found. For that please add location in comments
-    else 
-    res.status(200).json([]);
+    else res.status(200).json([]);
   } catch (err) {
     errorLogger.error(err);
     res.status(500).json({
@@ -785,4 +813,3 @@ exports.search = async(req, res) => {
     });
   }
 };
-
