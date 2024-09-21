@@ -187,6 +187,7 @@ exports.fetchComments = async (req, res) => {
 exports.addComment = async (req, res) => {
   try {
     const { contentid, text, parentCommentid } = req.body;
+    const userId = req.user._id.toString();
     // Validate input parameters
     const username = req.user.username;
     if (!contentid || !text) {
@@ -197,6 +198,7 @@ exports.addComment = async (req, res) => {
     const newComment = await Comment.create({
       contentid: contentid,
       parent_commentid: parentCommentid,
+      userid: userId,
       username: username,
       text: text,
       cheers: 0,
@@ -208,28 +210,33 @@ exports.addComment = async (req, res) => {
         contentid: contentid,
       },
     });
+    const commentId = newComment.commentid;
     const contentUserId = content.userid;
     const contentOwner = await User.findById(contentUserId);
     const ownerToken = contentOwner.fcmToken;
-    await fetch(notificationAPI, {
-      method: "POST",
-      body: JSON.stringify({
-        token: ownerToken, //"dMVpqZWrHtPvqBHOYIsrnK:APA91bEoWJcOHLQFGyeDYYCaFqbldiLN1bwp6gE6FOUYLEySOELLevYS6_S7rvySmBLdQd7ZA6gnhaQgRPyterRwb8Vp0px8F2SsM9sl9s4Eq9hXVtPgm0wE3Vdbe8_JusSgpOKWBLin",
-        eventType: "CommentTrigger",
-        commentId: id,
-        userid: contentUserId,
-        title: `Comment on your Post`,
-        content: `${username} has commented on your post.`,
-        notificationBody: `Someone commented on your Post`,
-        notificationTitle: `Comment on your Post`,
-      }),
-      headers: {
-        Accept: "application/json, text/plain, */*",
-        "Content-Type": "application/json",
-        authorization: req.headers["authorization"],
-        Cookie: "refreshToken=" + req.cookies.refreshToken,
-      },
-    });
+    try {
+      await fetch(notificationAPI, {
+        method: "POST",
+        body: JSON.stringify({
+          token: ownerToken, //"dMVpqZWrHtPvqBHOYIsrnK:APA91bEoWJcOHLQFGyeDYYCaFqbldiLN1bwp6gE6FOUYLEySOELLevYS6_S7rvySmBLdQd7ZA6gnhaQgRPyterRwb8Vp0px8F2SsM9sl9s4Eq9hXVtPgm0wE3Vdbe8_JusSgpOKWBLin",
+          eventType: "CommentTrigger",
+          commentId: commentId,
+          userid: contentUserId,
+          title: `Comment on your Post`,
+          content: `${username} has commented on your post.`,
+          notificationBody: `Someone commented on your Post`,
+          notificationTitle: `Comment on your Post`,
+        }),
+        headers: {
+          Accept: "application/json, text/plain, */*",
+          "Content-Type": "application/json",
+          authorization: req.headers["authorization"],
+          Cookie: "refreshToken=" + req.cookies.refreshToken,
+        },
+      });
+    } catch (e) {
+      errorLogger.error("Something wrong with sendNotification", e);
+    }
     activityLogger.info(
       `New comment added by user: ${username}, contentid: ${contentid}`
     );
