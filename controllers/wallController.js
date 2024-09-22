@@ -262,10 +262,18 @@ exports.feedback = async (req, res) => {
         existingVote.votetype = voteType;
         await existingVote.save();
         if (type != "message") {
-          await contentModel.increment(
-            { [voteType + "s"]: 1, [oppositeVoteType + "s"]: -1 },
-            { where: { [contentIdField]: id } }
-          );
+          if((oppositeVoteType == 'cheer' && content.cheers > 0) || (oppositeVoteType == 'boo' && content.boos > 0)) {
+            await contentModel.increment(
+              { [voteType + "s"]: 1, [oppositeVoteType + "s"]: -1 },
+              { where: { [contentIdField]: id } }
+            );
+          }
+          else {
+            await contentModel.increment(
+              { [voteType + "s"]: 1, [oppositeVoteType + "s"]: 0 },
+              { where: { [contentIdField]: id } }
+            );
+          }
         }
         return res.status(200).json({ msg: "Vote updated successfully" });
       }
