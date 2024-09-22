@@ -61,10 +61,25 @@ exports.getUserContent = async (req, res) => {
             return acc;
           }, {});
 
+          // Check if the user has voted on this poll
+          const userPollVotes = await PollVote.findAll({
+            where: {
+              contentid: item.contentid,
+              userid: userId,
+            },
+            attributes: ["optionid"], // The IDs of the options the user voted for
+          });
+
+          // Create a set of option IDs the user has voted for
+          const userVotedOptions = new Set(
+            userPollVotes.map((vote) => vote.optionid)
+          );
+
           const pollResults = options.map((data) => ({
             option: data.option,
             optionId: data.optionId,
             votes: pollVotesMap[data.optionId] || 0,
+            userVoted: userVotedOptions.has(data.optionId),
           }));
 
           return {
@@ -211,11 +226,24 @@ exports.getUserComments = async (req, res) => {
             acc[vote.optionid] = parseInt(vote.votes, 10);
             return acc;
           }, {});
+          // Check if the user has voted on this poll
+          const userPollVotes = await PollVote.findAll({
+            where: {
+              contentid: post.contentid,
+              userid: userId,
+            },
+            attributes: ["optionid"], // The IDs of the options the user voted for
+          });
 
+          // Create a set of option IDs the user has voted for
+          const userVotedOptions = new Set(
+            userPollVotes.map((vote) => vote.optionid)
+          );
           pollResults = options.map((data) => ({
             option: data.option,
             optionId: data.optionId,
             votes: pollVotesMap[data.optionId] || 0,
+            userVoted: userVotedOptions.has(data.optionId), // If the user voted for this option
           }));
         }
         const commenterDetails = await User.findById(comment.userid);
