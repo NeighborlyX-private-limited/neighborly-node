@@ -7,6 +7,8 @@ const Comment = require("../models/CommentModel");
 const Award = require("../models/AwardModel");
 const User = require("../models/userModel");
 const Group = require("../models/groupModel");
+const ContentVote = require("../models/ContentVoteModel");
+const CommentVote = require("../models/CommentVoteModel");
 const uuid = require("uuid");
 const { S3, S3_BUCKET_NAME } = require("../utils/constants");
 const { activityLogger, errorLogger } = require("../utils/logger");
@@ -30,6 +32,15 @@ exports.getUserContent = async (req, res) => {
         });
 
         const awards = item.awards.map((award) => award.award_type);
+        const userVote = await ContentVote.findOne({
+          where: {
+            contentid: item.contentid,
+            userid: userId,
+          },
+          attributes: ["votetype"], // This assumes "votetype" can be "cheer" or "boo"
+        });
+
+        const userFeedback = userVote ? userVote.votetype : null;
         if (item.type === "poll") {
           const options = item.poll_options;
 
@@ -62,6 +73,7 @@ exports.getUserContent = async (req, res) => {
             commentCount: commentCount,
             awards: awards,
             pollResults: pollResults,
+            userFeedback: userFeedback,
             poll_options: undefined,
           };
         } else {
@@ -69,6 +81,7 @@ exports.getUserContent = async (req, res) => {
             ...item.get({ plain: true }),
             userProfilePicture: user ? user.picture : null,
             commentCount: commentCount,
+            userFeedback: userFeedback,
             awards: awards,
           };
         }
@@ -167,6 +180,15 @@ exports.getUserComments = async (req, res) => {
           (award) => award.award_type
         );
         const commentAwards = comment.awards.map((award) => award.award_type);
+        const userVote = await CommentVote.findOne({
+          where: {
+            commentid: comment.commentid,
+            userid: userId,
+          },
+          attributes: ["votetype"], // This assumes "votetype" can be "cheer" or "boo"
+        });
+
+        const userFeedback = userVote ? userVote.votetype : null;
 
         let pollResults = [];
         if (comment.content.type === "poll") {
@@ -217,6 +239,7 @@ exports.getUserComments = async (req, res) => {
           },
           commenterProfilePicture: commenterDetails.picture,
           awards: commentAwards,
+          userFeedback: userFeedback
         };
       })
     );
