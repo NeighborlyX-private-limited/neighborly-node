@@ -489,6 +489,12 @@ exports.editUserInfo = async (req, res) => {
     }
 
     if (file) {
+      // Compress the image using sharp
+      const compressedImage = await sharp(file.buffer)
+        .resize(300, 300) // Resizing to 300x300, adjust as necessary
+        .jpeg({ quality: 40 }) // Compress to 80% quality
+        .toBuffer();
+
       if (existingUser.picture) {
         const oldFileKey = existingUser.picture.split("/").pop();
         const deleteParams = {
