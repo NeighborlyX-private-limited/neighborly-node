@@ -10,6 +10,7 @@ const Group = require("../models/groupModel");
 const ContentVote = require("../models/ContentVoteModel");
 const CommentVote = require("../models/CommentVoteModel");
 const uuid = require("uuid");
+const sharp = require('sharp');
 const { S3, S3_BUCKET_NAME } = require("../utils/constants");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const { content } = require("googleapis/build/src/apis/content");
