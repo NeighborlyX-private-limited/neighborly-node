@@ -119,21 +119,35 @@ exports.getUserContent = async (req, res) => {
 exports.getUserAwards = async (req, res) => {
   try {
     const userId = req.query.userId || req.user._id.toString();
-    const awards = await Award.findAll({
+
+    // Fetch the user's stored awards (the awards the user has)
+    const user = await User.findById(userId);
+    const userStoredAwards = user.awards;
+
+    // Fetch the awards the user has received from the Award model
+    const receivedAwards = await Award.findAll({
       where: { receiver_userid: userId },
       attributes: ["award_type"],
     });
 
-    const awardCounts = awards.reduce((acc, award) => {
+    // Combine both types of awards
+    const awardCounts = receivedAwards.reduce((acc, award) => {
       acc[award.award_type] = (acc[award.award_type] || 0) + 1;
       return acc;
     }, {});
 
+    // Merge the user's stored awards into the award counts
+    for (const [awardType, count] of Object.entries(userStoredAwards)) {
+      awardCounts[awardType] = (awardCounts[awardType] || 0) + count;
+    }
+
+    // Determine the most prominent award
     const mostProminentAward = Object.keys(awardCounts).reduce(
       (a, b) => (awardCounts[a] > awardCounts[b] ? a : b),
       null
     );
 
+    // Format the awards as per the expected response structure
     const formattedAwards = Object.entries(awardCounts).map(
       ([type, count]) => ({
         type,
@@ -142,6 +156,8 @@ exports.getUserAwards = async (req, res) => {
     );
 
     activityLogger.info(`Fetched awards for user: ${userId}`);
+
+    // Return the awards and the most prominent award
     res.status(200).json({
       awards: formattedAwards,
       mostProminentAward: mostProminentAward,
@@ -267,7 +283,7 @@ exports.getUserComments = async (req, res) => {
           },
           commenterProfilePicture: commenterDetails.picture,
           awards: commentAwards,
-          userFeedback: userFeedback
+          userFeedback: userFeedback,
         };
       })
     );
@@ -543,14 +559,17 @@ exports.deleteAccount = async (req, res) => {
         isDeleted: true,
         username: deletedUsername,
 
-        picture: null
+        picture: null,
       },
       $unset: {
-        email: "",  
-        phoneNumber: ""  
-      }
+        email: "",
+        phoneNumber: "",
+      },
     });
-    await Post.update({ username: deletedUsername }, { where: { userid: userId } });
+    await Post.update(
+      { username: deletedUsername },
+      { where: { userid: userId } }
+    );
 
     await Comment.update(
       { username: deletedUsername },

@@ -98,24 +98,24 @@ const userSchema = new mongoose.Schema({
     default: false,
     required: true,
   },
-  isPhoneVerified:{
-    type:Boolean,
-    default:false
+  isPhoneVerified: {
+    type: Boolean,
+    default: false,
   },
   awards: {
     type: Object,
     default: {
       "Local Legend": 2,
-      "Sunflower": 2,
-      "Streetlight": 2,
+      Sunflower: 2,
+      Streetlight: 2,
       "Park Bench": 2,
-      "Map": 2
-    }
+      Map: 2,
+    },
   },
   fcmToken: {
     type: String,
-    required: true
-  }
+    required: true,
+  },
 });
 
 userSchema.pre("save", async function () {
