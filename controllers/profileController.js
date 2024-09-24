@@ -10,7 +10,7 @@ const Group = require("../models/groupModel");
 const ContentVote = require("../models/ContentVoteModel");
 const CommentVote = require("../models/CommentVoteModel");
 const uuid = require("uuid");
-const sharp = require('sharp');
+const sharp = require("sharp");
 const { S3, S3_BUCKET_NAME } = require("../utils/constants");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const { content } = require("googleapis/build/src/apis/content");
@@ -123,33 +123,32 @@ exports.getUserAwards = async (req, res) => {
 
     // Fetch the user's stored awards (the awards the user has)
     const user = await User.findById(userId);
-    const userStoredAwards = user.awards;
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
 
-    // Fetch the awards the user has received from the Award model
+    const userStoredAwards = user.awards; // Directly use the awards from the user model
+
+    // Fetch the awards the user has received from the Award model (for most prominent award calculation only)
     const receivedAwards = await Award.findAll({
       where: { receiver_userid: userId },
       attributes: ["award_type"],
     });
 
-    // Combine both types of awards
+    // Calculate the most prominent award based on received awards
     const awardCounts = receivedAwards.reduce((acc, award) => {
       acc[award.award_type] = (acc[award.award_type] || 0) + 1;
       return acc;
     }, {});
 
-    // Merge the user's stored awards into the award counts
-    for (const [awardType, count] of Object.entries(userStoredAwards)) {
-      awardCounts[awardType] = (awardCounts[awardType] || 0) + count;
-    }
-
-    // Determine the most prominent award
+    // Determine the most prominent award (based on received awards)
     const mostProminentAward = Object.keys(awardCounts).reduce(
       (a, b) => (awardCounts[a] > awardCounts[b] ? a : b),
       null
     );
 
-    // Format the awards as per the expected response structure
-    const formattedAwards = Object.entries(awardCounts).map(
+    // Format the user's awards (only the ones from the User model)
+    const formattedAwards = Object.entries(userStoredAwards).map(
       ([type, count]) => ({
         type,
         count,
@@ -158,7 +157,7 @@ exports.getUserAwards = async (req, res) => {
 
     activityLogger.info(`Fetched awards for user: ${userId}`);
 
-    // Return the awards and the most prominent award
+    // Return the awards from the user model and the most prominent award from the received awards
     res.status(200).json({
       awards: formattedAwards,
       mostProminentAward: mostProminentAward,
