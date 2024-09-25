@@ -45,13 +45,18 @@ const checkForNull = async (type, contentModel, contentIdField, id) => {
 exports.findPosts = async (req, res) => {
   const isHome = req.query?.home;
   const user = req.user;
-  const userId = req.user._id.toString(); // Assuming user ID is in req.user
-  const postId = req.params.postId; // Added to check if a specific post ID is provided
+  const userId = req.user._id.toString();
+  const postId = req.params.postId;
   const limit = parseInt(req.query.limit, 10) || 100;
   const offset = parseInt(req.query.offset, 10) || 0;
   let posts;
   const ranges = [3000, 30000, 300000, 1000000, 2500000]; // Define the range increments in meters
   let location = null;
+
+  // Define the recency window, starting with 7 days
+  const recencyWindowDays = 7;
+  const recencyDate = new Date();
+  recencyDate.setDate(recencyDate.getDate() - recencyWindowDays); // Calculate the date X days ago
 
   try {
     if (isHome) {
@@ -67,7 +72,7 @@ exports.findPosts = async (req, res) => {
         include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
       });
     } else {
-      // Incremental range search logic
+      // Incremental range search logic for recent posts
       for (let range of ranges) {
         posts = await Post.findAll({
           where: {
@@ -89,6 +94,9 @@ exports.findPosts = async (req, res) => {
                 ),
               ],
             },
+            createdat: {
+              [Op.gte]: recencyDate, // Only fetch posts within the recency window
+            },
           },
           include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
           order: [["createdat", "DESC"]],
@@ -96,65 +104,62 @@ exports.findPosts = async (req, res) => {
           offset,
         });
 
-        if (posts.length > 0) {
-          break; // Exit the loop if posts are found
+        if (posts.length >= 10) {
+          // If we have 10 or more recent local posts, break and show only local content
+          break;
         }
+      }
+
+      // If we have fewer than 10 posts, fetch fallback posts (e.g., trending or global content)
+      if (posts.length < 10) {
+        const fallbackPosts = await Post.findAll({
+          where: {
+            postlocation: { [Op.ne]: null },
+            createdat: { [Op.lt]: recencyDate },
+          },
+          include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
+          order: [["createdat", "DESC"]],
+          limit: 10 - posts.length, // Fetch enough to make up for the missing posts
+        });
+
+        posts = [...posts, ...fallbackPosts]; // Combine local and fallback posts
       }
     }
 
-    // Fetch user details for posts
     const postsWithUserDetails = await Promise.all(
       posts.map(async (post) => {
-        const user = await User.findById(post.userid).lean();
+        const postAuthor = await User.findById(post.userid).lean();
         const commentCount = await Comment.count({
           where: { contentid: post.contentid },
         });
-
-        // Fetch detailed awards information
         const awards = post.awards.map((award) => award.award_type);
 
-        // Fetch user feedback (cheer/boo) for each post
         const userVote = await ContentVote.findOne({
-          where: {
-            contentid: post.contentid,
-            userid: userId,
-          },
-          attributes: ["votetype"], // This assumes "votetype" can be "cheer" or "boo"
+          where: { contentid: post.contentid, userid: userId },
+          attributes: ["votetype"],
         });
-
         const userFeedback = userVote ? userVote.votetype : null;
 
+        // Handle polls and user voting logic
         if (post.type === "poll") {
           const options = post.poll_options;
-
-          // Fetch votes for all options in the poll
           const pollVotes = await PollVote.findAll({
             raw: true,
             attributes: [
               "optionid",
               [sequelize.fn("SUM", sequelize.col("votes")), "votes"],
             ],
-            where: {
-              contentid: post.contentid,
-            },
+            where: { contentid: post.contentid },
             group: ["optionid"],
           });
-
           const pollVotesMap = pollVotes.reduce((acc, vote) => {
             acc[vote.optionid] = parseInt(vote.votes, 10);
             return acc;
           }, {});
-
-          // Check if the user has voted on this poll
           const userPollVotes = await PollVote.findAll({
-            where: {
-              contentid: post.contentid,
-              userid: userId,
-            },
-            attributes: ["optionid"], // The IDs of the options the user voted for
+            where: { contentid: post.contentid, userid: userId },
+            attributes: ["optionid"],
           });
-
-          // Create a set of option IDs the user has voted for
           const userVotedOptions = new Set(
             userPollVotes.map((vote) => vote.optionid)
           );
@@ -163,22 +168,22 @@ exports.findPosts = async (req, res) => {
             option: data.option,
             optionId: data.optionId,
             votes: pollVotesMap[data.optionId] || 0,
-            userVoted: userVotedOptions.has(data.optionId), // If the user voted for this option
+            userVoted: userVotedOptions.has(data.optionId),
           }));
 
           return {
             ...post.get({ plain: true }),
-            userProfilePicture: user ? user.picture : null,
+            userProfilePicture: postAuthor ? postAuthor.picture : null,
             commentCount: commentCount,
             awards: awards,
             pollResults: pollResults,
             userFeedback: userFeedback,
-            poll_options: undefined, // Explicitly remove poll_options from the response
+            poll_options: undefined,
           };
         } else {
           return {
             ...post.get({ plain: true }),
-            userProfilePicture: user ? user.picture : null,
+            userProfilePicture: postAuthor ? postAuthor.picture : null,
             commentCount: commentCount,
             awards: awards,
             userFeedback: userFeedback,
@@ -262,13 +267,15 @@ exports.feedback = async (req, res) => {
         existingVote.votetype = voteType;
         await existingVote.save();
         if (type != "message") {
-          if((oppositeVoteType == 'cheer' && content.cheers > 0) || (oppositeVoteType == 'boo' && content.boos > 0)) {
+          if (
+            (oppositeVoteType == "cheer" && content.cheers > 0) ||
+            (oppositeVoteType == "boo" && content.boos > 0)
+          ) {
             await contentModel.increment(
               { [voteType + "s"]: 1, [oppositeVoteType + "s"]: -1 },
               { where: { [contentIdField]: id } }
             );
-          }
-          else {
+          } else {
             await contentModel.increment(
               { [voteType + "s"]: 1, [oppositeVoteType + "s"]: 0 },
               { where: { [contentIdField]: id } }
@@ -314,7 +321,7 @@ exports.feedback = async (req, res) => {
                 Cookie: "refreshToken=" + req.cookies.refreshToken,
               },
             });
-          } catch(err) {
+          } catch (err) {
             errorLogger.error("Something wrong with Notification");
           }
         } else if (count % 5 == 0) {
@@ -339,7 +346,7 @@ exports.feedback = async (req, res) => {
                 Cookie: "refreshToken=" + req.cookies.refreshToken,
               },
             });
-          } catch(err) {
+          } catch (err) {
             errorLogger.error("Something wrong with Notification");
           }
         }
@@ -373,7 +380,7 @@ exports.feedback = async (req, res) => {
                 Cookie: "refreshToken=" + req.cookies.refreshToken,
               },
             });
-          } catch(err) {
+          } catch (err) {
             errorLogger.error("Something wrong with notification");
           }
         }
