@@ -212,34 +212,73 @@ exports.addComment = async (req, res) => {
     });
     const commentId = newComment.commentid;
     const contentUserId = content.userid;
-    const contentOwner = await User.findById(contentUserId);
-    const ownerToken = contentOwner.fcmToken;
-    try {
-      await fetch(notificationAPI, {
-        method: "POST",
-        body: JSON.stringify({
-          token: ownerToken, //"dMVpqZWrHtPvqBHOYIsrnK:APA91bEoWJcOHLQFGyeDYYCaFqbldiLN1bwp6gE6FOUYLEySOELLevYS6_S7rvySmBLdQd7ZA6gnhaQgRPyterRwb8Vp0px8F2SsM9sl9s4Eq9hXVtPgm0wE3Vdbe8_JusSgpOKWBLin",
-          eventType: "CommentTrigger",
-          commentId: commentId,
-          userid: contentUserId,
-          title: `Comment on your Post`,
-          content: `${username} has commented on your post.`,
-          notificationBody: `Someone commented on your Post`,
-          notificationTitle: `Comment on your Post`,
-        }),
-        headers: {
-          Accept: "application/json, text/plain, */*",
-          "Content-Type": "application/json",
-          authorization: req.headers["authorization"],
-          Cookie: "refreshToken=" + req.cookies.refreshToken,
-        },
-      });
-    } catch (e) {
-      errorLogger.error("Something wrong with sendNotification", e);
+    if (contentUserId !== userId) {
+      const contentOwner = await User.findById(contentUserId);
+      const ownerToken = contentOwner.fcmToken;
+      try {
+        await fetch(notificationAPI, {
+          method: "POST",
+          body: JSON.stringify({
+            token: ownerToken, //"dMVpqZWrHtPvqBHOYIsrnK:APA91bEoWJcOHLQFGyeDYYCaFqbldiLN1bwp6gE6FOUYLEySOELLevYS6_S7rvySmBLdQd7ZA6gnhaQgRPyterRwb8Vp0px8F2SsM9sl9s4Eq9hXVtPgm0wE3Vdbe8_JusSgpOKWBLin",
+            eventType: "CommentTrigger",
+            commentId: commentId,
+            userid: contentUserId,
+            title: `Comment on your Post`,
+            content: `${username} has commented on your post.`,
+            notificationBody: `Someone commented on your Post`,
+            notificationTitle: `Comment on your Post`,
+          }),
+          headers: {
+            Accept: "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            authorization: req.headers["authorization"],
+            Cookie: "refreshToken=" + req.cookies.refreshToken,
+          },
+        });
+      } catch (e) {
+        errorLogger.error("Something wrong with sendNotification", e);
+      }
     }
-    activityLogger.info(
-      `New comment added by user: ${username}, contentid: ${contentid}`
-    );
+
+    // Check if the new comment is a child comment (reply to another comment)
+    if (parentCommentid) {
+      const parentComment = await Comment.findById(parentCommentid);
+      const parentUserId = parentComment.userid;
+
+      if (parentUserId && parentUserId !== userId) {
+        const parentUser = await User.findById(parentUserId);
+        const parentToken = parentUser.fcmToken;
+
+        if (parentToken) {
+          try {
+            await fetch(notificationAPI, {
+              method: "POST",
+              body: JSON.stringify({
+                token: parentToken,
+                eventType: "ReplyTrigger",
+                commentId: newComment.commentid,
+                userid: parentUserId,
+                title: `Reply to your comment`,
+                content: `${username} has replied to your comment.`,
+                notificationBody: `Someone replied to your comment`,
+                notificationTitle: `Reply to your comment`,
+              }),
+              headers: {
+                Accept: "application/json, text/plain, */*",
+                "Content-Type": "application/json",
+                authorization: req.headers["authorization"],
+                Cookie: "refreshToken=" + req.cookies.refreshToken,
+              },
+            });
+          } catch (e) {
+            errorLogger.error(
+              "Something went wrong with sendNotification to parent commenter",
+              e
+            );
+          }
+        }
+      }
+    }
     activityLogger.info(
       `New comment added by user: ${username}, contentid: ${contentid}`
     );
