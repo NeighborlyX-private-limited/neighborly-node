@@ -242,39 +242,41 @@ exports.addComment = async (req, res) => {
 
     // Check if the new comment is a child comment (reply to another comment)
     if (parentCommentid) {
-      const parentComment = await Comment.findById(parentCommentid);
-      const parentUserId = parentComment.userid;
+      const parentComment = await Comment.findByPk(parentCommentid);
+      if (parentComment) {
+        const parentUserId = parentComment.userid;
 
-      if (parentUserId && parentUserId !== userId) {
-        const parentUser = await User.findById(parentUserId);
-        const parentToken = parentUser.fcmToken;
+        if (parentUserId && parentUserId !== userId) {
+          const parentUser = await User.findById(parentUserId);
+          const parentToken = parentUser.fcmToken;
 
-        if (parentToken) {
-          try {
-            await fetch(notificationAPI, {
-              method: "POST",
-              body: JSON.stringify({
-                token: parentToken,
-                eventType: "ReplyTrigger",
-                commentId: newComment.commentid,
-                userid: parentUserId,
-                title: `Reply to your comment`,
-                content: `${username} has replied to your comment.`,
-                notificationBody: `Someone replied to your comment`,
-                notificationTitle: `Reply to your comment`,
-              }),
-              headers: {
-                Accept: "application/json, text/plain, */*",
-                "Content-Type": "application/json",
-                authorization: req.headers["authorization"],
-                Cookie: "refreshToken=" + req.cookies.refreshToken,
-              },
-            });
-          } catch (e) {
-            errorLogger.error(
-              "Something went wrong with sendNotification to parent commenter",
-              e
-            );
+          if (parentToken) {
+            try {
+              await fetch(notificationAPI, {
+                method: "POST",
+                body: JSON.stringify({
+                  token: parentToken,
+                  eventType: "ReplyTrigger",
+                  commentId: newComment.commentid,
+                  userid: parentUserId,
+                  title: `Reply to your comment`,
+                  content: `${username} has replied to your comment.`,
+                  notificationBody: `Someone replied to your comment`,
+                  notificationTitle: `Reply to your comment`,
+                }),
+                headers: {
+                  Accept: "application/json, text/plain, */*",
+                  "Content-Type": "application/json",
+                  authorization: req.headers["authorization"],
+                  Cookie: "refreshToken=" + req.cookies.refreshToken,
+                },
+              });
+            } catch (e) {
+              errorLogger.error(
+                "Something went wrong with sendNotification to parent commenter",
+                e
+              );
+            }
           }
         }
       }
