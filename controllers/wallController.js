@@ -224,7 +224,7 @@ exports.feedback = async (req, res) => {
         voteModel = CommentVote;
         contentModel = Comment;
         contentIdField = "commentid";
-        triggerType = "CommenttTrigger";
+        triggerType = "CommentTrigger";
         break;
       case "message":
         voteModel = MessageVote;
@@ -241,6 +241,7 @@ exports.feedback = async (req, res) => {
     if (!content) {
       return res.status(404).json({ msg: "Content not found" });
     }
+
     const contentOwner = await User.findById({
       _id: new ObjectId(content.userid),
     });
@@ -267,20 +268,10 @@ exports.feedback = async (req, res) => {
         existingVote.votetype = voteType;
         await existingVote.save();
         if (type != "message") {
-          if (
-            (oppositeVoteType == "cheer" && content.cheers > 0) ||
-            (oppositeVoteType == "boo" && content.boos > 0)
-          ) {
-            await contentModel.increment(
-              { [voteType + "s"]: 1, [oppositeVoteType + "s"]: -1 },
-              { where: { [contentIdField]: id } }
-            );
-          } else {
-            await contentModel.increment(
-              { [voteType + "s"]: 1, [oppositeVoteType + "s"]: 0 },
-              { where: { [contentIdField]: id } }
-            );
-          }
+          await contentModel.increment(
+            { [voteType + "s"]: 1, [oppositeVoteType + "s"]: -1 },
+            { where: { [contentIdField]: id } }
+          );
         }
         return res.status(200).json({ msg: "Vote updated successfully" });
       }
@@ -298,21 +289,35 @@ exports.feedback = async (req, res) => {
           { [voteType + "s"]: 1 },
           { where: { [contentIdField]: id } }
         );
+
         let count;
         if (voteType === "cheer") count = content.cheers;
         else count = content.boos;
-        if (type === "post" && count % 5 == 0) {
+
+        // Send notification when vote count is a multiple of 5
+        if (count % 5 == 0) {
+          let notificationTitle, notificationBody;
+
+          // Quirky notification messages based on vote type
+          if (voteType === "cheer") {
+            notificationTitle = "You're on Fire! 🔥";
+            notificationBody = `${username} just gave a cheer to your ${type}! Keep it up!`;
+          } else {
+            notificationTitle = "Uh-oh! 🙈";
+            notificationBody = `${username} just gave a boo to your ${type}. Time to step it up!`;
+          }
+
           try {
             await fetch(notificationAPI, {
               method: "POST",
               body: JSON.stringify({
-                token: userToken, //"dMVpqZWrHtPvqBHOYIsrnK:APA91bEoWJcOHLQFGyeDYYCaFqbldiLN1bwp6gE6FOUYLEySOELLevYS6_S7rvySmBLdQd7ZA6gnhaQgRPyterRwb8Vp0px8F2SsM9sl9s4Eq9hXVtPgm0wE3Vdbe8_JusSgpOKWBLin",
+                token: userToken,
                 eventType: triggerType,
                 postId: id,
-                title: `Feedback for a ${type}`,
-                content: `${username} has ${voteType} your ${type}`,
-                notificationBody: `Someone ${voteType} your ${type}`,
-                notificationTitle: `Reaction on your ${type}`,
+                title: notificationTitle,
+                content: notificationBody,
+                notificationBody: notificationBody,
+                notificationTitle: notificationTitle,
               }),
               headers: {
                 Accept: "application/json, text/plain, */*",
@@ -323,68 +328,10 @@ exports.feedback = async (req, res) => {
             });
           } catch (err) {
             errorLogger.error("Something wrong with Notification");
-          }
-        } else if (count % 5 == 0) {
-          try {
-            await fetch(notificationAPI, {
-              method: "POST",
-              body: JSON.stringify({
-                token: userToken, //"dMVpqZWrHtPvqBHOYIsrnK:APA91bEoWJcOHLQFGyeDYYCaFqbldiLN1bwp6gE6FOUYLEySOELLevYS6_S7rvySmBLdQd7ZA6gnhaQgRPyterRwb8Vp0px8F2SsM9sl9s4Eq9hXVtPgm0wE3Vdbe8_JusSgpOKWBLin",
-                eventType: triggerType,
-                commentId: id,
-                userid: content.userid.toString(), // owner of the comment
-                username: username, // One who put this feedback
-                title: `Feedback for a ${type}`,
-                content: `${username} has ${voteType} your ${type}`,
-                notificationBody: `Someone ${voteType} your ${type}`,
-                notificationTitle: `Reaction on your ${type}`,
-              }),
-              headers: {
-                Accept: "application/json, text/plain, */*",
-                "Content-Type": "application/json",
-                authorization: req.headers["authorization"],
-                Cookie: "refreshToken=" + req.cookies.refreshToken,
-              },
-            });
-          } catch (err) {
-            errorLogger.error("Something wrong with Notification");
-          }
-        }
-      } else {
-        await Message.updateOne(
-          { _id: new ObjectId(id) },
-          { $inc: { [voteType + "s"]: 1 } }
-        );
-        let count;
-        if (voteType === "cheer") count = content.cheers;
-        else count = content.boos;
-        if (count % 5 == 0) {
-          try {
-            await fetch(notificationAPI, {
-              method: "POST",
-              body: JSON.stringify({
-                token: userToken, //"dMVpqZWrHtPvqBHOYIsrnK:APA91bEoWJcOHLQFGyeDYYCaFqbldiLN1bwp6gE6FOUYLEySOELLevYS6_S7rvySmBLdQd7ZA6gnhaQgRPyterRwb8Vp0px8F2SsM9sl9s4Eq9hXVtPgm0wE3Vdbe8_JusSgpOKWBLin",
-                eventType: triggerType,
-                messageId: id,
-                userid: content.userid.toString(), // Owner of the message
-                username: username, // One who put this feedback
-                title: `Feedback for a ${type}`,
-                content: `${username} has ${voteType} your ${type}`,
-                notificationBody: `Someone ${voteType} your ${type}`,
-                notificationTitle: `Reaction on your ${type}`,
-              }),
-              headers: {
-                Accept: "application/json, text/plain, */*",
-                "Content-Type": "application/json",
-                authorization: req.headers["authorization"],
-                Cookie: "refreshToken=" + req.cookies.refreshToken,
-              },
-            });
-          } catch (err) {
-            errorLogger.error("Something wrong with notification");
           }
         }
       }
+
       activityLogger.info(
         `Feedback (${feedback}) added to ${type} ID ${id} by user ${userId}`
       );
@@ -614,7 +561,7 @@ exports.giveAward = async (req, res) => {
       return res.status(400).json({ msg: "Missing required fields" });
     }
 
-    var isAvailable = true;
+    let isAvailable = true;
 
     switch (awardType) {
       case "Local Legend":
@@ -660,8 +607,13 @@ exports.giveAward = async (req, res) => {
       default:
         return res.status(400).json({ msg: "Invalid award type" });
     }
+
     if (!isAvailable)
       return res.status(400).json({ msg: "Award not available" });
+
+    let receiverUserId;
+    let contentTitle;
+
     if (type === "post") {
       const post = await Post.findOne({ where: { contentid: id } });
       if (!post) {
@@ -677,6 +629,8 @@ exports.giveAward = async (req, res) => {
         createdat: new Date(),
       });
 
+      receiverUserId = post.userid;
+      contentTitle = "post";
       activityLogger.info(
         `Award (${awardType}) given to post ID ${id} by user ${user._id}`
       );
@@ -695,11 +649,44 @@ exports.giveAward = async (req, res) => {
         createdat: new Date(),
       });
 
+      receiverUserId = comment.userid;
+      contentTitle = "comment";
       activityLogger.info(
         `Award (${awardType}) given to comment ID ${id} by user ${user._id}`
       );
     } else {
       return res.status(400).json({ msg: "Invalid type specified" });
+    }
+
+    // Send notification to the award receiver
+    const receiverUser = await User.findById(receiverUserId);
+    const receiverToken = receiverUser.fcmToken;
+
+    if (receiverToken) {
+      try {
+        await fetch(notificationAPI, {
+          method: "POST",
+          body: JSON.stringify({
+            token: receiverToken,
+            eventType: "AwardTrigger",
+            title: `You're a Winner! 🏆`,
+            content: `${user.username} just awarded you the ${awardType} for your ${contentTitle}! Celebrate your awesomeness!`,
+            notificationBody: `${user.username} just awarded you the ${awardType} for your ${contentTitle}!`,
+            notificationTitle: `You're a Winner! 🏆`,
+          }),
+          headers: {
+            Accept: "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            authorization: req.headers["authorization"],
+            Cookie: "refreshToken=" + req.cookies.refreshToken,
+          },
+        });
+        activityLogger.info(
+          `Notification sent for award (${awardType}) to user ${receiverUserId}`
+        );
+      } catch (err) {
+        errorLogger.error("Something wrong with Notification", err);
+      }
     }
 
     return res.status(200).json({ msg: "Award given successfully" });
