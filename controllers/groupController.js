@@ -1011,6 +1011,7 @@ exports.storeMessage = async (req, res) => {
     // Check if notificationAPI is valid before calling it
     if (notificationAPI && typeof notificationAPI === "string") {
       try {
+        // this needs to be changed according to new notification structure
         await fetch(notificationAPI, {
           method: "POST",
           body: JSON.stringify({

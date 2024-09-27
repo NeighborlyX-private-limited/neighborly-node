@@ -12,7 +12,7 @@ const {
   submitFeedback,
   editUserInfo,
   deleteAccount,
-  getAwards
+  getAwards,
 } = require("../controllers/profileController");
 
 router.route("/user-content/:userId?").get(isAuthenticated, getUserContent);

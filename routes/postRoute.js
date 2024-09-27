@@ -1,5 +1,6 @@
 const express = require("express");
 const { isAuthenticated } = require("../middlewares/auth");
+const { isBanned } = require("../middlewares/bannedValidity");
 const router = express.Router();
 
 const {
@@ -13,7 +14,7 @@ router.route("/fetch-comments/:postId").get(isAuthenticated, fetchComments);
 router
   .route("/fetch-comment-thread/:id")
   .get(isAuthenticated, fetchCommentThread);
-router.route("/add-comment").post(isAuthenticated, addComment);
+router.route("/add-comment").post(isBanned, isAuthenticated, addComment);
 router.route("/send-poll-vote").post(isAuthenticated, sendPollVote);
 
 module.exports = router;

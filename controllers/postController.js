@@ -188,6 +188,7 @@ exports.addComment = async (req, res) => {
   try {
     const { contentid, text, parentCommentid } = req.body;
     const userId = req.user._id.toString();
+    const userAvatar = req.user.picture;
     // Validate input parameters
     const username = req.user.username;
     if (!contentid || !text) {
@@ -210,6 +211,7 @@ exports.addComment = async (req, res) => {
         contentid: contentid,
       },
     });
+    const contentType = content.type;
     const commentId = newComment.commentid;
     const contentUserId = content.userid;
     if (contentUserId !== userId) {
@@ -222,11 +224,14 @@ exports.addComment = async (req, res) => {
             token: ownerToken, //"dMVpqZWrHtPvqBHOYIsrnK:APA91bEoWJcOHLQFGyeDYYCaFqbldiLN1bwp6gE6FOUYLEySOELLevYS6_S7rvySmBLdQd7ZA6gnhaQgRPyterRwb8Vp0px8F2SsM9sl9s4Eq9hXVtPgm0wE3Vdbe8_JusSgpOKWBLin",
             eventType: "CommentTrigger",
             commentId: commentId,
+            postId: contentid,
             userid: contentUserId,
+            notificationImage: userAvatar,
             title: `You’ve Got a Comment!`,
             content: `${username} just dropped a thought-bomb on your post. Check it out! 🔥`,
             notificationBody: `${username} just dropped a thought-bomb on your post. Check it out!`,
             notificationTitle: `You’ve Got a Comment!`,
+            type: contentType,
           }),
           headers: {
             Accept: "application/json, text/plain, */*",
@@ -258,11 +263,14 @@ exports.addComment = async (req, res) => {
                   token: parentToken,
                   eventType: "ReplyTrigger",
                   commentId: newComment.commentid,
+                  postId: contentid,
                   userid: parentUserId,
+                  notificationImage: userAvatar,
                   title: `Someone's Talking Back!`,
                   content: `${username} just replied to your comment. Let the convo roll! 👀`,
                   notificationBody: `${username} just replied to your comment. Let the convo roll!`,
                   notificationTitle: `Someone's Talking Back!`,
+                  type: contentType,
                 }),
                 headers: {
                   Accept: "application/json, text/plain, */*",
