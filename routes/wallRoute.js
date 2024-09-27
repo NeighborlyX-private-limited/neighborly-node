@@ -21,7 +21,7 @@ router.route("/search").get(isAuthenticated, search);
 router.route("/feedback").put(isAuthenticated, feedback);
 router
   .route("/create-post")
-  .post(isBanned, hasValidKarma, isAuthenticated, singleFileUpload, createPost);
+  .post(isAuthenticated, isBanned, hasValidKarma, singleFileUpload, createPost);
 router.route("/delete/:type/:id").delete(isAuthenticated, deleteData);
 router.route("/report").post(isAuthenticated, report);
 router.post("/give-award", isAuthenticated, giveAward);

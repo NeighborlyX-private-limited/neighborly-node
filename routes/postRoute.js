@@ -14,7 +14,7 @@ router.route("/fetch-comments/:postId").get(isAuthenticated, fetchComments);
 router
   .route("/fetch-comment-thread/:id")
   .get(isAuthenticated, fetchCommentThread);
-router.route("/add-comment").post(isBanned, isAuthenticated, addComment);
+router.route("/add-comment").post(isAuthenticated, isBanned, addComment);
 router.route("/send-poll-vote").post(isAuthenticated, sendPollVote);
 
 module.exports = router;
