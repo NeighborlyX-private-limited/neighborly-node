@@ -355,3 +355,22 @@ exports.sendPollVote = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
+exports.getComment = async(req, res) => {
+  try {
+    const commentId = req.params["commentId"];
+    const comment = await Comment.findByPk(commentId);
+    const contentId = comment.contentid;
+    const content = await Post.findByPk(contentId);
+    const data = {
+      comment,
+      content
+    }
+    res.status(200).json(data);
+  } catch(err) {
+    errorLogger.error("Error in getComment", err);
+    res.status(500).json({
+      msg: "Error in getComment API"
+    });
+  }
+}

@@ -7,6 +7,7 @@ const {
   fetchComments,
   addComment,
   sendPollVote,
+  getComment
 } = require("../controllers/postController");
 
 router.route("/fetch-comments/:postId").get(isAuthenticated, fetchComments);
@@ -15,5 +16,6 @@ router
   .get(isAuthenticated, fetchCommentThread);
 router.route("/add-comment").post(isAuthenticated, addComment);
 router.route("/send-poll-vote").post(isAuthenticated, sendPollVote);
+router.route("/get-comment/:commentId").get(isAuthenticated, getComment);
 
 module.exports = router;
