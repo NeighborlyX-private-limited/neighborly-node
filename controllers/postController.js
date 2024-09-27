@@ -466,13 +466,3 @@ exports.getComment = async(req, res) => {
     });
   }
 }
-
-// const commentId = req.params["commentId"];
-// const comment = await Comment.findByPk(commentId);
-// const contentId = comment.contentid;
-// const content = await Post.findByPk(contentId);
-// const data = {
-//   comment,
-//   content
-// }
-// res.status(200).json(data);
