@@ -116,6 +116,13 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  isBanned: {
+    type: Boolean,
+    default: false
+  },
+  bannedExpiry: {
+    type: Date
+  }
 });
 
 userSchema.pre("save", async function () {
