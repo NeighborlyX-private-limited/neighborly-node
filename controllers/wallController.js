@@ -207,6 +207,7 @@ exports.feedback = async (req, res) => {
     const { id, type, feedback } = req.body;
     const userId = req.user._id;
     const username = req.user.username;
+    const userPicture = req.user.picture;
     let triggerType;
 
     let voteType = feedback === "cheer" ? "cheer" : "boo";
@@ -306,7 +307,12 @@ exports.feedback = async (req, res) => {
             notificationTitle = "Uh-oh! 🙈";
             notificationBody = `${username} just gave a boo to your ${type}. Time to step it up!`;
           }
-
+          const contentData = await Post.findOne({
+            where: {
+              contentid: id,
+            },
+          });
+          const postType = contentData.type;
           try {
             await fetch(notificationAPI, {
               method: "POST",
@@ -315,6 +321,8 @@ exports.feedback = async (req, res) => {
                 eventType: triggerType,
                 postId: id,
                 userid: contentOwner._id.toString(),
+                notificationImage: userPicture,
+                type: postType,
                 title: notificationTitle,
                 content: notificationBody,
                 notificationBody: notificationBody,
@@ -629,7 +637,12 @@ exports.giveAward = async (req, res) => {
         award_type: awardType,
         createdat: new Date(),
       });
-
+      const contentData = await Post.findOne({
+        where: {
+          contentid: id,
+        },
+      });
+      const type = contentData.type;
       receiverUserId = post.userid;
       contentTitle = "post";
       activityLogger.info(
@@ -672,6 +685,8 @@ exports.giveAward = async (req, res) => {
             eventType: "AwardTrigger",
             title: `You're a Winner! 🏆`,
             userid: receiverUserId,
+            type: type,
+            notificationImage: user.picture,
             content: `${user.username} just awarded you the ${awardType} for your ${contentTitle}! Celebrate your awesomeness!`,
             notificationBody: `${user.username} just awarded you the ${awardType} for your ${contentTitle}!`,
             notificationTitle: `You're a Winner! 🏆`,
