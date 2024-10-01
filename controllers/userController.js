@@ -284,7 +284,8 @@ exports.saveFcmToken = async (req, res) => {
 
 exports.updateTutorialInfo = async (req, res) => {
   try {
-    const { userId, tutorialInfo } = req.body;
+    const { tutorialInfo } = req.body;
+    const userId = req.user._id;
     if (
       typeof tutorialInfo.viewedTutorial !== "boolean" ||
       typeof tutorialInfo.skippedTutorial !== "boolean"
@@ -303,12 +304,10 @@ exports.updateTutorialInfo = async (req, res) => {
     }
 
     activityLogger.info(`Tutorial info updated for user ${userId}`);
-    res
-      .status(200)
-      .json({
-        message: "Tutorial info updated successfully.",
-        user: updatedUser,
-      });
+    res.status(200).json({
+      message: "Tutorial info updated successfully.",
+      user: updatedUser,
+    });
   } catch (error) {
     errorLogger.error(`An unexpected error occurred: ${error.message}`);
     res.status(500).json({ message: "Error updating tutorial info." });
