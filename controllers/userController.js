@@ -281,3 +281,36 @@ exports.saveFcmToken = async (req, res) => {
     res.status(500).json({ message: "Error saving FCM token." });
   }
 };
+
+exports.updateTutorialInfo = async (req, res) => {
+  try {
+    const { userId, tutorialInfo } = req.body;
+    if (
+      typeof tutorialInfo.viewedTutorial !== "boolean" ||
+      typeof tutorialInfo.skippedTutorial !== "boolean"
+    ) {
+      return res.status(400).json({ message: "Invalid tutorial info data." });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $set: tutorialInfo },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    activityLogger.info(`Tutorial info updated for user ${userId}`);
+    res
+      .status(200)
+      .json({
+        message: "Tutorial info updated successfully.",
+        user: updatedUser,
+      });
+  } catch (error) {
+    errorLogger.error(`An unexpected error occurred: ${error.message}`);
+    res.status(500).json({ message: "Error updating tutorial info." });
+  }
+};

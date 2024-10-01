@@ -53,7 +53,6 @@ exports.findPosts = async (req, res) => {
   const ranges = [3000, 30000, 300000, 1000000, 2500000]; // Define the range increments in meters
   let location = null;
 
-  // Define the recency window, starting with 7 days
   const recencyWindowDays = 7;
   const recencyDate = new Date();
   recencyDate.setDate(recencyDate.getDate() - recencyWindowDays); // Calculate the date X days ago

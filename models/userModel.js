@@ -118,11 +118,19 @@ const userSchema = new mongoose.Schema({
   },
   isBanned: {
     type: Boolean,
-    default: false
+    default: false,
   },
   bannedExpiry: {
-    type: Date
-  }
+    type: Date,
+  },
+  viewedTutorial: {
+    type: Boolean,
+    default: false,
+  },
+  skippedTutorial: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 userSchema.pre("save", async function () {
