@@ -19,7 +19,9 @@ const router = express.Router();
 router.route("/me").get(isAuthenticated, loggedInUser);
 router.route("/user-info").get(isAuthenticated, userinfo);
 router.route("/update-user-picture").put(isAuthenticated, updatePicture);
-router.route("/update-user-location").put(isAuthenticated, updateLocation);
+router
+  .route("/update-user-location/:cityLocation")
+  .put(isAuthenticated, updateLocation);
 router.route("/change-password").put(changePassword);
 router.route("/delete-user").delete(isAuthenticated, deleteUser);
 router.route("/update-user-dob").put(isAuthenticated, updateUserdob);

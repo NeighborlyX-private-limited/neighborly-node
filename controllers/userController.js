@@ -44,67 +44,45 @@ exports.fetchCities = async (req, res, next) => {
 };
 
 exports.updateLocation = async (req, res, next) => {
-  const { body, user } = req;
+  const { params, user } = req;
 
   try {
-    const userLocation = body?.userLocation;
-    const cityLocation = body?.cityLocation;
-    const homeLocation = body?.homeLocation;
-    let updatedCoordinates;
-    let locationName;
-    if (homeLocation) {
-      locationName = "Home";
-      // If homeLocation is provided, it should be an array with [lat, lng]
+    const cityLocation = params.cityLocation;
+
+    // Validate if the city name exists in the CITY_TO_COORDINATE constant
+    if (cityLocation && CITY_TO_COORDINATE[cityLocation.toLowerCase()]) {
+      // Fetch coordinates for the provided city name
+      const updatedCoordinates = CITY_TO_COORDINATE[cityLocation.toLowerCase()];
+
       activityLogger.info(
-        "Updating user's home location based on coordinates: " + homeLocation
+        `Updating user's home location based on city: ${cityLocation}`
       );
-      updatedCoordinates = homeLocation;
+
+      // Update user's home coordinates
       await User.findByIdAndUpdate(user._id, {
         $set: {
-          "home_coordinates.coordinates": homeLocation,
+          "home_coordinates.coordinates": updatedCoordinates,
         },
       });
-    } else if (userLocation) {
-      locationName = "Current";
-      // If userLocation is provided, it should be an array with [lat, lng]
+
       activityLogger.info(
-        "Updating user's location based on coordinates: " + userLocation
+        `User's home location update to ${cityLocation} successful`
       );
-      updatedCoordinates = userLocation;
-      await User.findByIdAndUpdate(user._id, {
-        $set: {
-          "current_coordinates.coordinates": userLocation,
-          "city.coordinates": [0, 0],
-        },
-      });
-    } else if (cityLocation && CITY_TO_COORDINATE[cityLocation.toLowerCase()]) {
-      locationName = "City";
-      // If cityLocation is provided, look up the coordinates and update
-      activityLogger.info(
-        "Updating user's location based on city: " + cityLocation
-      );
-      const coordinates = CITY_TO_COORDINATE[cityLocation.toLowerCase()];
-      updatedCoordinates = coordinates;
-      await User.findByIdAndUpdate(user._id, {
-        $set: {
-          "city.coordinates": coordinates,
-          "current_coordinates.coordinates": [0, 0],
-        },
+
+      res.status(200).json({
+        success: true,
+        user_coordinates: updatedCoordinates,
+        message: `User's home location updated successfully to ${cityLocation}`,
       });
     } else {
-      throw new Error("Invalid location data provided");
+      // If cityLocation is invalid or not provided
+      throw new Error("Invalid or missing city name");
     }
-    activityLogger.info(`User's ${locationName} location update successful`);
-    res.status(200).json({
-      success: true,
-      user_coordinates: updatedCoordinates,
-      message: `User's ${locationName} updated successfully`,
-    });
   } catch (error) {
     errorLogger.error(error);
     res.status(500).json({
       success: false,
-      message: "An error occurred while updating location",
+      message: "An error occurred while updating home location",
     });
   }
 };
