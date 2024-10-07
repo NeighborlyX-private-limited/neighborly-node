@@ -245,7 +245,7 @@ exports.getUserComments = async (req, res) => {
           // Check if the user has voted on this poll
           const userPollVotes = await PollVote.findAll({
             where: {
-              contentid: comment.contentid,
+              contentid: comment.content.contentid,
               userid: userId,
             },
             attributes: ["optionid"], // The IDs of the options the user voted for
