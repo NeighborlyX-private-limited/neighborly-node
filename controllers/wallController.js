@@ -43,12 +43,14 @@ const checkForNull = async (type, contentModel, contentIdField, id) => {
 
 // Fetch posts and polls
 exports.findPosts = async (req, res) => {
-  const isHome = req.query?.home;
+  const isHome = req.query?.home === "true"; // Expecting home to be passed as 'true' or 'false'
   const user = req.user;
   const userId = req.user._id.toString();
   const postId = req.params.postId;
   const limit = parseInt(req.query.limit, 10) || 100;
   const offset = parseInt(req.query.offset, 10) || 0;
+  const latitude = parseFloat(req.query.latitude);
+  const longitude = parseFloat(req.query.longitude);
   let posts;
   const ranges = [3000, 30000, 300000, 1000000, 2500000]; // Define the range increments in meters
   let location = null;
@@ -59,9 +61,11 @@ exports.findPosts = async (req, res) => {
 
   try {
     if (isHome) {
-      location = user.home_coordinates.coordinates;
+      location = user.home_coordinates.coordinates; // Use home coordinates from user profile
+    } else if (latitude && longitude) {
+      location = [longitude, latitude]; // Use the current location passed from the frontend
     } else {
-      location = user.current_coordinates.coordinates;
+      throw new Error("Current location is required if not fetching from home");
     }
 
     if (postId) {
