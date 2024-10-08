@@ -39,6 +39,8 @@ const VALIDAWARDTYPES = new Set([
   // Add more awards here as needed
 ]);
 
+const DELETED_USER_DP = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+
 const MESSAGE_TEMPLATE = `Dear User, 
 
 Your OTP for login is {{otp}}. This is valid for 15 minutes. Please do not share this OTP. 
@@ -57,4 +59,5 @@ module.exports = {
   VALIDAWARDTYPES,
   MESSAGE_TEMPLATE,
   MESSAGE_API_ENDPOINT,
+  DELETED_USER_DP,
 };

@@ -1,6 +1,5 @@
 const { sequelize } = require("../config/database");
 const Post = require("../models/ContentModel");
-const Message = require("../models/messageModel");
 const Feedback = require("../models/FeedbackModel");
 const PollVote = require("../models/PollVoteModel");
 const Comment = require("../models/CommentModel");
@@ -11,9 +10,8 @@ const ContentVote = require("../models/ContentVoteModel");
 const CommentVote = require("../models/CommentVoteModel");
 const uuid = require("uuid");
 const sharp = require("sharp");
-const { S3, S3_BUCKET_NAME } = require("../utils/constants");
+const { S3, S3_BUCKET_NAME, DELETED_USER_DP } = require("../utils/constants");
 const { activityLogger, errorLogger } = require("../utils/logger");
-const { content } = require("googleapis/build/src/apis/content");
 
 exports.getUserContent = async (req, res) => {
   try {
@@ -265,7 +263,6 @@ exports.getUserComments = async (req, res) => {
         const commenterDetails = await User.findById(comment.userid);
         const userProfilePicture = await User.findById(comment.content.userid);
 
-        console.log(comment.content.userid);
         return {
           commentid: comment.commentid,
           text: comment.text,
@@ -278,7 +275,9 @@ exports.getUserComments = async (req, res) => {
             ...comment.content.get({ plain: true }),
             awards: postAwards,
             pollResults: pollResults,
-            userProfilePicture: userProfilePicture.picture,
+            userProfilePicture: userProfilePicture
+              ? userProfilePicture.picture
+              : DELETED_USER_DP,
             poll_options: undefined, // Explicitly remove poll_options from the response
           },
           commenterProfilePicture: commenterDetails.picture,
