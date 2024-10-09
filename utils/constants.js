@@ -15,11 +15,13 @@ const CITY_TO_COORDINATE = {
   delhi: [28.5643, 77.2442],
   noida: [28.5747, 77.356],
   gurugram: [28.4732, 77.0189],
+  "new delhi": [28.6139, 77.2088],
 };
 const AVAILABLE_CITIES = ["delhi", "noida", "gurugram"];
 
 const COORDINATE_TO_CITY = {
-  "28.5643,77.2442": "delhi",
+  "28.6139,77.2088": "new delhi",
+  "28.7041,77.1025": "delhi",
   "28.5747,77.3560": "noida",
   "28.4732,77.0189": "gurugram",
 };

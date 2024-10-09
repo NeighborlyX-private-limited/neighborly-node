@@ -43,90 +43,70 @@ const checkForNull = async (type, contentModel, contentIdField, id) => {
 
 // Fetch posts and polls
 exports.findPosts = async (req, res) => {
-  const isHome = req.query?.home === "true"; // Expecting home to be passed as 'true' or 'false'
+  const isHome = req.query?.home === "true";
   const user = req.user;
-  const userId = req.user._id.toString();
   const postId = req.params.postId;
   const limit = parseInt(req.query.limit, 10) || 100;
   const offset = parseInt(req.query.offset, 10) || 0;
   const latitude = parseFloat(req.query.latitude);
   const longitude = parseFloat(req.query.longitude);
   let posts;
-  const ranges = [3000, 30000, 300000, 1000000, 2500000]; // Define the range increments in meters
-  let location = null;
-
-  const recencyWindowDays = 7;
-  const recencyDate = new Date();
-  recencyDate.setDate(recencyDate.getDate() - recencyWindowDays); // Calculate the date X days ago
+  let location;
 
   try {
     if (isHome) {
-      location = user.home_coordinates.coordinates; // Use home coordinates from user profile
+      const city = req.query.city?.toLowerCase();
+      if (!CITY_TO_COORDINATE[city]) {
+        return res
+          .status(400)
+          .json({ message: "Invalid city for home location" });
+      }
+      location = CITY_TO_COORDINATE[city];
     } else if (latitude && longitude) {
-      location = [longitude, latitude]; // Use the current location passed from the frontend
+      location = [longitude, latitude];
     } else {
-      throw new Error("Current location is required if not fetching from home");
+      throw new Error(
+        "Current location coordinates are required if not fetching from home"
+      );
     }
 
     if (postId) {
-      // Fetch a specific post by ID
       posts = await Post.findAll({
         where: { contentid: postId },
         include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
       });
     } else {
-      // Incremental range search logic for recent posts
-      for (let range of ranges) {
-        posts = await Post.findAll({
-          where: {
-            postlocation: {
-              [Op.and]: [
-                { [Op.ne]: null },
-                sequelize.where(
+      const range = 4000;
+      posts = await Post.findAll({
+        where: {
+          postlocation: {
+            [Op.and]: [
+              { [Op.ne]: null },
+              sequelize.where(
+                sequelize.fn(
+                  "ST_DWithin",
+                  sequelize.col("postlocation"),
                   sequelize.fn(
-                    "ST_DWithin",
-                    sequelize.col("postlocation"),
-                    sequelize.fn(
-                      "ST_SetSRID",
-                      sequelize.fn("ST_Point", location[0], location[1]),
-                      4326
-                    ),
-                    range
+                    "ST_SetSRID",
+                    sequelize.fn("ST_Point", location[0], location[1]),
+                    4326
                   ),
-                  true
+                  range
                 ),
-              ],
-            },
-            createdat: {
-              [Op.gte]: recencyDate, // Only fetch posts within the recency window
-            },
+                true
+              ),
+            ],
           },
-          include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
-          order: [["createdat", "DESC"]],
-          limit,
-          offset,
-        });
+        },
+        include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
+        order: [["createdat", "DESC"]],
+        limit,
+        offset,
+      });
+    }
 
-        if (posts.length >= 10) {
-          // If we have 10 or more recent local posts, break and show only local content
-          break;
-        }
-      }
-
-      // If we have fewer than 10 posts, fetch fallback posts (e.g., trending or global content)
-      if (posts.length < 10) {
-        const fallbackPosts = await Post.findAll({
-          where: {
-            postlocation: { [Op.ne]: null },
-            createdat: { [Op.lt]: recencyDate },
-          },
-          include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
-          order: [["createdat", "DESC"]],
-          limit: 10 - posts.length, // Fetch enough to make up for the missing posts
-        });
-
-        posts = [...posts, ...fallbackPosts]; // Combine local and fallback posts
-      }
+    if (posts.length === 0) {
+      return res.status(200).json([]);
     }
 
     const postsWithUserDetails = await Promise.all(
@@ -138,7 +118,7 @@ exports.findPosts = async (req, res) => {
         const awards = post.awards.map((award) => award.award_type);
 
         const userVote = await ContentVote.findOne({
-          where: { contentid: post.contentid, userid: userId },
+          where: { contentid: post.contentid, userid: user._id.toString() },
           attributes: ["votetype"],
         });
         const userFeedback = userVote ? userVote.votetype : null;
@@ -160,7 +140,7 @@ exports.findPosts = async (req, res) => {
             return acc;
           }, {});
           const userPollVotes = await PollVote.findAll({
-            where: { contentid: post.contentid, userid: userId },
+            where: { contentid: post.contentid, userid: user._id.toString() },
             attributes: ["optionid"],
           });
           const userVotedOptions = new Set(
@@ -195,7 +175,7 @@ exports.findPosts = async (req, res) => {
       })
     );
 
-    activityLogger.info("Posts and polls are fetched");
+    activityLogger.info("Posts fetched successfully");
     res.status(200).json(postsWithUserDetails);
   } catch (err) {
     errorLogger.error(err);
@@ -357,18 +337,38 @@ exports.feedback = async (req, res) => {
 
 exports.createPost = async (req, res) => {
   const file = req.file;
-  const { title, content, type, city, allowMultipleVotes, pollOptions } =
-    req.body;
+  const {
+    title,
+    content,
+    type,
+    city,
+    allowMultipleVotes,
+    pollOptions,
+    latitude,
+    longitude,
+  } = req.body;
   const user = req.user;
   const isHome = req.query?.home;
-  let location;
   const userId = user._id.toString();
   const username = user.username;
 
+  let location;
   if (isHome) {
-    location = user.home_coordinates.coordinates;
+    if (CITY_TO_COORDINATE[city.toLowerCase()]) {
+      location = CITY_TO_COORDINATE[city.toLowerCase()];
+    } else {
+      return res
+        .status(400)
+        .json({ message: "Invalid city for home location" });
+    }
   } else {
-    location = user.current_coordinates.coordinates;
+    if (latitude && longitude) {
+      location = [latitude, longitude];
+    } else {
+      return res.status(400).json({
+        message: "Latitude and longitude are required for current location",
+      });
+    }
   }
 
   const createPost = async (multimedia) => {
@@ -405,8 +405,6 @@ exports.createPost = async (req, res) => {
     } catch (err) {
       errorLogger.error("Create post is not working: ", err);
 
-      // If post creation fails, delete the uploaded file
-      // This is not verified
       if (multimedia) {
         const params = {
           Bucket: S3_BUCKET_NAME,
