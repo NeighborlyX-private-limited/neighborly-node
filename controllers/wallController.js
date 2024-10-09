@@ -57,7 +57,7 @@ exports.findPosts = async (req, res) => {
     if (isHome) {
       location = user.home_coordinates.coordinates;
     } else if (latitude && longitude) {
-      location = [longitude, latitude];
+      location = [latitude, longitude];
     } else {
       throw new Error(
         "Current location coordinates are required if not fetching from home"
