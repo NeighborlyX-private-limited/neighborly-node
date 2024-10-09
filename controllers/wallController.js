@@ -76,28 +76,21 @@ exports.findPosts = async (req, res) => {
         include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
       });
     } else {
-      const range = 4000;
+      const range = 4000; // 4 km range
       posts = await Post.findAll({
-        where: {
-          postlocation: {
-            [Op.and]: [
-              { [Op.ne]: null },
-              sequelize.where(
-                sequelize.fn(
-                  "ST_DWithin",
-                  sequelize.col("postlocation"),
-                  sequelize.fn(
-                    "ST_SetSRID",
-                    sequelize.fn("ST_Point", location[0], location[1]),
-                    4326
-                  ),
-                  range
-                ),
-                true
-              ),
-            ],
-          },
-        },
+        where: sequelize.where(
+          sequelize.fn(
+            "ST_DWithin",
+            sequelize.col("postlocation"),
+            sequelize.fn(
+              "ST_SetSRID",
+              sequelize.fn("ST_Point", location[0], location[1]),
+              4326
+            ),
+            range
+          ),
+          true
+        ),
         include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
         order: [["createdat", "DESC"]],
         limit,
@@ -123,7 +116,6 @@ exports.findPosts = async (req, res) => {
         });
         const userFeedback = userVote ? userVote.votetype : null;
 
-        // Handle polls and user voting logic
         if (post.type === "poll") {
           const options = post.poll_options;
           const pollVotes = await PollVote.findAll({
