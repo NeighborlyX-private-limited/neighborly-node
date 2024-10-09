@@ -333,7 +333,7 @@ exports.createPost = async (req, res) => {
     location,
   } = req.body;
   const user = req.user;
-  const isHome = req.query?.home;
+  const isHome = req.query?.home === "true";
   const userId = user._id.toString();
   const username = user.username;
 
