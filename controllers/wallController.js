@@ -330,29 +330,25 @@ exports.createPost = async (req, res) => {
     city,
     allowMultipleVotes,
     pollOptions,
-    latitude,
-    longitude,
+    location,
   } = req.body;
   const user = req.user;
   const isHome = req.query?.home;
   const userId = user._id.toString();
   const username = user.username;
 
-  let location;
+  let finalLocation;
   if (isHome) {
-    if (CITY_TO_COORDINATE[city.toLowerCase()]) {
-      location = CITY_TO_COORDINATE[city.toLowerCase()];
-    } else {
-      return res
-        .status(400)
-        .json({ message: "Invalid city for home location" });
-    }
+    // Pick home location from user's profile
+    finalLocation = user.home_coordinates.coordinates;
   } else {
-    if (latitude && longitude) {
-      location = [latitude, longitude];
+    // Use location provided by frontend
+    if (location && Array.isArray(location) && location.length === 2) {
+      finalLocation = location;
     } else {
       return res.status(400).json({
-        message: "Latitude and longitude are required for current location",
+        message:
+          "Invalid location format. Expected an array with latitude and longitude",
       });
     }
   }
