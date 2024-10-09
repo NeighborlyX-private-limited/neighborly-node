@@ -375,7 +375,7 @@ exports.createPost = async (req, res) => {
         createdat: Date.now(),
         cheers: 0,
         boos: 0,
-        postlocation: { type: "POINT", coordinates: location },
+        postlocation: { type: "POINT", coordinates: finalLocation },
         type: type,
         poll_options: formattedPollOptions,
         city: city,
