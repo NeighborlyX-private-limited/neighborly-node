@@ -55,13 +55,7 @@ exports.findPosts = async (req, res) => {
 
   try {
     if (isHome) {
-      const city = req.query.city?.toLowerCase();
-      if (!CITY_TO_COORDINATE[city]) {
-        return res
-          .status(400)
-          .json({ message: "Invalid city for home location" });
-      }
-      location = CITY_TO_COORDINATE[city];
+      location = user.home_coordinates.coordinates;
     } else if (latitude && longitude) {
       location = [longitude, latitude];
     } else {
