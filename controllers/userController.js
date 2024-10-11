@@ -11,6 +11,53 @@ const {
   S3_BUCKET_NAME,
 } = require("../utils/constants");
 
+exports.uploadFiles = async (req, res, next) => {
+  const files = req.files;
+  if (!files || files.length === 0) {
+    return res
+      .status(400)
+      .json({ success: false, message: "No files uploaded" });
+  }
+
+  const fileUploadPromises = files.map((file) => {
+    const fileKey = `${uuid.v4()}-${file.originalname}`;
+    activityLogger.info(`Uploading file: ${fileKey}`);
+
+    const params = {
+      Bucket: S3_BUCKET_NAME,
+      Key: fileKey,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+      ACL: "public-read",
+    };
+
+    // Return a promise for each file upload
+    return new Promise((resolve, reject) => {
+      S3.upload(params, (err, data) => {
+        if (err) {
+          errorLogger.error("Error uploading file:", err);
+          reject(err);
+        } else {
+          activityLogger.info(
+            "File uploaded successfully. S3 URL:",
+            data.Location
+          );
+          resolve(data.Location);
+        }
+      });
+    });
+  });
+
+  try {
+    // Wait for all uploads to finish
+    const fileUrls = await Promise.all(fileUploadPromises);
+    res.status(200).json({ success: true, urls: fileUrls });
+  } catch (error) {
+    errorLogger.error("Error uploading files:", error);
+    res.status(500).json({ success: false, message: "Upload failed" });
+  }
+};
+
 exports.uploadFile = async (req, res, next) => {
   const file = req.file;
   const fileKey = `${uuid.v4()}-${file.originalname}`;
