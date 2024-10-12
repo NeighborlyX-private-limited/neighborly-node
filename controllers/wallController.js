@@ -322,7 +322,7 @@ exports.feedback = async (req, res) => {
 };
 
 exports.createPost = async (req, res) => {
-  const file = req.file;
+  const files = req.files;
   const {
     title,
     content,
@@ -339,10 +339,8 @@ exports.createPost = async (req, res) => {
 
   let finalLocation;
   if (isHome) {
-    // Pick home location from user's profile
     finalLocation = user.home_coordinates.coordinates;
   } else {
-    // Use location provided by frontend
     if (location && Array.isArray(location) && location.length === 2) {
       finalLocation = location;
     } else {
@@ -387,19 +385,21 @@ exports.createPost = async (req, res) => {
     } catch (err) {
       errorLogger.error("Create post is not working: ", err);
 
-      if (multimedia) {
-        const params = {
-          Bucket: S3_BUCKET_NAME,
-          Key: multimedia.split("/").pop(),
-        };
-        S3.deleteObject(params, (err) => {
-          if (err) {
-            errorLogger.error(`Failed to delete uploaded file: ${err}`);
-          } else {
-            activityLogger.info(
-              `Successfully deleted uploaded file: ${multimedia}`
-            );
-          }
+      if (multimedia && multimedia.length > 0) {
+        multimedia.forEach((fileUrl) => {
+          const params = {
+            Bucket: S3_BUCKET_NAME,
+            Key: fileUrl.split("/").pop(),
+          };
+          S3.deleteObject(params, (err) => {
+            if (err) {
+              errorLogger.error(`Failed to delete uploaded file: ${err}`);
+            } else {
+              activityLogger.info(
+                `Successfully deleted uploaded file: ${fileUrl}`
+              );
+            }
+          });
         });
       }
 
@@ -409,31 +409,48 @@ exports.createPost = async (req, res) => {
     }
   };
 
-  if (file) {
-    const fileKey = `${uuid.v4()}-${file.originalname}`;
-    activityLogger.info(`Uploading file: ${fileKey}`);
+  if (files && files.length > 0) {
+    const multimediaUrls = [];
 
-    const params = {
-      Bucket: S3_BUCKET_NAME,
-      Key: fileKey,
-      Body: file.buffer,
-      ContentType: file.mimetype,
-      ACL: "public-read",
-    };
+    const uploadPromises = files.map((file) => {
+      const fileKey = `${uuid.v4()}-${file.originalname}`;
+      activityLogger.info(`Uploading file: ${fileKey}`);
 
-    S3.upload(params, (err, data) => {
-      if (err) {
-        errorLogger.error("Error uploading file:", err);
-        return res
-          .status(500)
-          .json({ success: false, message: "Upload failed" });
-      }
+      const params = {
+        Bucket: S3_BUCKET_NAME,
+        Key: fileKey,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+        ACL: "public-read",
+      };
 
-      activityLogger.info("File uploaded successfully. S3 URL:", data.Location);
-      createPost(data.Location);
+      return new Promise((resolve, reject) => {
+        S3.upload(params, (err, data) => {
+          if (err) {
+            errorLogger.error("Error uploading file:", err);
+            return reject(err);
+          }
+
+          activityLogger.info(
+            "File uploaded successfully. S3 URL:",
+            data.Location
+          );
+          multimediaUrls.push(data.Location);
+          resolve();
+        });
+      });
     });
+
+    try {
+      await Promise.all(uploadPromises);
+      createPost(multimediaUrls);
+    } catch (err) {
+      return res
+        .status(500)
+        .json({ success: false, message: "File upload failed" });
+    }
   } else {
-    createPost(null);
+    createPost([]);
   }
 };
 
