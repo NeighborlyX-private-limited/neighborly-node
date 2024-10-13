@@ -21,7 +21,10 @@ const Content = sequelize.define(
       allowNull: false,
     },
     body: DataTypes.TEXT,
-    multimedia: DataTypes.TEXT,
+    multimedia: {
+      type: sequelize.JSONB,
+      allowNull: true,
+    },
     createdat: DataTypes.DATE,
     cheers: {
       type: DataTypes.INTEGER,
