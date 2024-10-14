@@ -22,7 +22,7 @@ const Content = sequelize.define(
     },
     body: DataTypes.TEXT,
     multimedia: {
-      type: sequelize.JSONB,
+      type: DataTypes.JSONB,
       allowNull: true,
     },
     createdat: DataTypes.DATE,
