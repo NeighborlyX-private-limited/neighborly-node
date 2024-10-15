@@ -131,6 +131,11 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  isAdmin: {
+    type: Boolean,
+    default: false,
+    sparse: true, // Allow multiple null values
+  },
 });
 
 userSchema.pre("save", async function () {
