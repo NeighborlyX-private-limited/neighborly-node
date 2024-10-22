@@ -305,7 +305,6 @@ exports.createGroup = async (req, res) => {
     } = req.body;
     const user = req.user;
     const isHome = req.query.home === "true"; // Convert query param to boolean
-    const { latitude, longitude } = req.query;
     activityLogger.info(
       "Attempting to create a group with the following data:",
       req.body
@@ -799,7 +798,7 @@ function isValidCoordinate(latitude, longitude) {
 }
 
 exports.searchGroups = async (req, res) => {
-  const query = req.query.searchQuery;
+  const query = req.body.searchQuery;
 
   if (!query) {
     errorLogger.error(
