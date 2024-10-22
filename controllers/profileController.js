@@ -554,7 +554,21 @@ exports.editUserInfo = async (req, res) => {
 };
 
 exports.deleteAccount = async (req, res) => {
-  const userId = req.user._id.toString();
+  const { email, phoneNumber } = req.body;
+  let user;
+  if (!email && !phoneNumber) {
+    user = req.user;
+  } else {
+    user = await User.findOne({
+      $or: [{ email: email }, { phoneNumber: phoneNumber }],
+    });
+
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+  }
+
+  const userId = user._id.toString();
 
   const deletedUsername = `[deleted]${req.user.username}`;
 
