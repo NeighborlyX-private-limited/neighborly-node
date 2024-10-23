@@ -18,6 +18,7 @@ const {
   MESSAGE_TEMPLATE,
   MESSAGE_API_ENDPOINT,
 } = require("../utils/constants");
+const { emailValidator, phoneValidator } = require("../utils/commonUtils");
 const AVATAR_KEY = process.env.MULTI_AVATAR_API_KEY;
 
 // User Login
@@ -63,6 +64,17 @@ exports.loginUser = async (req, res, next) => {
 exports.registerUser = async (req, res) => {
   const { password, email, phoneNumber, fcmToken } = req.body;
   let username = generateUsername() + Math.floor(Math.random() * 10000);
+
+  // Email validation
+  if (email && !emailValidator(email)) {
+    return res.status(400).json({ error: "Invalid email format." });
+  }
+
+  // Phone number validation
+  if (phoneNumber && !phoneValidator(phoneNumber)) {
+    return res.status(400).json({ error: "Invalid phone number format." });
+  }
+
   while (await User.findOne({ username })) {
     username = generateUsername() + Math.floor(Math.random() * 10000);
     activityLogger.info(
