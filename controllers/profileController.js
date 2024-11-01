@@ -334,7 +334,7 @@ exports.getUserInfo = async (req, res) => {
     }
 
     const [postCount, awards] = await Promise.all([
-      Post.count({ where: { userid: userId, type: "post" } }),
+      Post.count({ where: { userid: userId } }),
       Award.findAll({
         where: { receiver_userid: userId },
         attributes: ["award_type"],
