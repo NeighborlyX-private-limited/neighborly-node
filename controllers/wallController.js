@@ -50,6 +50,7 @@ exports.findPosts = async (req, res) => {
   const offset = parseInt(req.query.offset, 10) || 0;
   const latitude = parseFloat(req.query.latitude);
   const longitude = parseFloat(req.query.longitude);
+  let range = req.query.range * 1000 || 4000;
   let posts;
   let location;
 
@@ -70,7 +71,6 @@ exports.findPosts = async (req, res) => {
         include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
       });
     } else {
-      const range = 4000; // 4 km range
       posts = await Post.findAll({
         where: sequelize.where(
           sequelize.fn(

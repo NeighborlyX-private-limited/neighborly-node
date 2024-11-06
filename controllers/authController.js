@@ -64,7 +64,20 @@ exports.loginUser = async (req, res, next) => {
 exports.registerUser = async (req, res) => {
   const { password, email, phoneNumber, fcmToken } = req.body;
   let username = generateUsername() + Math.floor(Math.random() * 10000);
-
+  // DO NOT REMOVE Check if user already exists, check is needed despite the last condition due to isVerified bug
+  if (email) {
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res.status(400).json({ error: "Email already registered." });
+    }
+  } else if (phoneNumber) {
+    const existingUser = await User.findOne({ phoneNumber });
+    if (existingUser) {
+      return res
+        .status(400)
+        .json({ error: "Phone number already registered." });
+    }
+  }
   // Email validation
   if (email && !emailValidator(email)) {
     return res.status(400).json({ error: "Invalid email format." });
