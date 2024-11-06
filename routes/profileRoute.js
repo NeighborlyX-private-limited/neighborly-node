@@ -18,30 +18,30 @@ const {
 
 router
   .route("/user-content/:userId?")
-  .get(checkActiveAccount, isAuthenticated, getUserContent);
+  .get(isAuthenticated, checkActiveAccount, getUserContent);
 router
   .route("/user-awards/:userId?")
-  .get(checkActiveAccount, isAuthenticated, getUserAwards);
+  .get(isAuthenticated, checkActiveAccount, getUserAwards);
 router
   .route("/awards/:userId?")
-  .get(checkActiveAccount, isAuthenticated, getAwards);
+  .get(isAuthenticated, checkActiveAccount, getAwards);
 router
   .route("/user-comments/:userId?")
-  .get(checkActiveAccount, isAuthenticated, getUserComments);
+  .get(isAuthenticated, checkActiveAccount, getUserComments);
 router
   .route("/user-groups/:userId?")
-  .get(checkActiveAccount, isAuthenticated, getUserGroups);
+  .get(isAuthenticated, checkActiveAccount, getUserGroups);
 router
   .route("/user-info/:userId?")
-  .get(checkActiveAccount, isAuthenticated, getUserInfo);
+  .get(isAuthenticated, checkActiveAccount, getUserInfo);
 router
   .route("/send-feedback")
-  .post(checkActiveAccount, isAuthenticated, submitFeedback);
+  .post(isAuthenticated, checkActiveAccount, submitFeedback);
 router
   .route("/edit-user-info")
   .put(isAuthenticated, singleFileUpload, editUserInfo);
 router
   .route("/delete-account")
-  .delete(checkActiveAccount, isAuthenticated, deleteAccount);
+  .delete(isAuthenticated, checkActiveAccount, deleteAccount);
 
 module.exports = router;
