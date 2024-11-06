@@ -577,37 +577,23 @@ exports.deleteAccount = async (req, res) => {
 
   const userId = user._id.toString();
 
-  const deletedUsername = `[deleted]${req.user.username}`;
-
   try {
-    await User.findByIdAndUpdate(userId, {
-      $set: {
-        isDeleted: true,
-        username: deletedUsername,
+    // Completely remove user
+    await User.findByIdAndDelete(userId);
 
-        picture: null,
-      },
-      $unset: {
-        email: "",
-        phoneNumber: "",
-      },
-    });
+    // Update associated records in Post and Comment tables
     await Post.update({ username: "[deleted]" }, { where: { userid: userId } });
-
     await Comment.update(
       { username: "[deleted]" },
       { where: { userid: userId } }
     );
-    //TODO message model needs to be heavily changed to make it resemble other models, then make this change
-    //await Message.update({ username: '[deleted]' }, { where: { userid: userId } });
 
     // Remove user from groups
-    const user = await User.findById(userId);
-    user.groups.forEach(async (groupId) => {
+    for (const groupId of user.groups) {
       await Group.findByIdAndUpdate(groupId, { $pull: { members: userId } });
-    });
+    }
 
-    activityLogger.info(`User with ID ${userId} marked as deleted`);
+    activityLogger.info(`User with ID ${userId} completely deleted`);
 
     res.status(200).json({ msg: "User account deleted successfully" });
   } catch (err) {
