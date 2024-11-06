@@ -259,7 +259,12 @@ exports.googleAuth = async (req, res) => {
           message: "This account has been deleted",
         });
       }
-
+      await User.updateOne(
+        { _id: user._id },
+        {
+          $set: { isVerified: true },
+        }
+      );
       activityLogger.info(
         `User ${user.username}(${user._id}) has logged in successfully via Google`
       );
