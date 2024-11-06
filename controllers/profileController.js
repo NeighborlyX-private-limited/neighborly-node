@@ -428,7 +428,14 @@ exports.editUserInfo = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    if (username) username = username.trim();
+    if (username && username !== "[deleted]" && typeof username === "string") {
+      username = username.trim();
+      if (!/^[a-zA-Z0-9]+$/.test(username)) {
+        throw new Error(
+          "Username must be alphanumeric with no special characters."
+        );
+      }
+    }
     if (gender) gender = gender.trim();
     if (bio) bio = bio.trim();
 
@@ -585,13 +592,10 @@ exports.deleteAccount = async (req, res) => {
         phoneNumber: "",
       },
     });
-    await Post.update(
-      { username: deletedUsername },
-      { where: { userid: userId } }
-    );
+    await Post.update({ username: "[deleted]" }, { where: { userid: userId } });
 
     await Comment.update(
-      { username: deletedUsername },
+      { username: "[deleted]" },
       { where: { userid: userId } }
     );
     //TODO message model needs to be heavily changed to make it resemble other models, then make this change
