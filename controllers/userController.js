@@ -44,16 +44,6 @@ exports.searchUsers = async (req, res) => {
   }
 };
 
-exports.printUsers = async (req, res) => {
-  try {
-    const users = await User.find(); // Fetch all users
-    console.log(users); // Print users to the console
-    res.status(200).send("Users printed to the console");
-  } catch (error) {
-    res.status(500).send("Error fetching users");
-  }
-};
-
 exports.uploadFiles = async (req, res, next) => {
   const files = req.files;
   if (!files || files.length === 0) {

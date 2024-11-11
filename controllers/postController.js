@@ -50,28 +50,6 @@ exports.searchPosts = async (req, res) => {
   }
 };
 
-exports.printPosts = async (req, res) => {
-  try {
-    const posts = await Post.findAll();
-    console.log(posts);
-    res.status(200).send("Users printed to the console");
-  } catch (error) {
-    console.log(error);
-    res.status(500).send(error);
-  }
-};
-
-exports.printComments = async (req, res) => {
-  try {
-    const comments = await Comment.findAll();
-    console.log(comments);
-    res.status(200).send("Comments printed in log");
-  } catch (error) {
-    console.log(error);
-    res.status(500).send(error);
-  }
-};
-
 exports.fetchCommentThread = async (req, res) => {
   try {
     const parentCommentid = req.params["id"];

@@ -45,11 +45,6 @@ process.on("uncaughtException", (ex) => {
   process.exit(1);
 });
 
-process.on("unhandledRejection", (reason, promise) => {
-  errorLogger.error(`Unhandled Rejection at ${promise}: ${reason}`);
-  process.exit(1);
-});
-
 module.exports = {
   activityLogger,
   errorLogger,

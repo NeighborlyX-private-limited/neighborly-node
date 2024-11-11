@@ -9,9 +9,7 @@ const {
   addComment,
   sendPollVote,
   getComment,
-  printPosts,
   searchPosts,
-  printComments,
 } = require("../controllers/postController");
 
 router.route("/fetch-comments/:postId").get(isAuthenticated, fetchComments);
@@ -21,8 +19,6 @@ router
 router.route("/add-comment").post(isAuthenticated, isBanned, addComment);
 router.route("/send-poll-vote").post(isAuthenticated, sendPollVote);
 router.route("/get-comment/:commentId").get(isAuthenticated, getComment);
-router.route("/print-posts").get(printPosts);
-router.route("/print-comments").get(printComments);
 router.route("/search-posts").get(searchPosts);
 
 module.exports = router;
