@@ -15,6 +15,17 @@ const { otpgenerator } = require("../utils/emailService");
 
 const notificationAPI = process.env.API_ENDPOINT + process.env.NOTIFICATION;
 
+exports.printgroups = async (req, res) => {
+  try {
+    const groups = await Group.find();
+    console.log(groups);
+    res.status(200).send("Users printed to the console");
+  } catch (error) {
+    console.log(error);
+    res.status(500).send(error);
+  }
+};
+
 function formatGroupCard(group) {
   return {
     id: group._id,

@@ -12,6 +12,8 @@ const {
   saveFcmToken,
   updateTutorialInfo,
   uploadFiles,
+  printUsers,
+  searchUsers,
 } = require("../controllers/userController");
 const { isAuthenticated } = require("../middlewares/auth");
 const {
@@ -34,5 +36,7 @@ router.route("/upload-file").post(singleFileUpload, uploadFile);
 router.route("/upload-files").post(multipleFilesUpload, uploadFiles);
 router.route("/save-fcm-token").post(saveFcmToken);
 router.route("/update-tutorial-info").put(isAuthenticated, updateTutorialInfo);
+router.route("/print-users").get(printUsers);
+router.route("/search").get(searchUsers);
 
 module.exports = router;

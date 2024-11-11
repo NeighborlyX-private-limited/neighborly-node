@@ -10,6 +10,67 @@ const { Op, where } = require("sequelize");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const { sequelize } = require("../config/database");
 const notificationAPI = process.env.API_ENDPOINT + process.env.NOTIFICATION;
+const esClient = require("../services/es");
+
+exports.searchPosts = async (req, res) => {
+  const { search_query } = req.query; // Get search query from request
+  try {
+    const response = await esClient.search({
+      index: "posts",
+      body: {
+        query: {
+          bool: {
+            should: [
+              {
+                multi_match: {
+                  query: search_query,
+                  fields: ["username", "title", "body"], // Specify fields to search
+                  fuzziness: "AUTO", // Enable fuzziness
+                },
+              },
+              {
+                prefix: {
+                  username: search_query, // Prefix query for usernames starting with the search_query
+                },
+              },
+              {
+                prefix: {
+                  title: search_query,
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+    res.status(200).json(response.hits.hits); // Send search results as response
+  } catch (error) {
+    console.log(error);
+    res.status(500).send("Error searching posts");
+  }
+};
+
+exports.printPosts = async (req, res) => {
+  try {
+    const posts = await Post.findAll();
+    console.log(posts);
+    res.status(200).send("Users printed to the console");
+  } catch (error) {
+    console.log(error);
+    res.status(500).send(error);
+  }
+};
+
+exports.printComments = async (req, res) => {
+  try {
+    const comments = await Comment.findAll();
+    console.log(comments);
+    res.status(200).send("Comments printed in log");
+  } catch (error) {
+    console.log(error);
+    res.status(500).send(error);
+  }
+};
 
 exports.fetchCommentThread = async (req, res) => {
   try {
@@ -364,7 +425,7 @@ exports.sendPollVote = async (req, res) => {
   }
 };
 
-exports.getComment = async(req, res) => {
+exports.getComment = async (req, res) => {
   try {
     const commentId = req.params["commentId"];
     const userId = req.user._id;
@@ -386,91 +447,89 @@ exports.getComment = async(req, res) => {
           as: "awards",
           attributes: ["award_type"],
         },
-      ]
+      ],
     });
     activityLogger.info(`Fetched comment for Id: ${commentId}`);
 
-        const postAwards = comment.content.awards.map(
-          (award) => award.award_type
-        );
-        const commentAwards = comment.awards.map((award) => award.award_type);
-        const userVote = await CommentVote.findOne({
-          where: {
-            commentid: comment.commentid,
-            userid: userId.toString(),
-          },
-          attributes: ["votetype"], // This assumes "votetype" can be "cheer" or "boo"
-        });
+    const postAwards = comment.content.awards.map((award) => award.award_type);
+    const commentAwards = comment.awards.map((award) => award.award_type);
+    const userVote = await CommentVote.findOne({
+      where: {
+        commentid: comment.commentid,
+        userid: userId.toString(),
+      },
+      attributes: ["votetype"], // This assumes "votetype" can be "cheer" or "boo"
+    });
 
-        const userFeedback = userVote ? userVote.votetype : null;
+    const userFeedback = userVote ? userVote.votetype : null;
 
-        let pollResults = [];
-        if (comment.content.type === "poll") {
-          const options = comment.content.poll_options;
+    let pollResults = [];
+    if (comment.content.type === "poll") {
+      const options = comment.content.poll_options;
 
-          // Fetch votes for all options in the poll
-          const pollVotes = await PollVote.findAll({
-            raw: true,
-            attributes: [
-              "optionid",
-              [sequelize.fn("SUM", sequelize.col("votes")), "votes"],
-            ],
-            where: {
-              contentid: comment.content.contentid,
-            },
-            group: ["optionid"],
-          });
+      // Fetch votes for all options in the poll
+      const pollVotes = await PollVote.findAll({
+        raw: true,
+        attributes: [
+          "optionid",
+          [sequelize.fn("SUM", sequelize.col("votes")), "votes"],
+        ],
+        where: {
+          contentid: comment.content.contentid,
+        },
+        group: ["optionid"],
+      });
 
-          const pollVotesMap = pollVotes.reduce((acc, vote) => {
-            acc[vote.optionid] = parseInt(vote.votes, 10);
-            return acc;
-          }, {});
-          // Check if the user has voted on this poll
-          const userPollVotes = await PollVote.findAll({
-            where: {
-              contentid: comment.contentid,
-              userid: userId.toString(),
-            },
-            attributes: ["optionid"], // The IDs of the options the user voted for
-          });
+      const pollVotesMap = pollVotes.reduce((acc, vote) => {
+        acc[vote.optionid] = parseInt(vote.votes, 10);
+        return acc;
+      }, {});
+      // Check if the user has voted on this poll
+      const userPollVotes = await PollVote.findAll({
+        where: {
+          contentid: comment.contentid,
+          userid: userId.toString(),
+        },
+        attributes: ["optionid"], // The IDs of the options the user voted for
+      });
 
-          // Create a set of option IDs the user has voted for
-          const userVotedOptions = new Set(
-            userPollVotes.map((vote) => vote.optionid)
-          );
-          pollResults = options.map((data) => ({
-            option: data.option,
-            optionId: data.optionId,
-            votes: pollVotesMap[data.optionId] || 0,
-            userVoted: userVotedOptions.has(data.optionId), // If the user voted for this option
-          }));
-        }
-        const commenterDetails = await User.findById(comment.userid);
-        const userProfilePicture = await User.findById(comment.content.userid);
+      // Create a set of option IDs the user has voted for
+      const userVotedOptions = new Set(
+        userPollVotes.map((vote) => vote.optionid)
+      );
+      pollResults = options.map((data) => ({
+        option: data.option,
+        optionId: data.optionId,
+        votes: pollVotesMap[data.optionId] || 0,
+        userVoted: userVotedOptions.has(data.optionId), // If the user voted for this option
+      }));
+    }
+    const commenterDetails = await User.findById(comment.userid);
+    const userProfilePicture = await User.findById(comment.content.userid);
 
-        res.status(200).json({
-          commentid: comment.commentid,
-          text: comment.text,
-          userid: comment.userid,
-          username: comment.username,
-          cheers: comment.cheers,
-          createdat: comment.createdat,
-          boos: comment.boos,
-          content: {
-            ...comment.content.get({ plain: true }),
-            awards: postAwards,
-            pollResults: pollResults,
-            userProfilePicture: userProfilePicture.picture,
-            poll_options: undefined, // Explicitly remove poll_options from the response
-          },
-          commenterProfilePicture: commenterDetails.picture,
-          awards: commentAwards,
-          userFeedback: userFeedback,
-        });
-  } catch(err) {
+    res.status(200).json({
+      commentid: comment.commentid,
+      text: comment.text,
+      userid: comment.userid,
+      username: comment.username,
+      cheers: comment.cheers,
+      createdat: comment.createdat,
+      boos: comment.boos,
+      content: {
+        ...comment.content.get({ plain: true }),
+        awards: postAwards,
+        pollResults: pollResults,
+        userProfilePicture: userProfilePicture.picture,
+        poll_options: undefined, // Explicitly remove poll_options from the response
+      },
+      commenterProfilePicture: commenterDetails.picture,
+      awards: commentAwards,
+      userFeedback: userFeedback,
+    });
+  } catch (err) {
     errorLogger.error("Error in getComment", err);
     res.status(500).json({
-      msg: "Error in getComment API"
+      msg: "Error in getComment API",
     });
   }
-}
+};

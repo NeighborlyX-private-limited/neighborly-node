@@ -21,6 +21,7 @@ const {
   storeMessage,
   muteGroup,
   removeAdmin,
+  printgroups,
 } = require("../controllers/groupController");
 
 router.route("/remove-user").post(isAuthenticated, removeUser);
@@ -47,5 +48,6 @@ router.route("/block-user").put(isAuthenticated, blockUser);
 router.route("/user-groups").get(isAuthenticated, fetchUserGroups);
 router.route("/nearby-groups").get(isAuthenticated, fetchNearbyGroups);
 router.route("/mute-group").put(isAuthenticated, muteGroup);
+router.route("/print-groups").get(printgroups);
 
 module.exports = router;
