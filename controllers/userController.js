@@ -10,39 +10,6 @@ const {
   S3,
   S3_BUCKET_NAME,
 } = require("../utils/constants");
-const esClient = require("../services/es");
-
-exports.searchUsers = async (req, res) => {
-  const { search_query } = req.query;
-  try {
-    const response = await esClient.search({
-      index: "users",
-      body: {
-        query: {
-          bool: {
-            should: [
-              {
-                multi_match: {
-                  query: search_query,
-                  fields: ["username"], // Specify fields to search
-                  fuzziness: "AUTO", // Enable fuzziness
-                },
-              },
-              {
-                prefix: {
-                  username: search_query,
-                },
-              },
-            ],
-          },
-        },
-      },
-    });
-    res.status(200).json(response.hits.hits); // Send search results as response
-  } catch (error) {
-    res.status(500).send("Error searching users:", error);
-  }
-};
 
 exports.uploadFiles = async (req, res, next) => {
   const files = req.files;

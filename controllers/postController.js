@@ -10,45 +10,6 @@ const { Op, where } = require("sequelize");
 const { activityLogger, errorLogger } = require("../utils/logger");
 const { sequelize } = require("../config/database");
 const notificationAPI = process.env.API_ENDPOINT + process.env.NOTIFICATION;
-const esClient = require("../services/es");
-
-exports.searchPosts = async (req, res) => {
-  const { search_query } = req.query; // Get search query from request
-  try {
-    const response = await esClient.search({
-      index: "posts",
-      body: {
-        query: {
-          bool: {
-            should: [
-              {
-                multi_match: {
-                  query: search_query,
-                  fields: ["username", "title", "body"], // Specify fields to search
-                  fuzziness: "AUTO", // Enable fuzziness
-                },
-              },
-              {
-                prefix: {
-                  username: search_query, // Prefix query for usernames starting with the search_query
-                },
-              },
-              {
-                prefix: {
-                  title: search_query,
-                },
-              },
-            ],
-          },
-        },
-      },
-    });
-    res.status(200).json(response.hits.hits); // Send search results as response
-  } catch (error) {
-    console.log(error);
-    res.status(500).send("Error searching posts");
-  }
-};
 
 exports.fetchCommentThread = async (req, res) => {
   try {

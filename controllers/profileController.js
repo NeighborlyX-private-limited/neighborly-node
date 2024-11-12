@@ -334,7 +334,7 @@ exports.getUserInfo = async (req, res) => {
     }
 
     const [postCount, awards] = await Promise.all([
-      Post.count({ where: { userid: userId, type: "post" } }),
+      Post.count({ where: { userid: userId } }),
       Award.findAll({
         where: { receiver_userid: userId },
         attributes: ["award_type"],
@@ -428,7 +428,14 @@ exports.editUserInfo = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    if (username) username = username.trim();
+    if (username && username !== "[deleted]" && typeof username === "string") {
+      username = username.trim();
+      if (!/^[a-zA-Z0-9]+$/.test(username)) {
+        throw new Error(
+          "Username must be alphanumeric with no special characters."
+        );
+      }
+    }
     if (gender) gender = gender.trim();
     if (bio) bio = bio.trim();
 
@@ -554,42 +561,39 @@ exports.editUserInfo = async (req, res) => {
 };
 
 exports.deleteAccount = async (req, res) => {
-  const userId = req.user._id.toString();
+  const { email, phoneNumber } = req.body;
+  let user;
+  if (!email && !phoneNumber) {
+    user = req.user;
+  } else {
+    user = await User.findOne({
+      $or: [{ email: email }, { phoneNumber: phoneNumber }],
+    });
 
-  const deletedUsername = `[deleted]${req.user.username}`;
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+  }
+
+  const userId = user._id.toString();
 
   try {
-    await User.findByIdAndUpdate(userId, {
-      $set: {
-        isDeleted: true,
-        username: deletedUsername,
+    // Completely remove user
+    await User.findByIdAndDelete(userId);
 
-        picture: null,
-      },
-      $unset: {
-        email: "",
-        phoneNumber: "",
-      },
-    });
-    await Post.update(
-      { username: deletedUsername },
-      { where: { userid: userId } }
-    );
-
+    // Update associated records in Post and Comment tables
+    await Post.update({ username: "[deleted]" }, { where: { userid: userId } });
     await Comment.update(
-      { username: deletedUsername },
+      { username: "[deleted]" },
       { where: { userid: userId } }
     );
-    //TODO message model needs to be heavily changed to make it resemble other models, then make this change
-    //await Message.update({ username: '[deleted]' }, { where: { userid: userId } });
 
     // Remove user from groups
-    const user = await User.findById(userId);
-    user.groups.forEach(async (groupId) => {
+    for (const groupId of user.groups) {
       await Group.findByIdAndUpdate(groupId, { $pull: { members: userId } });
-    });
+    }
 
-    activityLogger.info(`User with ID ${userId} marked as deleted`);
+    activityLogger.info(`User with ID ${userId} completely deleted`);
 
     res.status(200).json({ msg: "User account deleted successfully" });
   } catch (err) {
