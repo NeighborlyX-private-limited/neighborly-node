@@ -13,6 +13,8 @@ const ObjectId = mongoose.Types.ObjectId;
 const validImageTypes = ["image/jpeg", "image/png", "image/gif"];
 const { otpgenerator } = require("../utils/emailService");
 
+const notificationAPI = process.env.API_ENDPOINT + process.env.NOTIFICATION;
+
 function formatGroupCard(group) {
   return {
     id: group._id,
@@ -303,6 +305,7 @@ exports.createGroup = async (req, res) => {
     } = req.body;
     const user = req.user;
     const isHome = req.query.home === "true"; // Convert query param to boolean
+    const { latitude, longitude } = req.query;
     activityLogger.info(
       "Attempting to create a group with the following data:",
       req.body
