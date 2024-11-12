@@ -799,7 +799,7 @@ function isValidCoordinate(latitude, longitude) {
 }
 
 exports.searchGroups = async (req, res) => {
-  const query = req.query.searchQuery;
+  const query = req.body.searchQuery;
 
   if (!query) {
     errorLogger.error(
