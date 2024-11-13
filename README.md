@@ -18,3 +18,10 @@
       mongodb://<username>:<password>@ac-jvzfql4-shard-00-00.cncxy2q.mongodb.net:27017,ac-jvzfql4-shard-00-01.cncxy2q.mongodb.net:27017,ac-jvzfql4-shard-00-02.cncxy2q.mongodb.net:27017/?ssl=true&replicaSet=atlas-14ovul-shard-0&authSource=admin&retryWrites=true&w=majority&appName=Cluster0
 
 NOTE: Please configure prettier on your VScode for JS project.
+
+### Installation of Elastic Search
+
+1. Visit Elasticsearch Downloads to download the latest version.
+2. After downloading, extract the contents to your desired folder.
+3. Copy the path of the JDK folder and add it to your PATH environment variable.
+4. Open a command prompt, navigate to the bin folder inside the Elasticsearch directory, and run ".\elasticsearch.bat" .
