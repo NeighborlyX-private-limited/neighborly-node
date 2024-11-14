@@ -21,7 +21,7 @@ NOTE: Please configure prettier on your VScode for JS project.
 
 ### Installation of Elastic Search
 
-1. Visit Elasticsearch Downloads to download the latest version.
+1. Visit Elasticsearch Downloads. In the Summary section, we can see "view past releases" click it. Then select Elasticsearch 8.15.3 and install it.
 2. After downloading, extract the contents to your desired folder.
 3. Copy the path of the JDK folder and add it to your PATH environment variable.
 4. Open a command prompt, navigate to the bin folder inside the Elasticsearch directory, and run ".\elasticsearch.bat" .
