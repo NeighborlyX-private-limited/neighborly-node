@@ -8,7 +8,7 @@ const {
   fetchComments,
   addComment,
   sendPollVote,
-  getComment,
+  getComment
 } = require("../controllers/postController");
 
 router.route("/fetch-comments/:postId").get(isAuthenticated, fetchComments);
