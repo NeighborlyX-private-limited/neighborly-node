@@ -1,6 +1,8 @@
 const express = require("express");
+
 const userRoute = require("./routes/userRoute");
 const authRoute = require("./routes/authRoute");
+const otpLimiter = require("./middlewares/rateLimiter");
 const dummyRoute = require("./routes/dummyRoute");
 const dotenv = require("dotenv");
 const cookieParser = require("cookie-parser");
@@ -47,6 +49,7 @@ app.use((req, res, next) => {
 });
 
 // Routes
+
 app.use(`${API_PREFIX}/user`, userRoute);
 app.use(`${API_PREFIX}/authentication`, authRoute);
 app.use(`${API_PREFIX}/group`, groupRoute);
