@@ -20,6 +20,10 @@ const Content = sequelize.define(
       type: DataTypes.STRING(255),
       allowNull: false,
     },
+    thumbnail: {
+      type: DataTypes.STRING(255),
+      allowNull: false,
+    },
     body: DataTypes.TEXT,
     multimedia: {
       type: DataTypes.JSONB,
