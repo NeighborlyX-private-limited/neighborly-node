@@ -324,8 +324,8 @@ exports.feedback = async (req, res) => {
 };
 
 exports.createPost = async (req, res) => {
-  const files = req.files; // Array of multimedia files
-  const thumbnailFile = req.file("thumbnail"); // Single thumbnail file (optional)
+  const files = req.files?.files || []; // Array of multimedia files
+  const thumbnailFile = req.files?.thumbnail?.[0]; // Thumbnail file
   const {
     title,
     content,
