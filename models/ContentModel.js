@@ -22,7 +22,7 @@ const Content = sequelize.define(
     },
     thumbnail: {
       type: DataTypes.STRING(255),
-      allowNull: false,
+      allowNull: true,
     },
     body: DataTypes.TEXT,
     multimedia: {
