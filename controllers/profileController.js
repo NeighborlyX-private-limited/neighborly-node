@@ -89,6 +89,7 @@ exports.getUserContent = async (req, res) => {
             pollResults: pollResults,
             userFeedback: userFeedback,
             poll_options: undefined,
+            thumbnail: item.thumbnail,
           };
         } else {
           return {
@@ -97,6 +98,7 @@ exports.getUserContent = async (req, res) => {
             commentCount: commentCount,
             userFeedback: userFeedback,
             awards: awards,
+            thumbnail: item.thumbnail,
           };
         }
       })
@@ -278,6 +280,7 @@ exports.getUserComments = async (req, res) => {
             userProfilePicture: userProfilePicture
               ? userProfilePicture.picture
               : DELETED_USER_DP,
+            thumbnail: comment.content.thumbnail,
             poll_options: undefined, // Explicitly remove poll_options from the response
           },
           commenterProfilePicture: commenterDetails.picture,
