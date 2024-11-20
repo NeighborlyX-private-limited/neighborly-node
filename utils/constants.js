@@ -19,6 +19,8 @@ const CITY_TO_COORDINATE = {
 };
 const AVAILABLE_CITIES = ["delhi", "noida", "gurugram"];
 
+const EXPIRATION_TIME_FOR_REDIS_CACHE = 300;
+
 const COORDINATE_TO_CITY = {
   "28.6139,77.2088": "new delhi",
   "28.7041,77.1025": "delhi",
@@ -62,4 +64,5 @@ module.exports = {
   MESSAGE_TEMPLATE,
   MESSAGE_API_ENDPOINT,
   DELETED_USER_DP,
+  EXPIRATION_TIME_FOR_REDIS_CACHE,
 };

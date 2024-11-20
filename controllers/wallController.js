@@ -15,7 +15,15 @@ const { activityLogger, errorLogger } = require("../utils/logger");
 const { sequelize } = require("../config/database");
 const { raw } = require("express");
 const uuid = require("uuid");
-const { S3, S3_BUCKET_NAME, VALIDAWARDTYPES } = require("../utils/constants");
+const {
+  S3,
+  S3_BUCKET_NAME,
+  VALIDAWARDTYPES,
+  EXPIRATION_TIME_FOR_REDIS_CACHE,
+} = require("../utils/constants");
+const client = require("../services/redis");
+const { cache } = require("sharp");
+const { CACHE_KEY_TEMPLATE } = require("../utils/cacheKey");
 
 const notificationAPI = process.env.API_ENDPOINT + process.env.NOTIFICATION;
 
@@ -54,6 +62,13 @@ exports.findPosts = async (req, res) => {
   let posts;
   let location;
 
+  const compositeKey = CACHE_KEY_TEMPLATE.replace("${postId}", postId)
+    .replace("${userId}", user._id.toString())
+    .replace("${latitude}", latitude)
+    .replace("${longitude}", longitude);
+
+  let data;
+
   try {
     if (isHome) {
       location = user.home_coordinates.coordinates;
@@ -64,105 +79,116 @@ exports.findPosts = async (req, res) => {
         "Current location coordinates are required if not fetching from home"
       );
     }
+    const cachedPosts = await client.get(compositeKey);
 
-    if (postId) {
-      posts = await Post.findAll({
-        where: { contentid: postId },
-        include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
-      });
+    if (cachedPosts) {
+      data = JSON.parse(cachedPosts);
     } else {
-      posts = await Post.findAll({
-        where: sequelize.where(
-          sequelize.fn(
-            "ST_DWithin",
-            sequelize.col("postlocation"),
+      if (postId) {
+        posts = await Post.findAll({
+          where: { contentid: postId },
+          include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
+        });
+      } else {
+        posts = await Post.findAll({
+          where: sequelize.where(
             sequelize.fn(
-              "ST_SetSRID",
-              sequelize.fn("ST_Point", location[0], location[1]),
-              4326
+              "ST_DWithin",
+              sequelize.col("postlocation"),
+              sequelize.fn(
+                "ST_SetSRID",
+                sequelize.fn("ST_Point", location[0], location[1]),
+                4326
+              ),
+              range
             ),
-            range
+            true
           ),
-          true
-        ),
-        include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
-        order: [["createdat", "DESC"]],
-        limit,
-        offset,
-      });
-    }
-
-    if (posts.length === 0) {
-      return res.status(200).json([]);
-    }
-
-    const postsWithUserDetails = await Promise.all(
-      posts.map(async (post) => {
-        const postAuthor = await User.findById(post.userid).lean();
-        const commentCount = await Comment.count({
-          where: { contentid: post.contentid },
+          include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
+          order: [["createdat", "DESC"]],
+          limit,
+          offset,
         });
-        const awards = post.awards.map((award) => award.award_type);
+      }
 
-        const userVote = await ContentVote.findOne({
-          where: { contentid: post.contentid, userid: user._id.toString() },
-          attributes: ["votetype"],
-        });
-        const userFeedback = userVote ? userVote.votetype : null;
+      if (posts.length === 0) {
+        return res.status(200).json([]);
+      }
 
-        if (post.type === "poll") {
-          const options = post.poll_options;
-          const pollVotes = await PollVote.findAll({
-            raw: true,
-            attributes: [
-              "optionid",
-              [sequelize.fn("SUM", sequelize.col("votes")), "votes"],
-            ],
+      const postsWithUserDetails = await Promise.all(
+        posts.map(async (post) => {
+          const postAuthor = await User.findById(post.userid).lean();
+          const commentCount = await Comment.count({
             where: { contentid: post.contentid },
-            group: ["optionid"],
           });
-          const pollVotesMap = pollVotes.reduce((acc, vote) => {
-            acc[vote.optionid] = parseInt(vote.votes, 10);
-            return acc;
-          }, {});
-          const userPollVotes = await PollVote.findAll({
+          const awards = post.awards.map((award) => award.award_type);
+
+          const userVote = await ContentVote.findOne({
             where: { contentid: post.contentid, userid: user._id.toString() },
-            attributes: ["optionid"],
+            attributes: ["votetype"],
           });
-          const userVotedOptions = new Set(
-            userPollVotes.map((vote) => vote.optionid)
-          );
+          const userFeedback = userVote ? userVote.votetype : null;
 
-          const pollResults = options.map((data) => ({
-            option: data.option,
-            optionId: data.optionId,
-            votes: pollVotesMap[data.optionId] || 0,
-            userVoted: userVotedOptions.has(data.optionId),
-          }));
+          if (post.type === "poll") {
+            const options = post.poll_options;
+            const pollVotes = await PollVote.findAll({
+              raw: true,
+              attributes: [
+                "optionid",
+                [sequelize.fn("SUM", sequelize.col("votes")), "votes"],
+              ],
+              where: { contentid: post.contentid },
+              group: ["optionid"],
+            });
+            const pollVotesMap = pollVotes.reduce((acc, vote) => {
+              acc[vote.optionid] = parseInt(vote.votes, 10);
+              return acc;
+            }, {});
+            const userPollVotes = await PollVote.findAll({
+              where: { contentid: post.contentid, userid: user._id.toString() },
+              attributes: ["optionid"],
+            });
+            const userVotedOptions = new Set(
+              userPollVotes.map((vote) => vote.optionid)
+            );
 
-          return {
-            ...post.get({ plain: true }),
-            userProfilePicture: postAuthor ? postAuthor.picture : null,
-            commentCount: commentCount,
-            awards: awards,
-            pollResults: pollResults,
-            userFeedback: userFeedback,
-            poll_options: undefined,
-          };
-        } else {
-          return {
-            ...post.get({ plain: true }),
-            userProfilePicture: postAuthor ? postAuthor.picture : null,
-            commentCount: commentCount,
-            awards: awards,
-            userFeedback: userFeedback,
-          };
-        }
-      })
-    );
+            const pollResults = options.map((data) => ({
+              option: data.option,
+              optionId: data.optionId,
+              votes: pollVotesMap[data.optionId] || 0,
+              userVoted: userVotedOptions.has(data.optionId),
+            }));
 
-    activityLogger.info("Posts fetched successfully");
-    res.status(200).json(postsWithUserDetails);
+            return {
+              ...post.get({ plain: true }),
+              userProfilePicture: postAuthor ? postAuthor.picture : null,
+              commentCount: commentCount,
+              awards: awards,
+              pollResults: pollResults,
+              userFeedback: userFeedback,
+              thumbnail: post.thumbnail,
+              poll_options: undefined,
+            };
+          } else {
+            return {
+              ...post.get({ plain: true }),
+              userProfilePicture: postAuthor ? postAuthor.picture : null,
+              commentCount: commentCount,
+              awards: awards,
+              userFeedback: userFeedback,
+              thumbnail: post.thumbnail,
+            };
+          }
+        })
+      );
+
+      data = postsWithUserDetails;
+
+      activityLogger.info("Posts fetched successfully");
+      await client.set(compositeKey, JSON.stringify(data));
+      await client.expire(compositeKey, EXPIRATION_TIME_FOR_REDIS_CACHE);
+    }
+    res.status(200).json(data);
   } catch (err) {
     errorLogger.error(err);
     res.status(500).json({
@@ -322,7 +348,8 @@ exports.feedback = async (req, res) => {
 };
 
 exports.createPost = async (req, res) => {
-  const files = req.files;
+  const files = req.files?.files || []; // Array of multimedia files
+  const thumbnailFile = req.files?.thumbnail?.[0]; // Thumbnail file
   const {
     title,
     content,
@@ -332,6 +359,7 @@ exports.createPost = async (req, res) => {
     pollOptions,
     location,
   } = req.body;
+
   const user = req.user;
   const isHome = req.query?.home === "true";
   const userId = user._id.toString();
@@ -340,36 +368,65 @@ exports.createPost = async (req, res) => {
   let finalLocation;
   if (isHome) {
     finalLocation = user.home_coordinates.coordinates;
+  } else if (location && Array.isArray(location) && location.length === 2) {
+    finalLocation = location;
   } else {
-    if (location && Array.isArray(location) && location.length === 2) {
-      finalLocation = location;
-    } else {
-      return res.status(400).json({
-        message:
-          "Invalid location format. Expected an array with latitude and longitude",
-      });
-    }
+    return res.status(400).json({
+      message:
+        "Invalid location format. Expected an array with latitude and longitude",
+    });
   }
 
-  const createPost = async (multimedia) => {
+  // Function to upload files to S3
+  const uploadToS3 = async (file) => {
+    const fileKey = `${uuid.v4()}-${file.originalname}`;
+    const params = {
+      Bucket: S3_BUCKET_NAME,
+      Key: fileKey,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+      ACL: "public-read",
+    };
+
+    return new Promise((resolve, reject) => {
+      S3.upload(params, (err, data) => {
+        if (err) {
+          errorLogger.error("Error uploading file:", err);
+          return reject(err);
+        }
+        activityLogger.info(
+          "File uploaded successfully. S3 URL:",
+          data.Location
+        );
+        resolve(data.Location);
+      });
+    });
+  };
+
+  // Main function to create a post
+  const createPost = async (multimediaUrls, thumbnailUrl) => {
     try {
       let formattedPollOptions = null;
+
+      // Format poll options if the post type is a poll
       if (type === "poll" && pollOptions) {
-        let parsedPollOptions = Array.isArray(pollOptions)
+        const parsedPollOptions = Array.isArray(pollOptions)
           ? pollOptions
           : JSON.parse(pollOptions);
         formattedPollOptions = parsedPollOptions.map((option, index) => ({
-          option: option,
+          option,
           optionId: index + 1,
         }));
       }
 
+      // Create the new post in the database
       const newPost = await Post.create({
         userid: userId,
         username: username,
         title: title,
         body: content,
-        multimedia: multimedia,
+        multimedia: multimediaUrls,
+        thumbnail: thumbnailUrl || null, // Save thumbnail URL if provided
         createdat: Date.now(),
         cheers: 0,
         boos: 0,
@@ -380,13 +437,14 @@ exports.createPost = async (req, res) => {
         allow_multiple_votes: allowMultipleVotes,
       });
 
-      activityLogger.info("New post created");
+      activityLogger.info("New post created successfully");
       res.status(200).json(newPost);
     } catch (err) {
-      errorLogger.error("Create post is not working: ", err);
+      errorLogger.error("Error creating post:", err);
 
-      if (multimedia && multimedia.length > 0) {
-        multimedia.forEach((fileUrl) => {
+      // Cleanup multimedia files from S3 if post creation fails
+      if (multimediaUrls.length > 0) {
+        multimediaUrls.forEach((fileUrl) => {
           const params = {
             Bucket: S3_BUCKET_NAME,
             Key: fileUrl.split("/").pop(),
@@ -403,54 +461,30 @@ exports.createPost = async (req, res) => {
         });
       }
 
-      res.status(500).json({
-        msg: "Internal server error in create-post",
-      });
+      res.status(500).json({ msg: "Internal server error in create-post" });
     }
   };
 
-  if (files && files.length > 0) {
+  try {
     const multimediaUrls = [];
+    let thumbnailUrl = null;
 
-    const uploadPromises = files.map((file) => {
-      const fileKey = `${uuid.v4()}-${file.originalname}`;
-      activityLogger.info(`Uploading file: ${fileKey}`);
-
-      const params = {
-        Bucket: S3_BUCKET_NAME,
-        Key: fileKey,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-        ACL: "public-read",
-      };
-
-      return new Promise((resolve, reject) => {
-        S3.upload(params, (err, data) => {
-          if (err) {
-            errorLogger.error("Error uploading file:", err);
-            return reject(err);
-          }
-
-          activityLogger.info(
-            "File uploaded successfully. S3 URL:",
-            data.Location
-          );
-          multimediaUrls.push(data.Location);
-          resolve();
-        });
-      });
-    });
-
-    try {
-      await Promise.all(uploadPromises);
-      createPost(multimediaUrls);
-    } catch (err) {
-      return res
-        .status(500)
-        .json({ success: false, message: "File upload failed" });
+    // Handle multimedia file uploads (if any)
+    if (files && files.length > 0) {
+      const uploadPromises = files.map((file) => uploadToS3(file));
+      multimediaUrls.push(...(await Promise.all(uploadPromises)));
     }
-  } else {
-    createPost([]);
+
+    // Handle thumbnail file upload (if provided)
+    if (thumbnailFile) {
+      thumbnailUrl = await uploadToS3(thumbnailFile);
+    }
+
+    // Call createPost with uploaded URLs
+    createPost(multimediaUrls, thumbnailUrl);
+  } catch (err) {
+    errorLogger.error("File upload failed:", err);
+    res.status(500).json({ success: false, message: "File upload failed" });
   }
 };
 

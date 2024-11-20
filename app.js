@@ -1,4 +1,5 @@
 const express = require("express");
+
 const userRoute = require("./routes/userRoute");
 const authRoute = require("./routes/authRoute");
 const otpLimiter = require("./middlewares/rateLimiter");
@@ -13,12 +14,9 @@ const eventRoute = require("./routes/eventRoute");
 const postRoute = require("./routes/postRoute");
 const profileRoute = require("./routes/profileRoute");
 const chatRoute = require("./routes/chatRoute");
-const searchRoute = require("./routes/searchRoute");
 const cors = require("cors");
 const session = require("express-session");
 const { activityLogger, errorLogger } = require("./utils/logger");
-const { indexAllData } = require("./services/elasticSearchClient");
-
 dotenv.config({ path: "./config/config.env" });
 
 const app = express();
@@ -61,9 +59,6 @@ app.use(`${API_PREFIX}/event`, eventRoute);
 app.use(`${API_PREFIX}/posts`, postRoute);
 app.use(`${API_PREFIX}/profile`, profileRoute);
 app.use(`${API_PREFIX}/chat`, chatRoute);
-app.use(`${API_PREFIX}/api`, searchRoute);
-
-indexAllData();
 
 app.use(errorMiddleware);
 
