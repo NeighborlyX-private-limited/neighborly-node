@@ -15,7 +15,15 @@ const { activityLogger, errorLogger } = require("../utils/logger");
 const { sequelize } = require("../config/database");
 const { raw } = require("express");
 const uuid = require("uuid");
-const { S3, S3_BUCKET_NAME, VALIDAWARDTYPES } = require("../utils/constants");
+const {
+  S3,
+  S3_BUCKET_NAME,
+  VALIDAWARDTYPES,
+  EXPIRATION_TIME_FOR_REDIS_CACHE,
+} = require("../utils/constants");
+const client = require("../services/redis");
+const { cache } = require("sharp");
+const { CACHE_KEY_TEMPLATE } = require("../utils/cacheKey");
 
 const notificationAPI = process.env.API_ENDPOINT + process.env.NOTIFICATION;
 
@@ -54,6 +62,13 @@ exports.findPosts = async (req, res) => {
   let posts;
   let location;
 
+  const compositeKey = CACHE_KEY_TEMPLATE.replace("${postId}", postId)
+    .replace("${userId}", user._id.toString())
+    .replace("${latitude}", latitude)
+    .replace("${longitude}", longitude);
+
+  let data;
+
   try {
     if (isHome) {
       location = user.home_coordinates.coordinates;
@@ -64,107 +79,116 @@ exports.findPosts = async (req, res) => {
         "Current location coordinates are required if not fetching from home"
       );
     }
+    const cachedPosts = await client.get(compositeKey);
 
-    if (postId) {
-      posts = await Post.findAll({
-        where: { contentid: postId },
-        include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
-      });
+    if (cachedPosts) {
+      data = JSON.parse(cachedPosts);
     } else {
-      posts = await Post.findAll({
-        where: sequelize.where(
-          sequelize.fn(
-            "ST_DWithin",
-            sequelize.col("postlocation"),
+      if (postId) {
+        posts = await Post.findAll({
+          where: { contentid: postId },
+          include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
+        });
+      } else {
+        posts = await Post.findAll({
+          where: sequelize.where(
             sequelize.fn(
-              "ST_SetSRID",
-              sequelize.fn("ST_Point", location[0], location[1]),
-              4326
+              "ST_DWithin",
+              sequelize.col("postlocation"),
+              sequelize.fn(
+                "ST_SetSRID",
+                sequelize.fn("ST_Point", location[0], location[1]),
+                4326
+              ),
+              range
             ),
-            range
+            true
           ),
-          true
-        ),
-        include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
-        order: [["createdat", "DESC"]],
-        limit,
-        offset,
-      });
-    }
-
-    if (posts.length === 0) {
-      return res.status(200).json([]);
-    }
-
-    const postsWithUserDetails = await Promise.all(
-      posts.map(async (post) => {
-        const postAuthor = await User.findById(post.userid).lean();
-        const commentCount = await Comment.count({
-          where: { contentid: post.contentid },
+          include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
+          order: [["createdat", "DESC"]],
+          limit,
+          offset,
         });
-        const awards = post.awards.map((award) => award.award_type);
+      }
 
-        const userVote = await ContentVote.findOne({
-          where: { contentid: post.contentid, userid: user._id.toString() },
-          attributes: ["votetype"],
-        });
-        const userFeedback = userVote ? userVote.votetype : null;
+      if (posts.length === 0) {
+        return res.status(200).json([]);
+      }
 
-        if (post.type === "poll") {
-          const options = post.poll_options;
-          const pollVotes = await PollVote.findAll({
-            raw: true,
-            attributes: [
-              "optionid",
-              [sequelize.fn("SUM", sequelize.col("votes")), "votes"],
-            ],
+      const postsWithUserDetails = await Promise.all(
+        posts.map(async (post) => {
+          const postAuthor = await User.findById(post.userid).lean();
+          const commentCount = await Comment.count({
             where: { contentid: post.contentid },
-            group: ["optionid"],
           });
-          const pollVotesMap = pollVotes.reduce((acc, vote) => {
-            acc[vote.optionid] = parseInt(vote.votes, 10);
-            return acc;
-          }, {});
-          const userPollVotes = await PollVote.findAll({
+          const awards = post.awards.map((award) => award.award_type);
+
+          const userVote = await ContentVote.findOne({
             where: { contentid: post.contentid, userid: user._id.toString() },
-            attributes: ["optionid"],
+            attributes: ["votetype"],
           });
-          const userVotedOptions = new Set(
-            userPollVotes.map((vote) => vote.optionid)
-          );
+          const userFeedback = userVote ? userVote.votetype : null;
 
-          const pollResults = options.map((data) => ({
-            option: data.option,
-            optionId: data.optionId,
-            votes: pollVotesMap[data.optionId] || 0,
-            userVoted: userVotedOptions.has(data.optionId),
-          }));
+          if (post.type === "poll") {
+            const options = post.poll_options;
+            const pollVotes = await PollVote.findAll({
+              raw: true,
+              attributes: [
+                "optionid",
+                [sequelize.fn("SUM", sequelize.col("votes")), "votes"],
+              ],
+              where: { contentid: post.contentid },
+              group: ["optionid"],
+            });
+            const pollVotesMap = pollVotes.reduce((acc, vote) => {
+              acc[vote.optionid] = parseInt(vote.votes, 10);
+              return acc;
+            }, {});
+            const userPollVotes = await PollVote.findAll({
+              where: { contentid: post.contentid, userid: user._id.toString() },
+              attributes: ["optionid"],
+            });
+            const userVotedOptions = new Set(
+              userPollVotes.map((vote) => vote.optionid)
+            );
 
-          return {
-            ...post.get({ plain: true }),
-            userProfilePicture: postAuthor ? postAuthor.picture : null,
-            commentCount: commentCount,
-            awards: awards,
-            pollResults: pollResults,
-            userFeedback: userFeedback,
-            thumbnail: post.thumbnail,
-            poll_options: undefined,
-          };
-        } else {
-          return {
-            ...post.get({ plain: true }),
-            userProfilePicture: postAuthor ? postAuthor.picture : null,
-            commentCount: commentCount,
-            awards: awards,
-            userFeedback: userFeedback,
-            thumbnail: post.thumbnail,
-          };
-        }
-      })
-    );
+            const pollResults = options.map((data) => ({
+              option: data.option,
+              optionId: data.optionId,
+              votes: pollVotesMap[data.optionId] || 0,
+              userVoted: userVotedOptions.has(data.optionId),
+            }));
 
-    activityLogger.info("Posts fetched successfully");
-    res.status(200).json(postsWithUserDetails);
+            return {
+              ...post.get({ plain: true }),
+              userProfilePicture: postAuthor ? postAuthor.picture : null,
+              commentCount: commentCount,
+              awards: awards,
+              pollResults: pollResults,
+              userFeedback: userFeedback,
+              thumbnail: post.thumbnail,
+              poll_options: undefined,
+            };
+          } else {
+            return {
+              ...post.get({ plain: true }),
+              userProfilePicture: postAuthor ? postAuthor.picture : null,
+              commentCount: commentCount,
+              awards: awards,
+              userFeedback: userFeedback,
+              thumbnail: post.thumbnail,
+            };
+          }
+        })
+      );
+
+      data = postsWithUserDetails;
+
+      activityLogger.info("Posts fetched successfully");
+      await client.set(compositeKey, JSON.stringify(data));
+      await client.expire(compositeKey, EXPIRATION_TIME_FOR_REDIS_CACHE);
+    }
+    res.status(200).json(data);
   } catch (err) {
     errorLogger.error(err);
     res.status(500).json({

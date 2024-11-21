@@ -18,3 +18,18 @@
       mongodb://<username>:<password>@ac-jvzfql4-shard-00-00.cncxy2q.mongodb.net:27017,ac-jvzfql4-shard-00-01.cncxy2q.mongodb.net:27017,ac-jvzfql4-shard-00-02.cncxy2q.mongodb.net:27017/?ssl=true&replicaSet=atlas-14ovul-shard-0&authSource=admin&retryWrites=true&w=majority&appName=Cluster0
 
 NOTE: Please configure prettier on your VScode for JS project.
+
+### Installation of Elastic Search
+
+1. Visit Elasticsearch Downloads. In the Summary section, we can see "view past releases" click it. Then select Elasticsearch 8.15.3 and install it.
+2. After downloading, extract the contents to your desired folder.
+3. Copy the path of the JDK folder and add it to your PATH environment variable.
+4. Open a command prompt, navigate to the bin folder inside the Elasticsearch directory, and run ".\elasticsearch.bat" .
+
+### Installation of Redis
+
+1. Visit https://github.com/microsoftarchive/redis/releases
+2. Download the Redis-x64-3.0.504.msi
+3. Locate the .msi file and install. Ensure that the "Add the Redis installation folder to the PATH environmental variable" is ticked and click "Next".
+4. Click the "Add an exception to the Windows Firewall" box and click "Next".
+5. Set the memory limit for the Redis storage on your local machine and click "Next".
