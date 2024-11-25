@@ -1,8 +1,6 @@
 const express = require("express");
-
 const userRoute = require("./routes/userRoute");
 const authRoute = require("./routes/authRoute");
-const otpLimiter = require("./middlewares/rateLimiter");
 const dummyRoute = require("./routes/dummyRoute");
 const dotenv = require("dotenv");
 const cookieParser = require("cookie-parser");
@@ -14,6 +12,7 @@ const eventRoute = require("./routes/eventRoute");
 const postRoute = require("./routes/postRoute");
 const profileRoute = require("./routes/profileRoute");
 const chatRoute = require("./routes/chatRoute");
+const paymentRoute = require("./routes/paymentRoute");
 const cors = require("cors");
 const session = require("express-session");
 const { activityLogger, errorLogger } = require("./utils/logger");
@@ -31,6 +30,7 @@ app.use(
     secret: process.env.SESSION_SECRET,
   })
 );
+//await sequelize.sync({ alter: true });
 
 //Connecting Database
 connectDatabase();
@@ -59,6 +59,7 @@ app.use(`${API_PREFIX}/event`, eventRoute);
 app.use(`${API_PREFIX}/posts`, postRoute);
 app.use(`${API_PREFIX}/profile`, profileRoute);
 app.use(`${API_PREFIX}/chat`, chatRoute);
+app.use(`${API_PREFIX}/payment`, paymentRoute);
 
 app.use(errorMiddleware);
 

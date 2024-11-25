@@ -42,6 +42,8 @@ const VALIDAWARDTYPES = new Set([
   "Map",
   // Add more awards here as needed
 ]);
+const SPECIFIC_AWARD_COST = 25;
+const RANDOM_AWARD_COST = 20;
 
 const DELETED_USER_DP = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
@@ -65,4 +67,6 @@ module.exports = {
   MESSAGE_API_ENDPOINT,
   DELETED_USER_DP,
   EXPIRATION_TIME_FOR_REDIS_CACHE,
+  SPECIFIC_AWARD_COST,
+  RANDOM_AWARD_COST,
 };

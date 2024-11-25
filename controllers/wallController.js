@@ -81,113 +81,124 @@ exports.findPosts = async (req, res) => {
     }
     const cachedPosts = await client.get(compositeKey);
 
-    if (cachedPosts) {
-      data = JSON.parse(cachedPosts);
-    } else {
-      if (postId) {
-        posts = await Post.findAll({
-          where: { contentid: postId },
-          include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
-        });
-      } else {
-        posts = await Post.findAll({
-          where: sequelize.where(
-            sequelize.fn(
-              "ST_DWithin",
-              sequelize.col("postlocation"),
-              sequelize.fn(
-                "ST_SetSRID",
-                sequelize.fn("ST_Point", location[0], location[1]),
-                4326
-              ),
-              range
-            ),
-            true
-          ),
-          include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
-          order: [["createdat", "DESC"]],
-          limit,
-          offset,
-        });
+    // Check Redis for cached data
+    if (client && client.isOpen) {
+      try {
+        const cachedPosts = await client.get(compositeKey);
+        if (cachedPosts) {
+          data = JSON.parse(cachedPosts);
+          return res.status(200).json(data);
+        }
+      } catch (redisError) {
+        console.error("Redis error while fetching posts:", redisError.message);
+        // Proceed to fetch from the database if Redis fails
       }
-
-      if (posts.length === 0) {
-        return res.status(200).json([]);
-      }
-
-      const postsWithUserDetails = await Promise.all(
-        posts.map(async (post) => {
-          const postAuthor = await User.findById(post.userid).lean();
-          const commentCount = await Comment.count({
-            where: { contentid: post.contentid },
-          });
-          const awards = post.awards.map((award) => award.award_type);
-
-          const userVote = await ContentVote.findOne({
-            where: { contentid: post.contentid, userid: user._id.toString() },
-            attributes: ["votetype"],
-          });
-          const userFeedback = userVote ? userVote.votetype : null;
-
-          if (post.type === "poll") {
-            const options = post.poll_options;
-            const pollVotes = await PollVote.findAll({
-              raw: true,
-              attributes: [
-                "optionid",
-                [sequelize.fn("SUM", sequelize.col("votes")), "votes"],
-              ],
-              where: { contentid: post.contentid },
-              group: ["optionid"],
-            });
-            const pollVotesMap = pollVotes.reduce((acc, vote) => {
-              acc[vote.optionid] = parseInt(vote.votes, 10);
-              return acc;
-            }, {});
-            const userPollVotes = await PollVote.findAll({
-              where: { contentid: post.contentid, userid: user._id.toString() },
-              attributes: ["optionid"],
-            });
-            const userVotedOptions = new Set(
-              userPollVotes.map((vote) => vote.optionid)
-            );
-
-            const pollResults = options.map((data) => ({
-              option: data.option,
-              optionId: data.optionId,
-              votes: pollVotesMap[data.optionId] || 0,
-              userVoted: userVotedOptions.has(data.optionId),
-            }));
-
-            return {
-              ...post.get({ plain: true }),
-              userProfilePicture: postAuthor ? postAuthor.picture : null,
-              commentCount: commentCount,
-              awards: awards,
-              pollResults: pollResults,
-              userFeedback: userFeedback,
-              thumbnail: post.thumbnail,
-              poll_options: undefined,
-            };
-          } else {
-            return {
-              ...post.get({ plain: true }),
-              userProfilePicture: postAuthor ? postAuthor.picture : null,
-              commentCount: commentCount,
-              awards: awards,
-              userFeedback: userFeedback,
-              thumbnail: post.thumbnail,
-            };
-          }
-        })
-      );
-
-      data = postsWithUserDetails;
-
-      activityLogger.info("Posts fetched successfully");
-      await client.set(compositeKey, JSON.stringify(data));
-      await client.expire(compositeKey, EXPIRATION_TIME_FOR_REDIS_CACHE);
     }
+
+    if (postId) {
+      posts = await Post.findAll({
+        where: { contentid: postId },
+        include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
+      });
+    } else {
+      posts = await Post.findAll({
+        where: sequelize.where(
+          sequelize.fn(
+            "ST_DWithin",
+            sequelize.col("postlocation"),
+            sequelize.fn(
+              "ST_SetSRID",
+              sequelize.fn("ST_Point", location[0], location[1]),
+              4326
+            ),
+            range
+          ),
+          true
+        ),
+        include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
+        order: [["createdat", "DESC"]],
+        limit,
+        offset,
+      });
+    }
+
+    if (posts.length === 0) {
+      return res.status(200).json([]);
+    }
+
+    const postsWithUserDetails = await Promise.all(
+      posts.map(async (post) => {
+        const postAuthor = await User.findById(post.userid).lean();
+        const commentCount = await Comment.count({
+          where: { contentid: post.contentid },
+        });
+        const awards = post.awards.map((award) => award.award_type);
+
+        const userVote = await ContentVote.findOne({
+          where: { contentid: post.contentid, userid: user._id.toString() },
+          attributes: ["votetype"],
+        });
+        const userFeedback = userVote ? userVote.votetype : null;
+
+        if (post.type === "poll") {
+          const options = post.poll_options;
+          const pollVotes = await PollVote.findAll({
+            raw: true,
+            attributes: [
+              "optionid",
+              [sequelize.fn("SUM", sequelize.col("votes")), "votes"],
+            ],
+            where: { contentid: post.contentid },
+            group: ["optionid"],
+          });
+          const pollVotesMap = pollVotes.reduce((acc, vote) => {
+            acc[vote.optionid] = parseInt(vote.votes, 10);
+            return acc;
+          }, {});
+          const userPollVotes = await PollVote.findAll({
+            where: { contentid: post.contentid, userid: user._id.toString() },
+            attributes: ["optionid"],
+          });
+          const userVotedOptions = new Set(
+            userPollVotes.map((vote) => vote.optionid)
+          );
+
+          const pollResults = options.map((data) => ({
+            option: data.option,
+            optionId: data.optionId,
+            votes: pollVotesMap[data.optionId] || 0,
+            userVoted: userVotedOptions.has(data.optionId),
+          }));
+
+          return {
+            ...post.get({ plain: true }),
+            userProfilePicture: postAuthor ? postAuthor.picture : null,
+            commentCount: commentCount,
+            awards: awards,
+            pollResults: pollResults,
+            userFeedback: userFeedback,
+            thumbnail: post.thumbnail,
+            poll_options: undefined,
+          };
+        } else {
+          return {
+            ...post.get({ plain: true }),
+            userProfilePicture: postAuthor ? postAuthor.picture : null,
+            commentCount: commentCount,
+            awards: awards,
+            userFeedback: userFeedback,
+            thumbnail: post.thumbnail,
+          };
+        }
+      })
+    );
+
+    data = postsWithUserDetails;
+
+    activityLogger.info("Posts fetched successfully");
+    await client.set(compositeKey, JSON.stringify(data));
+    await client.expire(compositeKey, EXPIRATION_TIME_FOR_REDIS_CACHE);
+
     res.status(200).json(data);
   } catch (err) {
     errorLogger.error(err);
