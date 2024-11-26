@@ -37,14 +37,10 @@ const Transaction = sequelize.define(
         isIn: [["created", "successful", "failed"]],
       },
     },
-    awardType: {
-      type: DataTypes.STRING,
+    details: {
+      type: DataTypes.JSONB,
       allowNull: false,
-      field: "awardType",
-    },
-    quantity: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
+      field: "details",
     },
     createdAt: {
       type: DataTypes.DATE,

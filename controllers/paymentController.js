@@ -17,22 +17,40 @@ exports.createOrder = async (req, res) => {
   try {
     activityLogger.info("Initiating order creation...");
 
-    const { awardType, quantity } = req.body;
+    const { awards } = req.body;
 
-    if (
-      !awardType ||
-      (!VALIDAWARDTYPES.has(awardType) && awardType !== "random")
-    ) {
+    if (!awards || !Array.isArray(awards) || awards.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Invalid award type. Please select a valid award.",
+        message:
+          "Invalid awards input. Please provide valid awards and quantities.",
       });
     }
 
-    // Calculate the total cost
-    const amount =
-      awardType === "random" ? RANDOM_AWARD_COST : SPECIFIC_AWARD_COST;
-    const totalAmount = amount * quantity * 100; // Convert to paise
+    let totalAmount = 0;
+
+    // Calculate total cost
+    for (const award of awards) {
+      const [awardType, quantity] = Object.entries(award)[0];
+
+      if (
+        !awardType ||
+        (!VALIDAWARDTYPES.has(awardType) && awardType !== "random") ||
+        quantity <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid award type or quantity for "${awardType}". Please select a valid award.`,
+        });
+      }
+
+      const amount =
+        awardType === "random" ? RANDOM_AWARD_COST : SPECIFIC_AWARD_COST;
+      totalAmount += amount * quantity;
+    }
+
+    // Convert to paise
+    totalAmount *= 100;
 
     const options = {
       amount: totalAmount,
@@ -44,14 +62,13 @@ exports.createOrder = async (req, res) => {
     const order = await razorpay.orders.create(options);
     activityLogger.info(`Razorpay order created with ID: ${order.id}`);
 
-    // Save order details to the database
+    // Save transaction details to the database
     await Transaction.create({
       userId: req.user.id,
       orderId: order.id,
       amount: totalAmount,
       status: "created",
-      awardType,
-      quantity,
+      details: awards, // Store awards as JSONB
     });
 
     activityLogger.info(
@@ -66,31 +83,30 @@ exports.createOrder = async (req, res) => {
       currency: "INR",
     });
 
-    // Increment user's award count
-    try {
-      const update = {};
+    // Update user's awards in the database
+    const updates = {};
+    for (const award of awards) {
+      const [awardType, quantity] = Object.entries(award)[0];
       if (awardType === "random") {
-        // Assign a random award
         const randomAward =
           Array.from(VALIDAWARDTYPES)[
             Math.floor(Math.random() * VALIDAWARDTYPES.size)
           ];
-        update[`awards.${randomAward}`] = quantity;
+        updates[`awards.${randomAward}`] =
+          (updates[`awards.${randomAward}`] || 0) + quantity;
         activityLogger.info(
-          `Random award "${randomAward}" assigned to user ${req.user.id}.`
+          `Random award "${randomAward}" will be assigned for quantity ${quantity}.`
         );
       } else {
-        // Increment the specific award's count
-        update[`awards.${awardType}`] = quantity;
-        activityLogger.info(
-          `Specific award "${awardType}" assigned to user ${req.user.id}.`
-        );
+        updates[`awards.${awardType}`] =
+          (updates[`awards.${awardType}`] || 0) + quantity;
       }
+    }
 
-      // Update the user's awards in the database
-      await User.updateOne({ _id: req.user.id }, { $inc: update });
+    try {
+      await User.updateOne({ _id: req.user.id }, { $inc: updates });
       activityLogger.info(
-        `Award count updated for user ${req.user.id}: ${JSON.stringify(update)}`
+        `Award counts updated for user ${req.user.id}: ${JSON.stringify(updates)}`
       );
     } catch (awardUpdateError) {
       errorLogger.error(
