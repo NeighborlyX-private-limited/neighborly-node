@@ -19,7 +19,7 @@ const CITY_TO_COORDINATE = {
 };
 const AVAILABLE_CITIES = ["delhi", "noida", "gurugram"];
 
-const EXPIRATION_TIME_FOR_REDIS_CACHE = 300;
+const EXPIRATION_TIME_FOR_REDIS_CACHE = 60;
 
 const COORDINATE_TO_CITY = {
   "28.6139,77.2088": "new delhi",

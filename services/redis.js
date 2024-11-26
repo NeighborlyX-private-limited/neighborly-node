@@ -28,6 +28,9 @@ const createRedisClient = async () => {
   return client;
 };
 
-module.exports = {
-  createRedisClient,
-};
+// Initialize the client on module load and export it
+(async () => {
+  await createRedisClient();
+})();
+
+module.exports = client;
