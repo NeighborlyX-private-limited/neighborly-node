@@ -1,4 +1,5 @@
 const express = require("express");
+
 const router = express.Router();
 const { isAuthenticated } = require("../middlewares/auth");
 const { singleFileUpload } = require("../middlewares/fileUpload");
@@ -23,21 +24,29 @@ const {
   removeAdmin,
 } = require("../controllers/groupController");
 
+const {
+  findNearbyGroupsLimiter,
+  fetchGroupDetailsLimiter,
+  fetchNearbyUsersLimiter,
+  searchGroupLimiter,
+} = require("../middlewares/rateLimiter");
+
+
 router.route("/remove-user").post(isAuthenticated, removeUser);
 router.route("/make-group-permanent").put(isAuthenticated, makeGroupPermanent);
-router.route("/fetch-nearby-users").get(isAuthenticated, nearbyUsers);
+router.route("/fetch-nearby-users").get(isAuthenticated,fetchNearbyUsersLimiter, nearbyUsers);
 router.route("/add-user/:groupId?").post(isAuthenticated, addUser);
 router.route("/add-user").post(isAuthenticated, addUser);
 router.route("/delete-group/:groupId").delete(isAuthenticated, deleteGroup);
 router.route("/create").post(isAuthenticated, createGroup);
-router.route("/search-group").get(isAuthenticated, searchGroups);
+router.route("/search-group").get(isAuthenticated,searchGroupLimiter, searchGroups);
 router.route("/report-group").post(isAuthenticated, reportGroup);
 router
   .route("/store-message")
   .post(isAuthenticated, singleFileUpload, storeMessage);
 router
   .route("/fetch-group-details/:groupId")
-  .get(isAuthenticated, fetchGroupDetails);
+  .get(isAuthenticated,fetchGroupDetailsLimiter, fetchGroupDetails);
 router
   .route("/update-group-details")
   .post(isAuthenticated, singleFileUpload, updateGroupDetails);
@@ -45,7 +54,7 @@ router.route("/add-admin").post(isAuthenticated, addAdmin);
 router.route("/remove-admin").put(isAuthenticated, removeAdmin);
 router.route("/block-user").put(isAuthenticated, blockUser);
 router.route("/user-groups").get(isAuthenticated, fetchUserGroups);
-router.route("/nearby-groups").get(isAuthenticated, fetchNearbyGroups);
+router.route("/nearby-groups").get(isAuthenticated,findNearbyGroupsLimiter, fetchNearbyGroups);
 router.route("/mute-group").put(isAuthenticated, muteGroup);
 
 module.exports = router;

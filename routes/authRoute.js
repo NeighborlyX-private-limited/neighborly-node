@@ -25,7 +25,7 @@ router.route("/forgot-password").post(forgotPassword);
 
 router.route("/google/login").post(googleAuth);
 
-router.route("/send-phone-otp").post(sendPhoneOTP);
+router.route("/send-phone-otp").post(otpLimiter,sendPhoneOTP);
 router.route("/verify-phone-otp").post(verifyPhoneOTP);
 
 module.exports = router;

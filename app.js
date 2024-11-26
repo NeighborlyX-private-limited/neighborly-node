@@ -2,7 +2,8 @@ const express = require("express");
 
 const userRoute = require("./routes/userRoute");
 const authRoute = require("./routes/authRoute");
-const otpLimiter = require("./middlewares/rateLimiter");
+//const otpLimiter = require("./middlewares/rateLimiter");
+const rateLimit = require("./middlewares/rateLimiter");
 const dummyRoute = require("./routes/dummyRoute");
 const dotenv = require("dotenv");
 const cookieParser = require("cookie-parser");
