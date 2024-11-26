@@ -23,7 +23,7 @@ const {
 const {
   updateLocationLimiter,
   fetchCitiesLimiter,
-  uploadFileLimiter, 
+  uploadFileLimiter,
 } = require("../middlewares/rateLimiter");
 
 const router = express.Router();
@@ -33,13 +33,17 @@ router.route("/user-info").get(isAuthenticated, userinfo);
 router.route("/update-user-picture").put(isAuthenticated, updatePicture);
 router
   .route("/update-user-location/:cityLocation")
-  .put(isAuthenticated,updateLocationLimiter, updateLocation);
+  .put(isAuthenticated, updateLocationLimiter, updateLocation);
 router.route("/change-password").put(changePassword);
 router.route("/delete-user").delete(isAuthenticated, deleteUser);
 router.route("/update-user-dob").put(isAuthenticated, updateUserdob);
-router.route("/fetch-cities").get(fetchCitiesLimiter,fetchCities);
-router.route("/upload-file").post(singleFileUpload,uploadFileLimiter, uploadFile);
-router.route("/upload-files").post(multipleFilesUpload,uploadFileLimiter, uploadFiles);
+router.route("/fetch-cities").get(fetchCitiesLimiter, fetchCities);
+router
+  .route("/upload-file")
+  .post(singleFileUpload, uploadFileLimiter, uploadFile);
+router
+  .route("/upload-files")
+  .post(multipleFilesUpload, uploadFileLimiter, uploadFiles);
 router.route("/save-fcm-token").post(saveFcmToken);
 router.route("/update-tutorial-info").put(isAuthenticated, updateTutorialInfo);
 
