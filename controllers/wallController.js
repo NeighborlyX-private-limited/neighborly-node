@@ -79,7 +79,6 @@ exports.findPosts = async (req, res) => {
         "Current location coordinates are required if not fetching from home"
       );
     }
-    const cachedPosts = await client.get(compositeKey);
 
     // Check Redis for cached data
     if (client && client.isOpen) {
