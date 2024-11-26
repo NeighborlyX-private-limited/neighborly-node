@@ -195,9 +195,12 @@ exports.findPosts = async (req, res) => {
     data = postsWithUserDetails;
 
     activityLogger.info("Posts fetched successfully");
-    await client.set(compositeKey, JSON.stringify(data));
-    await client.expire(compositeKey, EXPIRATION_TIME_FOR_REDIS_CACHE);
-
+    try {
+      await client.set(compositeKey, JSON.stringify(data));
+      await client.expire(compositeKey, EXPIRATION_TIME_FOR_REDIS_CACHE);
+    } catch (err) {
+      errorLogger.error("Error while caching posts", err);
+    }
     res.status(200).json(data);
   } catch (err) {
     errorLogger.error(err);
