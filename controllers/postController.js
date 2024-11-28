@@ -217,6 +217,22 @@ exports.addComment = async (req, res) => {
     if (contentUserId !== userId) {
       const contentOwner = await User.findById(contentUserId);
       const ownerToken = contentOwner.fcmToken;
+      console.log(
+        notificationAPI,
+        JSON.stringify({
+          token: ownerToken, //"dMVpqZWrHtPvqBHOYIsrnK:APA91bEoWJcOHLQFGyeDYYCaFqbldiLN1bwp6gE6FOUYLEySOELLevYS6_S7rvySmBLdQd7ZA6gnhaQgRPyterRwb8Vp0px8F2SsM9sl9s4Eq9hXVtPgm0wE3Vdbe8_JusSgpOKWBLin",
+          eventType: "CommentTrigger",
+          commentId: commentId,
+          postId: contentid,
+          userid: contentUserId,
+          notificationImage: userAvatar,
+          title: `You’ve Got a Comment!`,
+          content: `${username} just dropped a thought-bomb on your post. Check it out! 🔥`,
+          notificationBody: `${username} just dropped a thought-bomb on your post. Check it out!`,
+          notificationTitle: `You’ve Got a Comment!`,
+          type: contentType,
+        })
+      );
       try {
         await fetch(notificationAPI, {
           method: "POST",
