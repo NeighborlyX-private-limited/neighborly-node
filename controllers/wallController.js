@@ -21,9 +21,9 @@ const {
   VALIDAWARDTYPES,
   EXPIRATION_TIME_FOR_REDIS_CACHE,
 } = require("../utils/constants");
-const client = require("../services/redis");
-const { cache } = require("sharp");
-const { CACHE_KEY_TEMPLATE } = require("../utils/cacheKey");
+// const client = require("../services/redis");
+// const { cache } = require("sharp");
+// const { CACHE_KEY_TEMPLATE } = require("../utils/cacheKey");
 
 const notificationAPI = process.env.API_ENDPOINT + process.env.NOTIFICATION;
 
@@ -62,10 +62,10 @@ exports.findPosts = async (req, res) => {
   let posts;
   let location;
 
-  const compositeKey = CACHE_KEY_TEMPLATE.replace("${postId}", postId)
-    .replace("${userId}", user._id.toString())
-    .replace("${latitude}", latitude)
-    .replace("${longitude}", longitude);
+  // const compositeKey = CACHE_KEY_TEMPLATE.replace("${postId}", postId)
+  //   .replace("${userId}", user._id.toString())
+  //   .replace("${latitude}", latitude)
+  //   .replace("${longitude}", longitude);
 
   let data;
 
@@ -80,19 +80,19 @@ exports.findPosts = async (req, res) => {
       );
     }
 
-    // Check Redis for cached data
-    if (client && client.isOpen) {
-      try {
-        const cachedPosts = await client.get(compositeKey);
-        if (cachedPosts) {
-          data = JSON.parse(cachedPosts);
-          return res.status(200).json(data);
-        }
-      } catch (redisError) {
-        console.error("Redis error while fetching posts:", redisError.message);
-        // Proceed to fetch from the database if Redis fails
-      }
-    }
+    // // Check Redis for cached data
+    // if (client && client.isOpen) {
+    //   try {
+    //     const cachedPosts = await client.get(compositeKey);
+    //     if (cachedPosts) {
+    //       data = JSON.parse(cachedPosts);
+    //       return res.status(200).json(data);
+    //     }
+    //   } catch (redisError) {
+    //     console.error("Redis error while fetching posts:", redisError.message);
+    //     // Proceed to fetch from the database if Redis fails
+    //   }
+    // }
 
     if (postId) {
       posts = await Post.findAll({
@@ -195,12 +195,12 @@ exports.findPosts = async (req, res) => {
     data = postsWithUserDetails;
 
     activityLogger.info("Posts fetched successfully");
-    try {
-      await client.set(compositeKey, JSON.stringify(data));
-      await client.expire(compositeKey, EXPIRATION_TIME_FOR_REDIS_CACHE);
-    } catch (err) {
-      errorLogger.error("Error while caching posts", err);
-    }
+    // try {
+    //   await client.set(compositeKey, JSON.stringify(data));
+    //   await client.expire(compositeKey, EXPIRATION_TIME_FOR_REDIS_CACHE);
+    // } catch (err) {
+    //   errorLogger.error("Error while caching posts", err);
+    // }
     res.status(200).json(data);
   } catch (err) {
     errorLogger.error(err);
