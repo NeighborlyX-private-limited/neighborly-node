@@ -106,6 +106,7 @@ exports.registerUser = async (req, res) => {
         bio: null,
         auth_type: email ? "email" : "phone",
         fcmToken: fcmToken,
+        gender: "male",
       });
       sendToken(user, 200, res);
     } else if (phoneNumber) {
@@ -118,6 +119,7 @@ exports.registerUser = async (req, res) => {
         bio: null,
         auth_type: email ? "email" : "phone",
         fcmToken: fcmToken,
+        gender: "male",
       });
       sendToken(user, 200, res);
     }
@@ -284,6 +286,7 @@ exports.googleAuth = async (req, res) => {
         picture: picture,
         auth_type: "google",
         fcmToken: fcmToken,
+        gender: "male",
       });
       activityLogger.info("User created and logged in successfully via Google");
       return sendToken(user, 200, res);
