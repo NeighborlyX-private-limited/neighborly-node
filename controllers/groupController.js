@@ -295,8 +295,8 @@ exports.removeUser = async (req, res) => {
 
 exports.createGroup = async (req, res) => {
   try {
-    const { name, description, radius, karma } = req.body;
-    const { icon } = req.file;
+    const { name, description, radius = 3000, karma = 0 } = req.body;
+    const file = req.file;
     const user = req.user;
     const isOpen = req.body.isOpen === "true";
     const latitude = parseFloat(req.query.latitude);
@@ -311,6 +311,30 @@ exports.createGroup = async (req, res) => {
       coordinates: [latitude, longitude],
     };
 
+    let mediaLink = null;
+
+    if (file) {
+      const fileKey = `${uuid.v4()}-${file.originalname}`;
+      const uploadParams = {
+        Bucket: S3_BUCKET_NAME,
+        Key: fileKey,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+        ACL: "public-read",
+      };
+
+      try {
+        const uploadResult = await S3.upload(uploadParams).promise();
+        mediaLink = uploadResult.Location;
+      } catch (uploadError) {
+        errorLogger.error("Error uploading file to S3:", uploadError);
+        return res.status(500).json({
+          message: "Error uploading file",
+          error: uploadError.message,
+        });
+      }
+    }
+
     const code = otpgenerator();
     let displayname = name + code;
     while (await Group.findOne({ displayname })) {
@@ -323,13 +347,13 @@ exports.createGroup = async (req, res) => {
     }
 
     // Use the provided icon or generate a random color if no icon is provided
-    const groupIcon = icon || getRandomColor();
+    const groupIcon = mediaLink || getRandomColor();
 
     // Create the group
     const group = await Group.create({
       name,
       displayname,
-      icon: groupIcon,
+      icon: mediaLink,
       description,
       location,
       isOpen,
@@ -944,7 +968,6 @@ exports.storeMessage = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
     const messageData = {
       groupId,
       name: user.username,

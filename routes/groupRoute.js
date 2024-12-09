@@ -2,8 +2,6 @@ const express = require("express");
 const router = express.Router();
 const { isAuthenticated } = require("../middlewares/auth");
 const { singleFileUpload } = require("../middlewares/fileUpload");
-const multer = require("multer");
-const upload = multer({ dest: "uploads/" });
 
 const {
   createGroup,
@@ -31,9 +29,7 @@ router.route("/fetch-nearby-users").get(isAuthenticated, nearbyUsers);
 router.route("/add-user/:groupId?").post(isAuthenticated, addUser);
 router.route("/add-user").post(isAuthenticated, addUser);
 router.route("/delete-group/:groupId").delete(isAuthenticated, deleteGroup);
-router
-  .route("/create")
-  .post(isAuthenticated, upload.single("icon"), createGroup);
+router.route("/create").post(isAuthenticated, singleFileUpload, createGroup);
 router.route("/search-group").get(isAuthenticated, searchGroups);
 router.route("/report-group").post(isAuthenticated, reportGroup);
 router
