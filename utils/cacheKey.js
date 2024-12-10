@@ -1,4 +1,3 @@
-let CACHE_KEY_TEMPLATE =
-  "post:${postId},user:${userId},geo:${latitude},${longitude}";
+let CACHE_KEY_FOR_FETCHING_POST = "postId: ${postId}";
 
-module.exports = { CACHE_KEY_TEMPLATE };
+module.exports = { CACHE_KEY_FOR_FETCHING_POST };
