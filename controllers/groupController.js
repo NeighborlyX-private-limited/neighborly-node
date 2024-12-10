@@ -21,7 +21,7 @@ function formatGroupCard(group) {
     isPublic: group.isOpen,
     description: group.description,
     createdAt: group.createdAt,
-    location: getCity(group.location),
+    location: group.location,
     karma: group.karma,
     name: group.name,
     image: group.icon,
@@ -295,51 +295,45 @@ exports.removeUser = async (req, res) => {
 
 exports.createGroup = async (req, res) => {
   try {
-    const {
-      name,
-      description,
-      isOpen,
-      radius = 3000,
-      karma = 0,
-      icon,
-    } = req.body;
+    const { name, description, radius = 3000, karma = 0 } = req.body;
+    const file = req.file;
     const user = req.user;
-    const isHome = req.query.home === "true"; // Convert query param to boolean
-    const { latitude, longitude } = req.query;
+    const isOpen = req.body.isOpen === "true";
+    const latitude = parseFloat(req.query.latitude);
+    const longitude = parseFloat(req.query.longitude);
     activityLogger.info(
       "Attempting to create a group with the following data:",
       req.body
     );
 
-    let coordinates;
-    if (isHome) {
-      if (
-        !user.home_coordinates ||
-        !user.home_coordinates.coordinates ||
-        user.home_coordinates.coordinates.length !== 2
-      ) {
-        return res.status(400).json({
-          message: "User's home coordinates are not available or invalid.",
-        });
-      }
-      coordinates = user.home_coordinates.coordinates;
-    } else {
-      if (
-        !user.current_coordinates ||
-        !user.current_coordinates.coordinates ||
-        user.current_coordinates.coordinates.length !== 2
-      ) {
-        return res.status(400).json({
-          message: "User's current coordinates are not available or invalid.",
-        });
-      }
-      coordinates = user.current_coordinates.coordinates;
-    }
-
     const location = {
       type: "Point",
-      coordinates: coordinates,
+      coordinates: [latitude, longitude],
     };
+
+    let mediaLink = null;
+
+    if (file) {
+      const fileKey = `${uuid.v4()}-${file.originalname}`;
+      const uploadParams = {
+        Bucket: S3_BUCKET_NAME,
+        Key: fileKey,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+        ACL: "public-read",
+      };
+
+      try {
+        const uploadResult = await S3.upload(uploadParams).promise();
+        mediaLink = uploadResult.Location;
+      } catch (uploadError) {
+        errorLogger.error("Error uploading file to S3:", uploadError);
+        return res.status(500).json({
+          message: "Error uploading file",
+          error: uploadError.message,
+        });
+      }
+    }
 
     const code = otpgenerator();
     let displayname = name + code;
@@ -353,13 +347,13 @@ exports.createGroup = async (req, res) => {
     }
 
     // Use the provided icon or generate a random color if no icon is provided
-    const groupIcon = icon || getRandomColor();
+    const groupIcon = mediaLink || getRandomColor();
 
     // Create the group
     const group = await Group.create({
       name,
       displayname,
-      icon: groupIcon,
+      icon: mediaLink,
       description,
       location,
       isOpen,
@@ -385,7 +379,7 @@ exports.createGroup = async (req, res) => {
     );
 
     activityLogger.info(
-      `Group ${group.name} created successfully with location based on ${isHome ? "home coordinates" : "current coordinates"}.`
+      `Group ${group.name} created successfully with location based on ${(latitude, longitude)}.`
     );
     res.status(200).json({ group });
   } catch (error) {
@@ -461,8 +455,8 @@ exports.nearbyUsers = async (req, res) => {
 exports.nearestGroup = async (req, res) => {
   try {
     const _id = req.user._id;
-    const latitude = Number(req.query.latitude);
-    const longitude = Number(req.query.longitude);
+    const latitude = parseFloat(req.query.latitude);
+    const longitude = parseFloat(req.query.longitude);
     // Validate coordinates
     if (!isValidCoordinate(latitude, longitude)) {
       activityLogger.info(`Invalid coordinates for ${_id}`);
@@ -474,9 +468,9 @@ exports.nearestGroup = async (req, res) => {
         $near: {
           $geometry: {
             type: "Point",
-            coordinates: [parseFloat(latitude), parseFloat(longitude)],
+            coordinates: [latitude, longitude],
           },
-          $maxDistance: 300000, // Adjust this distance as needed (in meters)
+          $maxDistance: 300000, // Adjust this distance as needed (in meters)fetch
         },
       },
       "members.userId": { $ne: _id },
@@ -504,7 +498,9 @@ exports.nearestGroup = async (req, res) => {
 exports.fetchGroupDetails = async (req, res) => {
   try {
     const groupId = req.params["groupId"];
-    const groupDetails = await Group.findOne({ _id: groupId });
+    const groupDetails = await Group.findOne({
+      _id: groupId,
+    });
     if (!groupDetails) {
       return res.status(404).json({ error: "Group not found" });
     }
@@ -904,7 +900,8 @@ exports.fetchUserGroups = async (req, res) => {
 
 exports.fetchNearbyGroups = async (req, res) => {
   const userId = req.user._id;
-  const isHome = req.query.isHome === "true";
+  const latitude = parseFloat(req.query.latitude);
+  const longitude = parseFloat(req.query.longitude);
 
   try {
     const user = await User.findById(userId);
@@ -912,17 +909,12 @@ exports.fetchNearbyGroups = async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const coordinates = isHome
-      ? user.home_coordinates.coordinates
-      : user.current_coordinates.coordinates;
-
     const nearbyGroups = await Group.find({
-      _id: { $nin: user.groups },
       location: {
-        $nearSphere: {
+        $near: {
           $geometry: {
             type: "Point",
-            coordinates: coordinates,
+            coordinates: [latitude, longitude],
           },
           $maxDistance: 5000, // 5 km in meters
         },
@@ -976,7 +968,6 @@ exports.storeMessage = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
     const messageData = {
       groupId,
       name: user.username,
