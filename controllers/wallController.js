@@ -23,7 +23,7 @@ const {
 } = require("../utils/constants");
 const client = require("../services/redis");
 const { cache } = require("sharp");
-const { CACHE_KEY_TEMPLATE } = require("../utils/cacheKey");
+const { CACHE_KEY_FOR_FETCHING_POST } = require("../utils/cacheKey");
 
 const notificationAPI = process.env.API_ENDPOINT + process.env.NOTIFICATION;
 
@@ -52,54 +52,54 @@ const checkForNull = async (type, contentModel, contentIdField, id) => {
 // Fetch posts and polls
 exports.findPosts = async (req, res) => {
   const isHome = req.query?.home === "true";
+  const latitude = parseFloat(req.query.latitude);
+  const longitude = parseFloat(req.query.longitude);
   const user = req.user;
   const postId = req.params.postId;
   const limit = parseInt(req.query.limit, 10) || 100;
   const offset = parseInt(req.query.offset, 10) || 0;
-  const latitude = parseFloat(req.query.latitude);
-  const longitude = parseFloat(req.query.longitude);
+
   let range = req.query.range * 1000 || 4000;
   let posts;
   let location;
 
-  const compositeKey = CACHE_KEY_TEMPLATE.replace("${postId}", postId)
-    .replace("${userId}", user._id.toString())
-    .replace("${latitude}", latitude)
-    .replace("${longitude}", longitude);
+  const singlePostCacheKey = CACHE_KEY_FOR_FETCHING_POST.replace(
+    "${postId}",
+    postId
+  );
 
   let data;
 
   try {
-    if (isHome) {
-      location = user.home_coordinates.coordinates;
-    } else if (latitude && longitude) {
-      location = [latitude, longitude];
-    } else {
-      throw new Error(
-        "Current location coordinates are required if not fetching from home"
-      );
-    }
-
-    // // Check Redis for cached data
-    if (client && client.isOpen) {
-      try {
-        const cachedPosts = await client.get(compositeKey);
-        if (cachedPosts) {
-          data = JSON.parse(cachedPosts);
-          return res.status(200).json(data);
-        }
-      } catch (redisError) {
-        console.error("Redis error while fetching posts:", redisError.message);
-        //     // Proceed to fetch from the database if Redis fails
-      }
-    }
-
     if (postId) {
+      if (client && client.isOpen) {
+        try {
+          const cachedPost = await client.get(singlePostCacheKey);
+          if (cachedPost) {
+            data = JSON.parse(cachedPost);
+            return res.status(200).json(data);
+          }
+        } catch (redisError) {
+          console.error(
+            "Redis error while fetching posts:",
+            redisError.message
+          );
+        }
+      }
       posts = await Post.findAll({
         where: { contentid: postId },
         include: [{ model: Award, attributes: ["award_type"], as: "awards" }],
       });
     } else {
+      if (isHome) {
+        location = user.home_coordinates.coordinates;
+      } else if (latitude && longitude) {
+        location = [latitude, longitude];
+      } else {
+        throw new Error(
+          "Current location coordinates are required if not fetching from home"
+        );
+      }
       posts = await Post.findAll({
         where: sequelize.where(
           sequelize.fn(
@@ -194,14 +194,21 @@ exports.findPosts = async (req, res) => {
 
     data = postsWithUserDetails;
 
-    activityLogger.info("Posts fetched successfully");
-    try {
-      await client.set(compositeKey, JSON.stringify(data));
-      await client.expire(compositeKey, EXPIRATION_TIME_FOR_REDIS_CACHE);
-    } catch (err) {
-      errorLogger.error("Error while caching posts", err);
+    if (postId) {
+      activityLogger.info("Posts fetched successfully");
+      try {
+        await client.set(singlePostCacheKey, JSON.stringify(data));
+        await client.expire(
+          singlePostCacheKey,
+          EXPIRATION_TIME_FOR_REDIS_CACHE
+        );
+      } catch (err) {
+        errorLogger.error("Error while caching posts", err);
+      }
+      res.status(200).json(data);
+    } else {
+      res.status(200).json(data);
     }
-    res.status(200).json(data);
   } catch (err) {
     errorLogger.error(err);
     res.status(500).json({
