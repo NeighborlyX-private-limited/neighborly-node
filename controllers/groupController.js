@@ -353,7 +353,7 @@ exports.createGroup = async (req, res) => {
     const group = await Group.create({
       name,
       displayname,
-      icon: mediaLink,
+      icon: groupIcon,
       description,
       location,
       isOpen,
