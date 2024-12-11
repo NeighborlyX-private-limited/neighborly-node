@@ -1,8 +1,8 @@
-name: Deploy to Production
+name: Deploy to Development
 on:
   push:
     branches:
-      - master
+      - dev
 
 jobs:
   deploy:
@@ -15,13 +15,13 @@ jobs:
       - name: Add SSH key
         uses: webfactory/ssh-agent@v0.5.3
         with:
-          ssh-private-key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+          ssh-private-key: ${{ secrets.DEV_SSH_PRIVATE_KEY }}
       - name: Run deployment script on EC2
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.PROD_EC2_USER }}@${{ secrets.PROD_EC2_HOST }} "bash /home/ec2-user/deployment-scripts/backend-deployment-script.sh"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.DEV_EC2_USER }}@${{ secrets.DEV_EC2_HOST }} "bash /home/ec2-user/deployment-scripts/backend-deployment-script.sh"
       - name: Notify success
         if: success()
-        run: echo "Production deployment was successful!"
+        run: echo "Development deployment was successful!"
       - name: Notify failure
         if: failure()
-        run: echo "Production deployment failed. Check logs."
+        run: echo "Development deployment failed. Check logs."
