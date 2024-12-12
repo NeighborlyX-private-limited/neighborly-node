@@ -40,7 +40,7 @@ router
   .get(isAuthenticated, fetchGroupDetails);
 router
   .route("/update-group-details")
-  .post(isAuthenticated, singleFileUpload, updateGroupDetails);
+  .put(isAuthenticated, singleFileUpload, updateGroupDetails);
 router.route("/add-admin").post(isAuthenticated, addAdmin);
 router.route("/remove-admin").put(isAuthenticated, removeAdmin);
 router.route("/block-user").put(isAuthenticated, blockUser);
