@@ -923,7 +923,14 @@ exports.fetchNearbyGroups = async (req, res) => {
 
     const groupCards = nearbyGroups.map((group) => formatGroupCard(group));
 
-    res.status(200).json(groupCards);
+    const filteredGroups = groupCards.map((each) => {
+      const isJoined = each.members.some(
+        (member) => member.userId.toString() === userId.toString()
+      );
+      return { ...each, isJoined };
+    });
+
+    res.status(200).json(filteredGroups);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Server error" });
