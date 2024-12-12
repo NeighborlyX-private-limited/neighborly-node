@@ -26,7 +26,16 @@ function formatGroupCard(group) {
     name: group.name,
     image: group.icon,
     membersCount: group.members.length + group.admin.length,
-    members: group.members.concat(group.admin),
+    members: [
+      ...group.members.map((m) => ({
+        userName: m.userName,
+        picture: m.picture,
+      })),
+      ...group.admin.map((a) => ({
+        userName: a.userName,
+        picture: a.picture,
+      })),
+    ],
   };
 }
 
@@ -914,12 +923,14 @@ exports.fetchNearbyGroups = async (req, res) => {
         $near: {
           $geometry: {
             type: "Point",
-            coordinates: [latitude, longitude],
+            coordinates: [longitude, latitude],
           },
-          $maxDistance: 5000, // 5 km in meters
+          $maxDistance: 5000,
         },
       },
-    }).select("isOpen name icon members admin");
+    }).select(
+      "isOpen description createdAt location karma name icon members.userName members.picture admin.userName admin.picture"
+    );
 
     const groupCards = nearbyGroups.map((group) => formatGroupCard(group));
 
