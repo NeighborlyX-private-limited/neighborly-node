@@ -25,8 +25,15 @@ function formatGroupCard(group) {
     karma: group.karma,
     name: group.name,
     image: group.icon,
+    admin: group.admin,
     membersCount: group.members.length + group.admin.length,
-    members: group.members.concat(group.admin),
+    members: [
+      ...group.members.map((m) => ({
+        id: m.userId,
+        userName: m.userName,
+        picture: m.picture,
+      })),
+    ],
   };
 }
 
@@ -916,21 +923,23 @@ exports.fetchNearbyGroups = async (req, res) => {
             type: "Point",
             coordinates: [latitude, longitude],
           },
-          $maxDistance: 5000, // 5 km in meters
+          $maxDistance: 5000,
         },
       },
-    }).select("isOpen name icon members admin");
-
+    }).select(
+      "isOpen description createdAt location karma name icon members.userName members.picture members.userId admin.userName admin.picture admin.userId"
+    );
     const groupCards = nearbyGroups.map((group) => formatGroupCard(group));
 
-    const filteredGroups = groupCards.map((each) => {
+    const groups = groupCards.map((each) => {
       const isJoined = each.members.some(
-        (member) => member.userId.toString() === userId.toString()
+        (member) => member.userName === req.user.username
       );
-      return { ...each, isJoined };
+      const isAdmin = each.admin[0].userName === req.user.username;
+      return { ...each, isJoined, isAdmin };
     });
 
-    res.status(200).json(filteredGroups);
+    res.status(200).json(groups);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Server error" });
