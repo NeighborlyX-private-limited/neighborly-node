@@ -25,15 +25,13 @@ function formatGroupCard(group) {
     karma: group.karma,
     name: group.name,
     image: group.icon,
+    admin: group.admin,
     membersCount: group.members.length + group.admin.length,
     members: [
       ...group.members.map((m) => ({
+        id: m.userId,
         userName: m.userName,
         picture: m.picture,
-      })),
-      ...group.admin.map((a) => ({
-        userName: a.userName,
-        picture: a.picture,
       })),
     ],
   };
@@ -929,12 +927,19 @@ exports.fetchNearbyGroups = async (req, res) => {
         },
       },
     }).select(
-      "isOpen description createdAt location karma name icon members.userName members.picture admin.userName admin.picture"
+      "isOpen description createdAt location karma name icon members.userName members.picture members.userId admin.userName admin.picture admin.userId"
     );
-
     const groupCards = nearbyGroups.map((group) => formatGroupCard(group));
 
-    res.status(200).json(groupCards);
+    const groups = groupCards.map((each) => {
+      const isJoined = each.members.some(
+        (member) => member.userName === req.user.username
+      );
+      const isAdmin = each.admin[0].userName === req.user.username;
+      return { ...each, isJoined, isAdmin };
+    });
+
+    res.status(200).json(groups);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Server error" });
