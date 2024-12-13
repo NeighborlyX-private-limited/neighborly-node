@@ -921,7 +921,7 @@ exports.fetchNearbyGroups = async (req, res) => {
         $near: {
           $geometry: {
             type: "Point",
-            coordinates: [longitude, latitude],
+            coordinates: [latitude, longitude],
           },
           $maxDistance: 5000,
         },
