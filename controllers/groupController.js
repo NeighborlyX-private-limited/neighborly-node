@@ -48,7 +48,7 @@ function getRandomColor() {
 
 exports.addUser = async (req, res) => {
   try {
-    var { groupId, userId } = req.body;
+    let { groupId, userId } = req.body;
     if (!userId) {
       userId = req.user._id;
     }
@@ -56,32 +56,45 @@ exports.addUser = async (req, res) => {
       `Adding user with ID ${userId} to group with ID ${groupId}.`
     );
 
+    // Check if the group exists
     const group = await Group.findById(new ObjectId(groupId));
     if (!group) {
-      activityLogger.info(`Group with ${groupId} not found.`);
+      activityLogger.info(`Group with ID ${groupId} not found.`);
       return res.status(404).json({ message: "Group not found." });
     }
 
-    const requiredKarma = group.karma;
-
+    // Check if the user exists
     const user = await User.findById(new ObjectId(userId));
     if (!user) {
       activityLogger.info("User not found");
       return res.status(404).json({ message: "User not found." });
     }
 
-    if (user.karma < requiredKarma) {
+    // Check if user already exists in group members
+    const isUserAlreadyMember = group.members.some(
+      (member) => member.userId.toString() === userId.toString()
+    );
+
+    if (isUserAlreadyMember) {
+      activityLogger.info("User is already a member of the group.");
+      return res
+        .status(400)
+        .json({ message: "User is already a member of the group." });
+    }
+
+    // Check if the user's karma meets the group's requirements
+    if (user.karma < group.karma) {
       activityLogger.info("Karma insufficient");
       return res.status(403).json({ message: "Insufficient karma." });
     }
 
-    // Update the User collection to add the group to the user's groups array
+    // Add group to user's groups array
     const groupAddedInUser = await User.updateOne(
       { _id: new ObjectId(userId) },
       { $addToSet: { groups: new ObjectId(groupId) } }
     );
 
-    // Updating 'members' field that is an array of ObjectId references to User documents
+    // Add user to group's members array
     const userAddedToGroup = await Group.updateOne(
       { _id: new ObjectId(groupId) },
       {
@@ -98,17 +111,20 @@ exports.addUser = async (req, res) => {
       }
     );
 
-    // Check if both updates were successful by inspecting modifiedCount
+    // Check if both updates were successful
     if (
-      userAddedToGroup.modifiedCount > 0 &&
-      groupAddedInUser.modifiedCount > 0
+      groupAddedInUser.modifiedCount > 0 &&
+      userAddedToGroup.modifiedCount > 0
     ) {
-      activityLogger.info("User added.");
-      res
+      activityLogger.info("User added to the group successfully.");
+      return res
         .status(200)
         .json({ message: "User added to the group successfully." });
     } else {
-      res
+      activityLogger.info(
+        "Group not found or user already in the group (update failed)."
+      );
+      return res
         .status(400)
         .json({ message: "Group not found or user already in the group." });
     }
@@ -118,7 +134,7 @@ exports.addUser = async (req, res) => {
       error
     );
     console.error("Unexpected error:", error);
-    res.status(500).json({ message: "Internal Server Error" });
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
@@ -505,17 +521,41 @@ exports.nearestGroup = async (req, res) => {
 exports.fetchGroupDetails = async (req, res) => {
   try {
     const groupId = req.params["groupId"];
+    const userId = req.user._id;
+
+    // Fetch group details
     const groupDetails = await Group.findOne({
-      _id: groupId,
-    });
+      _id: new ObjectId(groupId),
+    }).select(
+      "isOpen description createdAt location karma name icon members.userName members.picture members.userId admin.userName admin.picture admin.userId"
+    );
+
     if (!groupDetails) {
       return res.status(404).json({ error: "Group not found" });
     }
-    res.status(200).json(groupDetails);
+
+    // Check if the user is an admin or a member of the group
+    const isAdmin = groupDetails.admin.some(
+      (admin) => admin.userId.toString() === userId.toString()
+    );
+    const isJoined =
+      isAdmin ||
+      groupDetails.members.some(
+        (member) => member.userId.toString() === userId.toString()
+      );
+
+    // Format the response with isJoined and isAdmin
+    const formattedGroupDetails = {
+      ...groupDetails.toObject(),
+      isAdmin,
+      isJoined,
+    };
+
+    res.status(200).json(formattedGroupDetails);
   } catch (error) {
-    console.error("Error fetching messages:", error);
+    console.error("Error fetching group details:", error);
     errorLogger.error(
-      `An error occurred while fetching group details for ${groupId}`,
+      `An error occurred while fetching group details for ${req.params["groupId"]}`,
       error
     );
 
@@ -524,7 +564,8 @@ exports.fetchGroupDetails = async (req, res) => {
 };
 
 exports.updateGroupDetails = async (req, res) => {
-  const { groupId, name, description, typeOf, displayname } = req.body;
+  //TODO: add radius for premium users
+  const { groupId, name, description, isOpen, displayname } = req.body;
   const user = req.user;
   const file = req.file;
 
@@ -542,7 +583,7 @@ exports.updateGroupDetails = async (req, res) => {
     const updates = {};
     if (name) updates.name = name;
     if (description) updates.description = description;
-    if (typeOf && ["open", "close"].includes(typeOf)) updates.typeOf = typeOf;
+    if (isOpen && ["open", "close"].includes(isOpen)) updates.isOpen = isOpen;
     if (displayname && displayname !== group.displayname) {
       const duplicate = await Group.findOne({
         displayname,
@@ -909,6 +950,7 @@ exports.fetchNearbyGroups = async (req, res) => {
   const userId = req.user._id;
   const latitude = parseFloat(req.query.latitude);
   const longitude = parseFloat(req.query.longitude);
+  const radius = parseFloat(req.query.radius) || 3000;
 
   try {
     const user = await User.findById(userId);
@@ -923,7 +965,7 @@ exports.fetchNearbyGroups = async (req, res) => {
             type: "Point",
             coordinates: [latitude, longitude],
           },
-          $maxDistance: 5000,
+          $maxDistance: radius,
         },
       },
     }).select(
@@ -932,10 +974,12 @@ exports.fetchNearbyGroups = async (req, res) => {
     const groupCards = nearbyGroups.map((group) => formatGroupCard(group));
 
     const groups = groupCards.map((each) => {
-      const isJoined = each.members.some(
-        (member) => member.userName === req.user.username
+      const isAdmin = each.admin.some(
+        (admin) => admin.userName === req.user.username
       );
-      const isAdmin = each.admin[0].userName === req.user.username;
+      const isJoined =
+        isAdmin ||
+        each.members.some((member) => member.userName === req.user.username);
       return { ...each, isJoined, isAdmin };
     });
 
