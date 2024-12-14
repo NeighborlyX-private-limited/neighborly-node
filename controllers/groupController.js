@@ -22,6 +22,7 @@ function formatGroupCard(group) {
     description: group.description,
     createdAt: group.createdAt,
     location: group.location,
+    radius: group.radius,
     karma: group.karma,
     name: group.name,
     image: group.icon,
@@ -32,6 +33,11 @@ function formatGroupCard(group) {
         id: m.userId,
         userName: m.userName,
         picture: m.picture,
+      })),
+      ...group.admin.map((a) => ({
+        id: a.userId,
+        userName: a.userName,
+        picture: a.picture,
       })),
     ],
   };
@@ -49,6 +55,7 @@ function getRandomColor() {
 exports.addUser = async (req, res) => {
   try {
     var { groupId, userId } = req.body;
+
     if (!userId) {
       userId = req.user._id;
     }
@@ -57,6 +64,7 @@ exports.addUser = async (req, res) => {
     );
 
     const group = await Group.findById(new ObjectId(groupId));
+
     if (!group) {
       activityLogger.info(`Group with ${groupId} not found.`);
       return res.status(404).json({ message: "Group not found." });
@@ -73,6 +81,15 @@ exports.addUser = async (req, res) => {
     if (user.karma < requiredKarma) {
       activityLogger.info("Karma insufficient");
       return res.status(403).json({ message: "Insufficient karma." });
+    }
+
+    const isUserInGroup = group.members.some(
+      (member) => member.userId.toString() === userId
+    );
+    if (isUserInGroup) {
+      return res
+        .status(400)
+        .send({ message: "This User is Already Present in this group" });
     }
 
     // Update the User collection to add the group to the user's groups array
@@ -104,6 +121,7 @@ exports.addUser = async (req, res) => {
       groupAddedInUser.modifiedCount > 0
     ) {
       activityLogger.info("User added.");
+
       res
         .status(200)
         .json({ message: "User added to the group successfully." });
@@ -524,7 +542,7 @@ exports.fetchGroupDetails = async (req, res) => {
 };
 
 exports.updateGroupDetails = async (req, res) => {
-  const { groupId, name, description, typeOf, displayname } = req.body;
+  const { groupId, name, description, isOpen, displayname } = req.body;
   const user = req.user;
   const file = req.file;
 
@@ -542,7 +560,7 @@ exports.updateGroupDetails = async (req, res) => {
     const updates = {};
     if (name) updates.name = name;
     if (description) updates.description = description;
-    if (typeOf && ["open", "close"].includes(typeOf)) updates.typeOf = typeOf;
+    if (isOpen && ["true", "false"].includes(isOpen)) updates.isOpen = isOpen;
     if (displayname && displayname !== group.displayname) {
       const duplicate = await Group.findOne({
         displayname,
@@ -927,7 +945,7 @@ exports.fetchNearbyGroups = async (req, res) => {
         },
       },
     }).select(
-      "isOpen description createdAt location karma name icon members.userName members.picture members.userId admin.userName admin.picture admin.userId"
+      "isOpen description createdAt location radius karma name icon members.userName members.picture members.userId admin.userName admin.picture admin.userId"
     );
     const groupCards = nearbyGroups.map((group) => formatGroupCard(group));
 
