@@ -565,7 +565,7 @@ exports.fetchGroupDetails = async (req, res) => {
 
 exports.updateGroupDetails = async (req, res) => {
   //TODO: add radius for premium users
-  const { groupId, name, description, isOpen, displayname } = req.body;
+  const { groupId, description, isOpen, displayname } = req.body;
   const user = req.user;
   const file = req.file;
 
@@ -581,17 +581,9 @@ exports.updateGroupDetails = async (req, res) => {
     }
 
     const updates = {};
-    if (name) updates.name = name;
     if (description) updates.description = description;
     if (isOpen && ["open", "close"].includes(isOpen)) updates.isOpen = isOpen;
     if (displayname && displayname !== group.displayname) {
-      const duplicate = await Group.findOne({
-        displayname,
-        _id: { $ne: groupId },
-      });
-      if (duplicate) {
-        return res.status(400).json({ msg: "Duplicate displayname" });
-      }
       updates.displayname = displayname;
     }
 
