@@ -35,11 +35,6 @@ function formatGroupCard(group) {
         userName: m.userName,
         picture: m.picture,
       })),
-      ...group.admin.map((a) => ({
-        id: a.userId,
-        username: a.userName,
-        picture: a.picture,
-      })),
     ],
   };
 }
@@ -689,6 +684,12 @@ exports.addAdmin = async (req, res) => {
       }
     }
     if (flag) {
+      const isAlreadyAdmin = group.admin.some(
+        (admin) => admin.userId.toString() === userId
+      );
+      if (isAlreadyAdmin) {
+        return res.status(400).send({ message: "User is already an admin" });
+      }
       let memberFound = false;
       for (let i = 0; i < group.members.length; ++i) {
         if (group.members[i].userId.toString() === userId) {
@@ -968,7 +969,7 @@ exports.fetchNearbyGroups = async (req, res) => {
         },
       },
     }).select(
-      "isOpen description createdAt location karma name displayname icon members.userName members.picture members.userId admin.userName admin.picture admin.userId"
+      "isOpen description createdAt location karma radius name displayname icon members.userName members.picture members.userId admin.userName admin.picture admin.userId"
     );
     const groupCards = nearbyGroups.map((group) => formatGroupCard(group));
 
@@ -1208,16 +1209,27 @@ exports.removeAdmin = async (req, res) => {
     const group = await Group.findById(groupId);
     let isAdmin = false;
     for (let adm of group.admin) {
-      if ((adm.userId, toString() === user._id.toString())) {
+      if (adm.userId.toString() === user._id.toString()) {
         isAdmin = true;
         break;
       }
     }
+
     if (isAdmin) {
+      const checkPresence = group.admin.some(
+        (admin) => admin.userId.toString() === adminId
+      );
+      if (checkPresence === false) {
+        return res
+          .status(400)
+          .send({ message: "The given User is not an Admin " });
+      }
       let adminPresent = false;
+      let foundUser = {};
       for (let adm of group.admin) {
-        if ((adm.userId, toString() === adminId)) {
+        if (adm.userId.toString() === adminId) {
           adminPresent = true;
+          foundUser = adm;
           break;
         }
       }
@@ -1227,34 +1239,14 @@ exports.removeAdmin = async (req, res) => {
           {
             $pull: {
               admin: {
-                userId: new ObjectId(userId),
-                userName: foundUser.username,
-                picture: foundUser.picture,
-                karma: foundUser.karma,
-                fcmToken: foundUser.fcmToken,
-                mutedGroups: foundUser.mutedGroups,
-              },
-            },
-          }
-        );
-        await Group.updateOne(
-          { _id: new ObjectId(groupId) },
-          {
-            $addToSet: {
-              members: {
-                userId: new ObjectId(userId),
-                userName: foundUser.username,
-                picture: foundUser.picture,
-                karma: foundUser.karma,
-                fcmToken: foundUser.fcmToken,
-                mutedGroups: foundUser.mutedGroups,
+                userId: new ObjectId(foundUser.userId),
               },
             },
           }
         );
       }
     }
-    return res.status(204).json({
+    return res.status(200).json({
       msg: "Admin removed successfully",
     });
   } catch (err) {
