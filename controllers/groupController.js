@@ -23,7 +23,9 @@ function formatGroupCard(group) {
     createdAt: group.createdAt,
     location: group.location,
     karma: group.karma,
+    radius: group.radius,
     name: group.name,
+    displayname: group.displayname,
     image: group.icon,
     admin: group.admin,
     membersCount: group.members.length + group.admin.length,
@@ -32,6 +34,11 @@ function formatGroupCard(group) {
         id: m.userId,
         userName: m.userName,
         picture: m.picture,
+      })),
+      ...group.admin.map((a) => ({
+        id: a.userId,
+        username: a.userName,
+        picture: a.picture,
       })),
     ],
   };
@@ -527,7 +534,7 @@ exports.fetchGroupDetails = async (req, res) => {
     const groupDetails = await Group.findOne({
       _id: new ObjectId(groupId),
     }).select(
-      "isOpen description createdAt location karma name icon members.userName members.picture members.userId admin.userName admin.picture admin.userId"
+      "isOpen description createdAt location karma name displayname icon members.userName members.picture members.userId admin.userName admin.picture admin.userId"
     );
 
     if (!groupDetails) {
@@ -582,7 +589,7 @@ exports.updateGroupDetails = async (req, res) => {
 
     const updates = {};
     if (description) updates.description = description;
-    if (isOpen && ["open", "close"].includes(isOpen)) updates.isOpen = isOpen;
+    if (isOpen && ["true", "false"].includes(isOpen)) updates.isOpen = isOpen;
     if (displayname && displayname !== group.displayname) {
       updates.displayname = displayname;
     }
@@ -961,7 +968,7 @@ exports.fetchNearbyGroups = async (req, res) => {
         },
       },
     }).select(
-      "isOpen description createdAt location karma name icon members.userName members.picture members.userId admin.userName admin.picture admin.userId"
+      "isOpen description createdAt location karma name displayname icon members.userName members.picture members.userId admin.userName admin.picture admin.userId"
     );
     const groupCards = nearbyGroups.map((group) => formatGroupCard(group));
 
