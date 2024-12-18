@@ -634,7 +634,6 @@ exports.deleteGroup = async (req, res) => {
     const user = req.user;
     const groupId = req.params["groupId"];
     const group = await Group.findById({ _id: new ObjectId(groupId) });
-
     let flag = false;
     for (let i = 0; i < group.admin.length; ++i) {
       if (group.admin[i].userId.toString() === user._id.toString()) {
@@ -753,7 +752,6 @@ exports.addAdmin = async (req, res) => {
 
 exports.blockUser = async (req, res) => {
   const { groupId, userId, block } = req.body;
-
   try {
     const foundUser = await User.findById({ _id: new ObjectId(userId) });
     const group = await Group.findById({ _id: new ObjectId(groupId) });
@@ -1128,7 +1126,6 @@ exports.muteGroup = async (req, res) => {
     const { groupId, mute } = req.body;
 
     const group = await Group.findById({ _id: new ObjectId(groupId) });
-
     let flag = false;
     for (const element of group.admin) {
       if (element.userId.toString() === userId.toString()) {
