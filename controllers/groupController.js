@@ -529,7 +529,7 @@ exports.fetchGroupDetails = async (req, res) => {
     const groupDetails = await Group.findOne({
       _id: new ObjectId(groupId),
     }).select(
-      "isOpen description createdAt location karma name displayname icon members.userName members.picture members.userId admin.userName admin.picture admin.userId blockList"
+      "isOpen description createdAt location karma name displayname icon members.userName members.picture members.userId admin.userName admin.picture admin.userId"
     );
 
     if (!groupDetails) {
