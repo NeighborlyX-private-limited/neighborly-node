@@ -529,7 +529,7 @@ exports.fetchGroupDetails = async (req, res) => {
     const groupDetails = await Group.findOne({
       _id: new ObjectId(groupId),
     }).select(
-      "isOpen description createdAt location karma name displayname icon members.userName members.picture members.userId admin.userName admin.picture admin.userId"
+      "isOpen description createdAt location karma name displayname icon members.userName members.picture members.userId admin.userName admin.picture admin.userId blockList"
     );
 
     if (!groupDetails) {
@@ -634,6 +634,7 @@ exports.deleteGroup = async (req, res) => {
     const user = req.user;
     const groupId = req.params["groupId"];
     const group = await Group.findById({ _id: new ObjectId(groupId) });
+
     let flag = false;
     for (let i = 0; i < group.admin.length; ++i) {
       if (group.admin[i].userId.toString() === user._id.toString()) {
@@ -752,22 +753,32 @@ exports.addAdmin = async (req, res) => {
 
 exports.blockUser = async (req, res) => {
   const { groupId, userId, block } = req.body;
+
   try {
     const foundUser = await User.findById({ _id: new ObjectId(userId) });
+    const group = await Group.findById({ _id: new ObjectId(groupId) });
+
     if (block) {
+      const userAlreadyBlocked = group.blockList.some(
+        (member) => member.userId.toString() === userId
+      );
+      if (userAlreadyBlocked) {
+        return res
+          .status(400)
+          .send({ message: "Given User Already in BlockList" });
+      }
+
       await Group.updateOne(
         { _id: new ObjectId(groupId) },
         {
           $pull: {
             members: {
-              user: {
-                userId: new ObjectId(userId),
-                userName: foundUser.username,
-                picture: foundUser.picture,
-                karma: foundUser.karma,
-                fcmToken: foundUser.fcmToken,
-                mutedGroups: foundUser.mutedGroups,
-              },
+              userId: new ObjectId(userId),
+              userName: foundUser.username,
+              picture: foundUser.picture,
+              karma: foundUser.karma,
+              fcmToken: foundUser.fcmToken,
+              mutedGroups: foundUser.mutedGroups,
             },
           },
         }
@@ -787,20 +798,28 @@ exports.blockUser = async (req, res) => {
           },
         }
       );
+      return res.status(200).send({ message: "User blocked successfully" });
     } else {
+      const userNotInBlockList = group.blockList.some(
+        (member) => member.userId.toString() === userId
+      );
+      if (!userNotInBlockList) {
+        return res
+          .status(400)
+          .send({ message: "Given User not in the BlockList" });
+      }
+
       await Group.updateOne(
         { _id: new ObjectId(groupId) },
         {
           $pull: {
             blockList: {
-              user: {
-                userId: new ObjectId(userId),
-                userName: foundUser.username,
-                picture: foundUser.picture,
-                karma: foundUser.karma,
-                fcmToken: foundUser.fcmToken,
-                mutedGroups: foundUser.mutedGroups,
-              },
+              userId: new ObjectId(userId),
+              userName: foundUser.username,
+              picture: foundUser.picture,
+              karma: foundUser.karma,
+              fcmToken: foundUser.fcmToken,
+              mutedGroups: foundUser.mutedGroups,
             },
           },
         }
@@ -820,6 +839,7 @@ exports.blockUser = async (req, res) => {
           },
         }
       );
+      return res.status(200).send({ message: "User Unblocked successfully" });
     }
   } catch (error) {
     res.status(500).json({
@@ -1108,6 +1128,7 @@ exports.muteGroup = async (req, res) => {
     const { groupId, mute } = req.body;
 
     const group = await Group.findById({ _id: new ObjectId(groupId) });
+
     let flag = false;
     for (const element of group.admin) {
       if (element.userId.toString() === userId.toString()) {
