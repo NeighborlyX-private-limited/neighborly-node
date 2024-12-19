@@ -559,12 +559,19 @@ exports.fetchGroupDetails = async (req, res) => {
       (eachGroup) => eachGroup._id.toString() === groupId
     );
 
+    const group = await Group.findOne({
+      _id: new ObjectId(groupId),
+    });
+
+    const blockedList = group.blockList;
+
     // Format the response with isJoined and isAdmin
     const formattedGroupDetails = {
       ...groupDetails.toObject(),
       isMuted,
       isAdmin,
       isJoined,
+      ...(isAdmin && { blockedList }),
     };
 
     res.status(200).json(formattedGroupDetails);
