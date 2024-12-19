@@ -65,6 +65,15 @@ exports.addUser = async (req, res) => {
       return res.status(404).json({ message: "Group not found." });
     }
 
+    const userInBlockList = group.blockList.some(
+      (member) => member.userId.toString() === userId
+    );
+    if (userInBlockList) {
+      return res
+        .status(400)
+        .send({ message: "This User is in the BlockList of this Group" });
+    }
+
     // Check if the user exists
     const user = await User.findById(new ObjectId(userId));
     if (!user) {
@@ -546,9 +555,14 @@ exports.fetchGroupDetails = async (req, res) => {
         (member) => member.userId.toString() === userId.toString()
       );
 
+    const isMuted = req.user.mutedGroups.some(
+      (eachGroup) => eachGroup._id.toString() === groupId
+    );
+
     // Format the response with isJoined and isAdmin
     const formattedGroupDetails = {
       ...groupDetails.toObject(),
+      isMuted,
       isAdmin,
       isJoined,
     };
@@ -634,6 +648,14 @@ exports.deleteGroup = async (req, res) => {
     const user = req.user;
     const groupId = req.params["groupId"];
     const group = await Group.findById({ _id: new ObjectId(groupId) });
+    const checkUserGroups = req.user.groups.some(
+      (eachGroup) => eachGroup.toString() === groupId
+    );
+    if (!checkUserGroups) {
+      return res
+        .status(400)
+        .send({ message: "You are not a member of this group" });
+    }
     let flag = false;
     for (let i = 0; i < group.admin.length; ++i) {
       if (group.admin[i].userId.toString() === user._id.toString()) {
@@ -754,20 +776,29 @@ exports.blockUser = async (req, res) => {
   const { groupId, userId, block } = req.body;
   try {
     const foundUser = await User.findById({ _id: new ObjectId(userId) });
+    const group = await Group.findById({ _id: new ObjectId(groupId) });
+
     if (block) {
+      const userAlreadyBlocked = group.blockList.some(
+        (member) => member.userId.toString() === userId
+      );
+      if (userAlreadyBlocked) {
+        return res
+          .status(400)
+          .send({ message: "Given User Already in BlockList" });
+      }
+
       await Group.updateOne(
         { _id: new ObjectId(groupId) },
         {
           $pull: {
             members: {
-              user: {
-                userId: new ObjectId(userId),
-                userName: foundUser.username,
-                picture: foundUser.picture,
-                karma: foundUser.karma,
-                fcmToken: foundUser.fcmToken,
-                mutedGroups: foundUser.mutedGroups,
-              },
+              userId: new ObjectId(userId),
+              userName: foundUser.username,
+              picture: foundUser.picture,
+              karma: foundUser.karma,
+              fcmToken: foundUser.fcmToken,
+              mutedGroups: foundUser.mutedGroups,
             },
           },
         }
@@ -787,29 +818,26 @@ exports.blockUser = async (req, res) => {
           },
         }
       );
+      await User.updateOne(
+        { _id: new ObjectId(userId) },
+        { $pull: { groups: new ObjectId(groupId) } }
+      );
+      return res.status(200).send({ message: "User blocked successfully" });
     } else {
+      const userNotInBlockList = group.blockList.some(
+        (member) => member.userId.toString() === userId
+      );
+      if (!userNotInBlockList) {
+        return res
+          .status(400)
+          .send({ message: "Given User not in the BlockList" });
+      }
+
       await Group.updateOne(
         { _id: new ObjectId(groupId) },
         {
           $pull: {
             blockList: {
-              user: {
-                userId: new ObjectId(userId),
-                userName: foundUser.username,
-                picture: foundUser.picture,
-                karma: foundUser.karma,
-                fcmToken: foundUser.fcmToken,
-                mutedGroups: foundUser.mutedGroups,
-              },
-            },
-          },
-        }
-      );
-      await Group.updateOne(
-        { _id: new ObjectId(groupId) },
-        {
-          $addToSet: {
-            members: {
               userId: new ObjectId(userId),
               userName: foundUser.username,
               picture: foundUser.picture,
@@ -820,6 +848,7 @@ exports.blockUser = async (req, res) => {
           },
         }
       );
+      return res.status(200).send({ message: "User Unblocked successfully" });
     }
   } catch (error) {
     res.status(500).json({
