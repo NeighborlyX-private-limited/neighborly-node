@@ -65,6 +65,15 @@ exports.addUser = async (req, res) => {
       return res.status(404).json({ message: "Group not found." });
     }
 
+    const userInBlockList = group.blockList.some(
+      (member) => member.userId.toString() === userId
+    );
+    if (userInBlockList) {
+      return res
+        .status(400)
+        .send({ message: "This User is in the BlockList of this Group" });
+    }
+
     // Check if the user exists
     const user = await User.findById(new ObjectId(userId));
     if (!user) {
@@ -808,6 +817,10 @@ exports.blockUser = async (req, res) => {
             },
           },
         }
+      );
+      await User.updateOne(
+        { _id: new ObjectId(userId) },
+        { $pull: { groups: new ObjectId(groupId) } }
       );
       return res.status(200).send({ message: "User blocked successfully" });
     } else {
