@@ -835,21 +835,6 @@ exports.blockUser = async (req, res) => {
           },
         }
       );
-      await Group.updateOne(
-        { _id: new ObjectId(groupId) },
-        {
-          $addToSet: {
-            members: {
-              userId: new ObjectId(userId),
-              userName: foundUser.username,
-              picture: foundUser.picture,
-              karma: foundUser.karma,
-              fcmToken: foundUser.fcmToken,
-              mutedGroups: foundUser.mutedGroups,
-            },
-          },
-        }
-      );
       return res.status(200).send({ message: "User Unblocked successfully" });
     }
   } catch (error) {
