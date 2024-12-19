@@ -546,9 +546,14 @@ exports.fetchGroupDetails = async (req, res) => {
         (member) => member.userId.toString() === userId.toString()
       );
 
+    const isMuted = req.user.mutedGroups.some(
+      (eachGroup) => eachGroup._id.toString() === groupId
+    );
+
     // Format the response with isJoined and isAdmin
     const formattedGroupDetails = {
       ...groupDetails.toObject(),
+      isMuted,
       isAdmin,
       isJoined,
     };
@@ -634,6 +639,14 @@ exports.deleteGroup = async (req, res) => {
     const user = req.user;
     const groupId = req.params["groupId"];
     const group = await Group.findById({ _id: new ObjectId(groupId) });
+    const checkUserGroups = req.user.groups.some(
+      (eachGroup) => eachGroup.toString() === groupId
+    );
+    if (!checkUserGroups) {
+      return res
+        .status(400)
+        .send({ message: "You are not a member of this group" });
+    }
     let flag = false;
     for (let i = 0; i < group.admin.length; ++i) {
       if (group.admin[i].userId.toString() === user._id.toString()) {
